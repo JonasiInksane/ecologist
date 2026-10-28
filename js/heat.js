@@ -6,9 +6,9 @@ import { LIQ } from './liquids.js';
 import { puff } from './particles.js';
 import { solidify } from './reactions.js';
 import { clearSol } from './solutes.js';
-import { CHH, CW, HEAT_AWAKE, S, afloat, deco, heatAwake, held, liq, markDirty, meltAmount, sol, solid, temp, temp2, typ, under, wake } from './world.js';
+import { CHH, CW, HEAT_AWAKE, S, afloat, deco, drop, heatAwake, held, liq, markDirty, meltAmount, sol, solid, temp, temp2, typ, under, wake } from './world.js';
 import { COPPER, WOOL } from './config.js';
-import { MSLAG, ORE, SLAG, SUGAR, THERMO } from './config.js';
+import { FNITRO, MSLAG, ORE, RUST, SLAG, SUGAR, THERMO } from './config.js';
 import { vapour } from './air.js';
 
 
@@ -27,6 +27,7 @@ BRATE[METAL] = 0.25;
 BRATE[WOOL] = 0.003; BRATE[COPPER] = 0.45;   // insulation and a conductor
 BRATE[THERMO] = 0.25;   // a temperature sensor reads its surroundings quickly
 // Liquids that keep acting on their surroundings while still; their chunks never fall asleep.
+const NITRO_FREEZE = 10, NITRO_THAW = 14;   // nitro freezes into a block that's safe to drop and dig, and thaws again
 const NITRO_HEAT = 150, QUICK_BOIL = 357, WAX_MELT = 70, METAL_MELT = 1300, SNOW_MELT = 2, SNOW_WATER = 64, CLAY_BAKE = 400, ORE_MELT = 850;
 const ALIVE = new Uint8Array(NLIQ);
 [ACID, LAVA, FROST, AETHER, SLIME, BLOOM, TONIC, FOAM, MOLTEN, MSLAG, NITRO].forEach(t => { ALIVE[t] = 1; });
@@ -125,7 +126,11 @@ function phaseChanges(c, m) {
       else if (t === HONEY) { if (Tk > 180) { solidify(k, CRISP); puff(k, 'smoke'); } }
       else if (t === ACID) { if (Tk > 120) { liq[k] = 0; typ[k] = 0; wake(k); puff(k, 'smoke'); } }
       else if (t === STORM) { if (Tk > 100) { typ[k] = STEAM; temp[k] = 110; clearSol(k); wake(k); if (Math.random() < 0.3) puff(k, 'steam'); } }
-      else if (t === NITRO) { heatAwake[c] = HEAT_AWAKE; if (Tk > NITRO_HEAT) explode(k); }   // nitro must go off at once, so its heat never sleeps
+      else if (t === NITRO) {   // nitro must go off at once, so its heat never sleeps
+        heatAwake[c] = HEAT_AWAKE;
+        if (Tk > NITRO_HEAT) explode(k);
+        else if (Tk < NITRO_FREEZE && (k >= W * H - W || solid[k + W] || liq[k + W])) { drop[k] = 0; solidify(k, FNITRO); }   // falling nitro doesn't freeze
+      }
       else if (t === MOLTEN) { if (Tk < 1000) { solidify(k, METAL); puff(k, 'smoke'); } }
       else if (t === MSLAG) { if (Tk < 1000) { solidify(k, SLAG); puff(k, 'smoke'); } }
       else if (t === MUD) { if (Tk > 120) { solidify(k, BRICK); puff(k, 'steam'); } }
@@ -137,6 +142,11 @@ function phaseChanges(c, m) {
       solid[k] = ICE; held[k] = SNOW_WATER; markDirty(x, y);   // deep snow packs into ice under its own weight
     } else if (solid[k] === PERMAFROST && Tk > 2 && Math.random() < 0.01 * m) {   // frozen ground thaws into mud
       solid[k] = AIR; liq[k] = 200; typ[k] = MUD; clearSol(k); markDirty(x, y);
+    } else if (solid[k] === FNITRO) {   // heat (a blast's, say) still sets frozen nitro off
+      heatAwake[c] = HEAT_AWAKE;
+      if (Tk > NITRO_THAW) { solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = NITRO; clearSol(k); markDirty(x, y); wake(k); if (Tk > NITRO_HEAT) explode(k); }
+    } else if (solid[k] === RUST && Tk > ORE_MELT) {   // rust smelts back into metal, like ore
+      solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = MOLTEN; temp[k] = 1300; clearSol(k); markDirty(x, y);
     } else if (solid[k] === SUGAR && Tk > 180) {   // sugar caramelises into crisp honey
       solid[k] = CRISP; held[k] = 0; markDirty(x, y); puff(k, 'smoke');
     } else if (solid[k] === CLAY && Tk > CLAY_BAKE) {
@@ -206,4 +216,4 @@ function leaveResidue(k) {
   return true;
 }
 
-export { ORE_MELT, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, BRATE, ALIVE, heatTick, warmWater, leaveResidue };
+export { NITRO_FREEZE, NITRO_THAW, ORE_MELT, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, BRATE, ALIVE, heatTick, warmWater, leaveResidue };

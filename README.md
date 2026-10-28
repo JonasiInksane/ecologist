@@ -28,9 +28,9 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `js/liquids.js` | The liquid property table: one row per liquid (gravity, viscosity, density, colours, glow, heat) |
 | `js/reactions.js` | What happens when two liquids touch, and what liquids do to touching blocks |
 | `js/sim.js` | The per-tick update: react, fall, spread; then momentum, devices, pumps, pipes, powders, bodies, heat, fire, pressure, solutes, gases, erosion, air, biomes, weather, plants |
-| `js/solutes.js` | Dissolved contents (salt, sugar, essence, inks, acid, alkali, fertiliser, algae): carried with the flow, diffused, dissolved from salt blocks, brewed by the recipe table; acid and alkali neutralising and corroding, fizzing, salt crystals growing; algae growing in the light and dying back in the dark; pH; tint colours |
+| `js/solutes.js` | Dissolved contents (salt, sugar, essence, inks, acid, alkali, fertiliser, algae): carried with the flow, diffused, dissolved from salt blocks, brewed by the recipe table; acid and alkali neutralising and corroding, fizzing, salt crystals growing, metal rusting under water; algae growing in the light and dying back in the dark; pH; tint colours |
 | `js/powders.js` | Sand, salt, sugar, baking soda and snow: amounts per tile (in `held`), falling and settling into piles, slopes, sinking through lighter liquids; sand into mud and glass |
-| `js/heat.js`, `js/fire.js`, `js/pressure.js` | Temperature (settled chunks sleep) and phase changes (including smelting ore), burning (methane and hydrogen flashes, explosive mixtures with oxygen), optional communicating vessels |
+| `js/heat.js`, `js/fire.js`, `js/pressure.js` | Temperature (settled chunks sleep) and phase changes (including smelting ore and rust, and nitro freezing), burning (methane and hydrogen flashes, explosive mixtures with oxygen), optional communicating vessels |
 | `js/gases.js`, `js/blast.js` | Smoke, poison and carbon dioxide fading, gases escaping into the sky; nitro explosions |
 | `js/pumps.js`, `js/devices.js` | Pumps; switches (lever, plate, liquid, temperature and depth sensors, timer), generators (turbine, water wheel, windmill, solar panel), batteries, logic (AND, OR, NOT, counter) and targets (gate, spring, drain, valve, boiler, separator, lamp, pixel, motor, electromagnet) |
 | `js/power.js` | Power networks: metal, stormwater and brine carry power from the switches touching them to the machines they touch; power fades along them (copper least, liquid most); electrolysis splits the water they touch into hydrogen and oxygen |
@@ -41,7 +41,7 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `js/particles.js`, `js/audio.js`, `js/music.js`, `js/daynight.js` | Effects and bubbles, synthesized sound (each liquid its own), generative music, time of day (which the Time of day setting can hold or stop) |
 | `js/climate.js` | Each column's biome, temperature, humidity and wind; seasons (and which of eight looks the leaves and grass show); air colder with height, ground warmer with depth |
 | `js/air.js` | The air grid: vapour, clouds, wind, rain, snow and hail, fog, lightning, gases drifting on the wind; moist air gathering over humid biomes |
-| `js/biomes.js` | The eleven biomes: their climate, ground and features; dry and wet spells; tides fed from the open sea beyond the edge; rivers that return their water underground to their source |
+| `js/biomes.js` | The eleven biomes: their climate, ground and features; dry and wet spells; tides fed from the open sea beyond the edge; rivers that return their water underground to their source; the underground layers and deep caverns; flash floods |
 | `js/momentum.js` | Sideways speed per tile: sloshing waves, jets, splashes, whirlpools at drains |
 | `js/erosion.js`, `js/weather.js` | Flowing water carrying dirt away as silt (undercutting banks, so valleys open) and dropping it as mud where it stills (deltas); the sun drying mud and thawing ice |
 | `js/generate.js` | World generation from the biomes, and `resetWorld` |

@@ -27,7 +27,7 @@ import { startRain } from './weather.js';
 import { S, VIEW, awake, bodies, deco, devices, drop, fall, fire, heatWake, held, liq, markDirty, pumps, sol, solid, temp, typ, vel, wake, wakeAll } from './world.js';
 import { CO2, LYE, SODA } from './config.js';
 import { HYDROGEN, MSLAG, ORE, OXYGEN, SLAG } from './config.js';
-import { DEPTH, PIXEL, SUGAR, THERMO } from './config.js';
+import { DEPTH, FNITRO, PIXEL, RUST, SUGAR, THERMO } from './config.js';
 import { phOf } from './solutes.js';
 import { BATTERY, EMAGNET, LAMP, MOTOR, SOLAR } from './config.js';
 import { COOLANT, COPPER, CORAL, FERRO, FERT, FUSE, LIGHT, MAGNET, MEMBRANE, MIMIC, POROUS, SPONGE, VOID, WOOL } from './config.js';
@@ -101,6 +101,8 @@ const TOOLS = [
   { id: 'metal',  name: 'Metal',  block: METAL, color: '#8d96a6' },
   { id: 'ore',    name: 'Ore',    block: ORE,   color: '#b0643a' },
   { id: 'slag',   name: 'Slag',   block: SLAG,  color: '#4a4240' },
+  { id: 'rust',   name: 'Rust',   block: RUST,  color: '#a0502a' },
+  { id: 'fnitro', name: 'Frozen nitro', block: FNITRO, color: '#f0e4b0' },
   { id: 'heat',   name: 'Heat',   heat: true,   color: '#ff5a36', key: 'f' },
   { id: 'chill',  name: 'Chill',  chill: true,  color: '#8fd8ff', key: 'g' },
   { id: 'pump',     name: 'Pump',     pump: true,         color: '#5f6a80', key: 'p' },
@@ -367,7 +369,7 @@ const BLOCKS = ['', 'dirt', 'stone', 'obsidian', 'honeycomb', 'crisp honey', 'ic
   'metal', 'pipe', 'valve', 'pipe filter', 'steam turbine', 'water wheel', 'boiler', 'separator', 'AND gate', 'OR gate', 'NOT gate', 'counter', 'plant', 'leaf',
   'snow', 'permafrost', 'clay', 'windmill', 'geyser', 'gas vent', 'baking soda', 'salt crystal',
   'sponge', 'wet sponge', 'wet soil', 'porous rock', 'wool', 'copper', 'membrane', 'coral', 'bleached coral', 'fuse cord', 'magnet',
-  'battery', 'lamp', 'motor', 'electromagnet', 'solar panel', 'ore', 'slag', 'temperature sensor', 'depth sensor', 'pixel', 'sugar'];
+  'battery', 'lamp', 'motor', 'electromagnet', 'solar panel', 'ore', 'slag', 'temperature sensor', 'depth sensor', 'pixel', 'sugar', 'rust', 'frozen nitro'];
 setupEditor({ tools: TOOLS, blocks: BLOCKS, enterMode });
 // Text from a level code (its name, goal and labels) is shown as text, never as markup.
 function escapeHtml(text) { return String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }

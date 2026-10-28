@@ -9,7 +9,7 @@ import { puff } from './particles.js';
 import { S, bodies, devices, held, liq, markDirty, meltAmount, sol, solid, temp, typ, wake } from './world.js';
 import { GEM, SODA } from './config.js';
 import { BLEACHED, COPPER, CORAL, FUSE, MAGNET, POROUS, SPONGE, WETDIRT, WOOL } from './config.js';
-import { ORE, SLAG, SUGAR } from './config.js';
+import { FNITRO, ORE, RUST, SLAG, SUGAR } from './config.js';
 import { POWDER, SLIDE_AT } from './powders.js';
 
 const BAG_SLOTS = 8, STACK = 99;
@@ -19,7 +19,7 @@ DIG_TICKS[SNOW] = 4; DIG_TICKS[SAND] = 6; DIG_TICKS[DIRT] = 8; DIG_TICKS[MOSS] =
 DIG_TICKS[CRISP] = 12; DIG_TICKS[SALT] = 12; DIG_TICKS[ICE] = 14; DIG_TICKS[WOOD] = 16; DIG_TICKS[GLASS] = 20; DIG_TICKS[PERMAFROST] = 24;
 DIG_TICKS[STONE] = 28; DIG_TICKS[BRICK] = 30; DIG_TICKS[BASALT] = 34; DIG_TICKS[CRYSTAL] = 40; DIG_TICKS[OBSIDIAN] = 80; DIG_TICKS[SODA] = 6; DIG_TICKS[GEM] = 30;
 DIG_TICKS[SPONGE] = 6; DIG_TICKS[WOOL] = 6; DIG_TICKS[FUSE] = 3; DIG_TICKS[WETDIRT] = 8; DIG_TICKS[CORAL] = 14; DIG_TICKS[BLEACHED] = 10;
-DIG_TICKS[POROUS] = 20; DIG_TICKS[COPPER] = 40; DIG_TICKS[MAGNET] = 50; DIG_TICKS[ORE] = 32; DIG_TICKS[SLAG] = 14; DIG_TICKS[SUGAR] = 5;   // a wet sponge isn't dug: its water would be lost
+DIG_TICKS[POROUS] = 20; DIG_TICKS[COPPER] = 40; DIG_TICKS[MAGNET] = 50; DIG_TICKS[ORE] = 32; DIG_TICKS[SLAG] = 14; DIG_TICKS[SUGAR] = 5; DIG_TICKS[RUST] = 8; DIG_TICKS[FNITRO] = 12;   // a wet sponge isn't dug: its water would be lost
 
 function findExplorer() { return bodies.find(b => b.kind === 'explorer'); }
 // Puzzles switch the tools off unless they list them.

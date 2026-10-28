@@ -9,7 +9,7 @@ import { DISSOLVES, fizz } from './reactions.js';
 import { S, flux, held, meltAmount } from './world.js';
 import { MOSS, SOL_FERT, STONE } from './config.js';
 import { nbr } from './pumps.js';
-import { LIGHT, SOL_ALGAE, SUGAR } from './config.js';
+import { LIGHT, METAL, RUST, SOL_ALGAE, SUGAR } from './config.js';
 const DISSOLVE = 24;   // powder grains water dissolves at a time
 import { sunHeight } from './daynight.js';
 import { under } from './world.js';
@@ -87,6 +87,9 @@ function chemistry(k, x, p) {
       if (acid >= CORRODE_AT && DISSOLVES[solid[o]] && Math.random() < 0.025 * acid / 255) {
         solid[o] = 0; held[o] = 0; markDirty(o % W, (o / W) | 0); puff(o, 'fizz'); sol[p + SOL_ACID] = Math.max(0, acid - 30); wake(k); return;
       }
+      if (solid[o] === METAL && !(S.level && !S.level.custom) && Math.random() < RUST_RATE * (1 + sol[p + SOL_SALT] / 30 + acid / 30)) {
+        solid[o] = RUST; markDirty(o % W, (o / W) | 0); wake(k);
+      }
       // salt crystals grow from still, saturated brine onto any surface, and dissolve again into fresher water
       if (sol[p + SOL_SALT] >= SATURATED && S.tick - flux[k] > STILL && Math.random() < GROW) {
         held[k] = liq[k] < 255 ? liq[k] : 0; solid[k] = GEM; liq[k] = 0; typ[k] = 0; clearSol(k); markDirty(x, (k / W) | 0); puff(k, 'spark'); return;
@@ -105,6 +108,9 @@ function chemistry(k, x, p) {
 // already, into a bloom. In the dark, and when a bloom grows too thick, algae dies and rots back into fertiliser.
 // It needs warm water too: it grows half as fast below ALGAE_COOL and dies back below ALGAE_COLD, so open lakes,
 // which follow the seasons, bloom in summer and clear in winter.
+// Metal under water rusts: slowly in fresh water, several times faster in brine or acid. Not in the built-in puzzles,
+// whose metal has to last.
+const RUST_RATE = 0.0003;
 const ALGAE_WILD = 24, ALGAE_CROWDED = 200, SPORE = 0.01, FED_AT = 5, ALGAE_COLD = 8, ALGAE_COOL = 15;
 let daylight = false;   // set once per solute pass
 function lit(k, x) {
@@ -175,4 +181,4 @@ function solTint(k) {
   return [cr / wsum, cg / wsum, cb / wsum, Math.min(0.85, wsum)];
 }
 
-export { ALGAE_COLD, ALGAE_COOL, daylight, ALGAE_WILD, ALGAE_CROWDED, SPORE, FED_AT, lit, algae, CORRODE_AT, FIZZ_AT, SATURATED, STILL, chemistry, phOf, SOL_NAMES, DIFFUSE, RECIPES, mixSol, carrySol, clearSol, copySol, swapSol, heavy, addSol, soluteTick, diffuse, brews, RYB, inkColor, TINTS, solTint };
+export { RUST_RATE, ALGAE_COLD, ALGAE_COOL, daylight, ALGAE_WILD, ALGAE_CROWDED, SPORE, FED_AT, lit, algae, CORRODE_AT, FIZZ_AT, SATURATED, STILL, chemistry, phOf, SOL_NAMES, DIFFUSE, RECIPES, mixSol, carrySol, clearSol, copySol, swapSol, heavy, addSol, soluteTick, diffuse, brews, RYB, inkColor, TINTS, solTint };

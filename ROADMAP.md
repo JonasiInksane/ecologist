@@ -164,7 +164,8 @@ missing. Added:
   methane (swamp gas) up to the surface.
 - Oil hot enough to smoke but not yet burn (110–150°) smokes; steam scalds the explorer.
 
-Left for later: rust on metal under water, ice floating (needs the floating-debris item), nitro freezing.
+Left for later: rust on metal under water, ice floating (needs the floating-debris item), nitro freezing. (All three
+were built since: lake ice in Phase 17, rust and frozen nitro with the deep caverns.)
 
 ## Phase 6: Living things and goals
 
@@ -328,7 +329,7 @@ Underground layers, under every biome:
 | --- | --- |
 | Shallow caves | today's caves and pockets |
 | Aquifers | water-filled rock below the water table, so digging down floods |
-| Deep caverns | warmer, quicksilver and oil seeps, crystal and aether (fantasy, later) |
+| Deep caverns | warmer, quicksilver and oil seeps, crystal and aether (built after the living world) |
 | Magma layer | lava sea and molten metal at the bottom |
 
 ### New things the biomes need
@@ -685,6 +686,28 @@ Water landscapes (built; see below):
   their neighbours, so a sheet breaks up from its edges.
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
+
+### Deep caverns, rust and frozen nitro (after the living world)
+
+- **Deep caverns** (`caverns` in `js/biomes.js`, called at the end of `underground`): one hall in each fifth of the
+  world, 24–40 tiles wide and 10–16 tall, with a ragged (noise-shifted) edge, centred about row 102, above the basalt
+  crust; the rock there rests at about 40°. Where its edge meets groundwater it's lined with stone. Crystals hang 1–3
+  tiles from a quarter of the roof tiles and stand 1–2 tall on an eighth of the floor; crystal already glowed, so a
+  cavern lights itself. Each has a pool, in turn quicksilver or oil on the left of the floor, or aether under the right
+  of the roof, which is sealed so the aether can't rise away.
+- That found an older bug: the generated aether pocket was lined only below its middle (right for sinking liquids), so
+  its aether rose out through the caves within a few seconds. `carve` now lines a rising liquid's pocket all round.
+- **Rust** (block 68, `chemistry` in `js/solutes.js`): water touching metal turns it to rust with a chance of
+  `RUST_RATE` (0.0003) per solute tick, times `1 + salt / 30 + acid / 30`: a tile in contact rusts in about 4 minutes
+  in fresh water and under a minute in strong brine. Not in built-in puzzles. Rust is crumbly (dug in 8 ticks, broken
+  by blasts), doesn't conduct (it isn't metal), acid dissolves it, and above 850° it smelts into molten metal like ore.
+- **Frozen nitro** (block 69, `js/heat.js`): resting nitro below 10° freezes into a block holding its amount (falling
+  nitro doesn't, like water); above 14° it thaws into the same amount, and above 150° it explodes as it thaws, so a
+  blast's heat still chains through it. Blasts don't break it for that reason. Its chunk's heat never sleeps, as with
+  liquid nitro. As a block it can't fall, so a fall can't set it off, and the pickaxe digs and carries it. (Like other
+  partial blocks, a part-tile goes into the bag as a whole one.)
+- Both are placeable with the other blocks (Rust, Frozen nitro).
+- Test: `the deep caverns, rust, and frozen nitro`. All 71 scenes pass; a tick is unchanged at about 3.2 ms.
 
 ### Living world (after the smaller world codes)
 

@@ -76,8 +76,8 @@ function buildWorld() {
     solid[k] = b;
   }
   underground(surf);
-  // fill(x, y) returns the liquid to place in a carved tile, or 0
-  const carve = (cx, cy, rx, ry, fill) => {
+  // fill(x, y) returns the liquid to place in a carved tile, or 0; a pocket of a rising liquid is lined above too
+  const carve = (cx, cy, rx, ry, fill, rises = false) => {
     for (let y = cy - ry; y <= cy + ry; y++) for (let x = cx - rx; x <= cx + rx; x++) {
       if (x < 0 || y < 0 || x >= W || y >= H - 2) continue;
       const dx = (x - cx) / rx, dy = (y - cy) / ry;
@@ -91,7 +91,7 @@ function buildWorld() {
       if (x < 0 || y < 0 || x >= W || y >= H) continue;
       const dx = (x - cx) / rx, dy = (y - cy) / ry, d = dx * dx + dy * dy;
       const k = y * W + x;
-      if (d >= 1 && d < 1.6 && !solid[k] && !liq[k] && under[k] && y >= cy - 1) solid[k] = STONE;
+      if (d >= 1 && d < 1.6 && !solid[k] && !liq[k] && under[k] && (y >= cy - 1 || rises)) solid[k] = STONE;
     }
   };
   const lx = 64, ly = surf[lx] + 3;
@@ -101,7 +101,7 @@ function buildWorld() {
   const qy = (H * 0.8) | 0;
   carve((W * 0.3) | 0, qy, 6, 3, (x, y) => y < qy ? QUICK : WATER);          // quicksilver on top of water: it sinks
   const ay = (H * 0.72) | 0;
-  carve((W * 0.88) | 0, ay, 7, 4, (x, y) => y >= ay ? AETHER : 0);          // aether on the floor: it rises
+  carve((W * 0.88) | 0, ay, 7, 4, (x, y) => y >= ay ? AETHER : 0, true);    // aether on the floor: it rises
   const fy = (H * 0.55) | 0;
   carve(20, fy + 4, 4, 3, (x, y) => y >= fy + 4 ? FROST : 0);               // frost pocket
   const oy = (H * 0.6) | 0;

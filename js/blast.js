@@ -10,10 +10,10 @@ import { clearSol } from './solutes.js';
 import { S, bodies, heatWake, liq, markDirty, solid, temp, typ, vel, wake } from './world.js';
 import { GEM, SODA } from './config.js';
 import { BLEACHED, CORAL, FUSE, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from './config.js';
-import { ORE, SLAG, SUGAR } from './config.js';
+import { ORE, RUST, SLAG, SUGAR } from './config.js';
 
 const BREAKS = new Uint8Array(NBLOCK);   // obsidian, metal and machines survive
-[DIRT, STONE, COMB, CRISP, ICE, CRYSTAL, BASALT, WOOD, MOSS, SALT, SAND, GLASS, BRICK, SODA, GEM, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, CORAL, BLEACHED, FUSE, ORE, SLAG, SUGAR].forEach(b => { BREAKS[b] = 1; });
+[DIRT, STONE, COMB, CRISP, ICE, CRYSTAL, BASALT, WOOD, MOSS, SALT, SAND, GLASS, BRICK, SODA, GEM, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, CORAL, BLEACHED, FUSE, ORE, SLAG, SUGAR, RUST].forEach(b => { BREAKS[b] = 1; });   // frozen nitro isn't broken: the blast's heat sets it off
 const BLAST_HEAT = 700, MAX_RADIUS = 6;
 // Offsets within MAX_RADIUS, furthest first, so outer liquid moves out of the way before inner liquid follows it.
 const RING = [];

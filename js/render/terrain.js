@@ -8,7 +8,7 @@ import { SUGAR } from '../config.js';
 import { devicePixel, isDeviceBlock, pipePixel } from './devices.js';
 import { GEM, SODA } from '../config.js';
 import { BLEACHED, COPPER, CORAL, FUSE, MAGNET, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from '../config.js';
-import { ORE, SLAG } from '../config.js';
+import { FNITRO, ORE, RUST, SLAG } from '../config.js';
 
 
 
@@ -54,6 +54,8 @@ const PAL = {
   [CLAY]:     { base: P(['#a8705a', '#9a6450', '#b47c66', '#8c5a48']), out: P(['#4a2a1e'])[0], hl: P(['#c89a84'])[0] },
   [METAL]:    { base: P(['#8d96a6', '#848d9d', '#99a2b1', '#737b8a']), out: P(['#2b303a'])[0], hl: P(['#d4dae4'])[0] },
   [ORE]:      { base: P(['#7c7f8c', '#6f7280', '#b0643a', '#5f6270']), out: P(['#2b2d36'])[0], hl: P(['#d88a5a'])[0] },   // stone flecked with rust
+  [RUST]:     { base: P(['#a0502a', '#8a4222', '#c06a36', '#6e3418']), out: P(['#3a1a0c'])[0], hl: P(['#d88a4a'])[0] },   // flaky orange-brown
+  [FNITRO]:   { base: P(['#f0e4b0', '#e4d498', '#fff6d8', '#d0bc7a']), out: P(['#8a7a3a'])[0], hl: P(['#ffffff'])[0] },   // pale waxy crystals
   [SLAG]:     { base: P(['#4a4240', '#3e3735', '#5a5048', '#2e2826']), out: P(['#161210'])[0], hl: P(['#7a6a5a'])[0] },
 };
 const MORTAR = P(['#d8c8b0'])[0];

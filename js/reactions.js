@@ -11,7 +11,7 @@ import { CO2, LYE, SOL_ACID, SOL_BASE } from './config.js';
 import { SODA } from './config.js';
 import { COOLANT, FERRO, FERT, MIMIC, SOL_FERT, VOID } from './config.js';
 import { BLEACHED, CORAL, FUSE, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from './config.js';
-import { HYDROGEN, MSLAG, OXYGEN, SLAG, SUGAR } from './config.js';
+import { HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SUGAR } from './config.js';
 
 
 
@@ -26,7 +26,7 @@ import { HYDROGEN, MSLAG, OXYGEN, SLAG, SUGAR } from './config.js';
 
 const NITRO_DROP = 6;   // rows of free fall that set nitro off when it lands
 const DISSOLVES = new Uint8Array(NBLOCK);   // which blocks acid can eat (not sand or glass: silica resists it)
-[DIRT, STONE, COMB, CRISP, ICE, BASALT, WOOD, MOSS, SALT, SUGAR, PLANT, LEAF, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, CORAL, BLEACHED, FUSE].forEach(b => { DISSOLVES[b] = 1; });
+[DIRT, STONE, COMB, CRISP, ICE, BASALT, WOOD, MOSS, SALT, SUGAR, PLANT, LEAF, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, CORAL, BLEACHED, FUSE, RUST].forEach(b => { DISSOLVES[b] = 1; });
 const SWAP = { swap: true };
 const REACT = new Array(NLIQ * NLIQ).fill(null);
 function setR(a, b, r) { REACT[a * NLIQ + b] = r; REACT[b * NLIQ + a] = r; }

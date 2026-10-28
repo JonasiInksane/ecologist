@@ -1950,6 +1950,50 @@ scene('a living world: seasons in the leaves, birds that hunt moths, hail and fl
   Bio.regions.length = 0;
 });
 
+scene('the deep caverns, rust, and frozen nitro', () => {
+  // metal under water rusts, faster in brine; rust doesn't carry power, acid eats it and heat smelts it back into metal
+  const rusted = salt => {
+    clear(); devices.clear(); tank(40, 40, 60, 50); box(41, 50, 59, 50, C.METAL);
+    fill(41, 44, 59, 49, C.WATER, 20); setSol(41, 44, 59, 49, C.SOL_SALT, salt);
+    run(3600);
+    return count(k => solid[k] === C.RUST);
+  };
+  const fresh = rusted(0), brine = rusted(150);   // under saturation, so no salt crystals grow over the metal
+  check('metal under water rusts, several times faster in brine', fresh >= 0 && brine > fresh + 4, `${fresh} of 19 tiles rusted in fresh water, ${brine} in brine`);
+  clear(); devices.clear();
+  box(40, 50, 60, 50, C.RUST); for (let x = 40; x <= 60; x++) temp[at(x, 50)] = 1000; run(10);
+  const metal = count(k => (liq[k] && typ[k] === C.MOLTEN) || solid[k] === C.METAL);
+  check('rust smelts back into molten metal', metal === 21 && count(k => solid[k] === C.RUST) === 0, `${metal} tiles of metal`);
+  clear(); devices.clear(); box(40, 50, 60, 50, C.RUST); box(39, 45, 39, 50, C.STONE); box(61, 45, 61, 50, C.STONE);
+  fill(40, 47, 60, 49, C.ACID, 20); run(300);
+  check('acid eats rust', count(k => solid[k] === C.RUST) < 21, `${count(k => solid[k] === C.RUST)} of 21 rust tiles left`);
+  // nitro freezes below 10° into a block, safe where it is, and thaws back into the same amount of nitro; heat still sets it off
+  clear(); devices.clear(); tank(40, 40, 50, 50);
+  fill(41, 49, 49, 50, C.NITRO, 0); liq[at(41, 49)] = 100;
+  for (let y = 38; y <= 52; y++) for (let x = 38; x <= 52; x++) temp[at(x, y)] = 0;
+  const nitro0 = gasVol(C.NITRO);
+  run(60);
+  const frozen = count(k => solid[k] === C.FNITRO);
+  check('nitro freezes into a block below 10°', frozen === 18 && gasVol(C.NITRO) === 0, `${frozen} frozen tiles`);
+  for (let y = 38; y <= 52; y++) for (let x = 38; x <= 52; x++) temp[at(x, y)] = 25;
+  run(60);
+  check('frozen nitro thaws back into as much nitro as froze', count(k => solid[k] === C.FNITRO) === 0 && gasVol(C.NITRO) === nitro0, `${gasVol(C.NITRO)} of ${nitro0}`);
+  clear(); devices.clear(); box(40, 50, 60, 50, C.STONE); solid[at(50, 49)] = C.FNITRO; temp[at(50, 49)] = 0;
+  const stone = count(k => solid[k] === C.STONE);
+  temp[at(50, 49)] = 300; run(10);
+  check('heat sets frozen nitro off', count(k => solid[k] === C.STONE) < stone && solid[at(50, 49)] !== C.FNITRO, `${stone - count(k => solid[k] === C.STONE)} stone blocks broken`);
+  // a generated world has deep caverns in each fifth: crystal-lit halls with quicksilver, oil or aether in them
+  S.seed = 31337; Gen.generate();
+  const deep = (pred, x0, x1) => { let n = 0; for (let y = (H * 0.72) | 0; y < H - 8; y++) for (let x = x0; x < x1; x++) if (pred(at(x, y))) n++; return n; };
+  const fifths = [0, 1, 2, 3, 4].map(i => [Math.round(i * W / 5), Math.round((i + 1) * W / 5)]);
+  const open = fifths.map(([a, b]) => deep(k => !solid[k], a, b)), crystals = fifths.map(([a, b]) => deep(k => solid[k] === C.CRYSTAL, a, b));
+  const aether0 = deep(k => typ[k] === C.AETHER, 0, W);
+  check('every fifth of the world has a deep cavern lit by crystals', open.every(n => n > 150) && crystals.every(n => n >= 4), `open tiles ${open.join(', ')}; crystals ${crystals.join(', ')}`);
+  check('the caverns hold quicksilver, oil and aether', deep(k => typ[k] === C.QUICK, 0, W) > 30 && deep(k => typ[k] === C.OIL, 0, W) > 30 && aether0 > 20, `${aether0} tiles of aether`);
+  run(600);
+  check('the aether stays under the caverns’ roofs', deep(k => typ[k] === C.AETHER, 0, W) >= aether0 * 0.8, `${deep(k => typ[k] === C.AETHER, 0, W)} of ${aether0}`);
+});
+
 // ---- drawing: every block can be drawn ----
 // ---- chemistry: electrolysis, gas mixtures, smelting ----
 const gasVol = t => { let v = 0; for (let k = 0; k < W * H; k++) if (typ[k] === t) v += liq[k]; return v; };

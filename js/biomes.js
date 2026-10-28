@@ -5,7 +5,7 @@
 import { AW, CELL, hum } from './air.js';
 import { colBiome, colHum, colSwing, colTemp, colWind, drought, spellTemp } from './climate.js';
 import { cloud, gather, lowCell, measure } from './air.js';
-import { ORE } from './config.js';
+import { AETHER, AIR, CRYSTAL, ORE } from './config.js';
 import { BASALT, BLOOM, BRICK, CLAY, DIRT, GEYSER, H, ICE, LAVA, LEAF, MOSS, MUD, NSOL, OBSIDIAN, OIL, PERMAFROST, QUICK, SALT, SAND, SLIME, SNOW, SOL_SALT, SOL_SILT, STONE, VENT, W, WATER, WOOD } from './config.js';
 import { DAY_TICKS, dayPhase } from './daynight.js';
 import { placeDevice } from './devices.js';
@@ -268,8 +268,8 @@ function features(surf) {
     }
   }
 }
-// The layers under every biome: water-filled aquifers below the water table, larger caverns deeper down with oil and
-// quicksilver seeps and veins of ore, and a sea of magma at the bottom under a basalt crust.
+// The layers under every biome: water-filled aquifers below the water table, larger caves deeper down with oil and
+// quicksilver seeps and veins of ore, then the deep caverns, and a sea of magma at the bottom under a basalt crust.
 function underground(surf) {
   for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
     const k = y * W + x, d = y - surf[x];
@@ -283,6 +283,41 @@ function underground(surf) {
   for (let i = 0; i < 6; i++) {
     const cx = 20 + ((hash(i, 301) * (W - 40)) | 0), cy = ((H * 0.7) | 0) + ((hash(i, 303) * 12) | 0), t = i % 3 ? OIL : QUICK;
     for (let dy = -2; dy <= 2; dy++) for (let dx = -3; dx <= 3; dx++) if (dx * dx / 9 + dy * dy / 4 < 1) setLiquid((cy + dy) * W + cx + dx, t);
+  }
+  caverns();
+}
+// The deep caverns: one wide, ragged hall in each fifth of the world, just above the basalt crust, where the rock is
+// warm. Crystals hang from their ceilings and stand on their floors, glowing, so a cavern lights itself; each has a
+// pool: quicksilver or oil on the floor, or aether, which rises, gathered under the roof.
+const CAVERNS = 5, CAVERN_ROW = (H * 0.8) | 0;
+function caverns() {
+  const seg = W / CAVERNS;
+  for (let i = 0; i < CAVERNS; i++) {
+    const rx = 12 + ((hash(i, 601) * 9) | 0), ry = 5 + ((hash(i, 602) * 3) | 0);
+    const cx = Math.round(seg * i + rx + 4 + hash(i, 603) * (seg - 2 * rx - 8)), cy = Math.min(H - 10 - ry, CAVERN_ROW + ((hash(i, 604) * 5) | 0));
+    const inside = (x, y) => { const dx = (x - cx) / rx, dy = (y - cy) / ry; return dx * dx + dy * dy + (vnoise(x / 4, y / 3, 610) - 0.5) * 0.5; };
+    const fill = i % 3 === 0 ? QUICK : i % 3 === 1 ? OIL : AETHER;
+    for (let y = cy - ry - 3; y <= cy + ry + 2; y++) for (let x = cx - rx - 2; x <= cx + rx + 2; x++) {
+      const k = y * W + x, d = inside(x, y);
+      if (d < 1) { solid[k] = AIR; liq[k] = 0; typ[k] = 0; }
+      else if (d < 1.6 && liq[k]) { solid[k] = STONE; liq[k] = 0; typ[k] = 0; }   // line it, so groundwater doesn't drain in
+      else if (d < 1.8 && fill === AETHER && y < cy && !solid[k]) solid[k] = STONE;   // and roof it in, so the aether stays
+    }
+    for (let x = cx - rx; x <= cx + rx; x++) for (let y = cy - ry - 2; y <= cy + ry + 2; y++) {
+      const k = y * W + x;
+      if (solid[k] || inside(x, y) >= 1) continue;
+      const left = x < cx - rx * 0.1 && x > cx - rx * 0.7, right = x > cx + rx * 0.1 && x < cx + rx * 0.7;
+      if (fill === AETHER ? right && y <= cy - ry + 2 : left && y >= cy + ry - 2) setLiquid(k, fill);
+    }
+    for (let x = cx - rx - 2; x <= cx + rx + 2; x++) for (let y = cy - ry - 2; y <= cy + ry + 2; y++) {
+      const k = y * W + x;
+      if (solid[k] || liq[k]) continue;
+      if (solid[k - W] && solid[k - W] !== CRYSTAL && hash(x, y + 5000) < 0.25) {   // hanging from the ceiling, 1–3 long
+        for (let j = 0, n = 1 + ((hash(x, y + 5001) * 3) | 0); j < n && !solid[k + j * W] && !liq[k + j * W]; j++) solid[k + j * W] = CRYSTAL;
+      } else if (solid[k + W] && solid[k + W] !== CRYSTAL && hash(x, y + 5002) < 0.12) {   // standing on the floor
+        for (let j = 0, n = 1 + ((hash(x, y + 5003) * 2) | 0); j < n && !solid[k - j * W] && !liq[k - j * W]; j++) solid[k - j * W] = CRYSTAL;
+      }
+    }
   }
 }
 // Every 600 ticks: dry and wet spells start and end, region by region. A drought warms the air there, so clouds
@@ -358,4 +393,4 @@ function resetBiomes() { regions.length = 0; tide = null; rivers.length = 0; }
 function tideState() { return tide; }
 function setTideState(t) { tide = t; }
 
-export { CLOUDBURST, cloudburst, RIVER_LONGEST, rivers, river, riversTick, RIVER_EVERY, RIVER_RATE, RIVER_START, DROUGHT_WARM, WET_COOL, WET_DRAW, TIDE_STORE, TIDE_EVERY, BASE, BLEND, SEA_ROW, START, BIOMES, regions, planBiomes, weights, regionAt, shapeColumns, groundBlock, tree, pool, features, underground, SPELL_EVERY, biomeTick, setSpell, tidesTick, biomeAt, spellAt, resetBiomes, tideState, setTideState };
+export { CAVERNS, CAVERN_ROW, caverns, CLOUDBURST, cloudburst, RIVER_LONGEST, rivers, river, riversTick, RIVER_EVERY, RIVER_RATE, RIVER_START, DROUGHT_WARM, WET_COOL, WET_DRAW, TIDE_STORE, TIDE_EVERY, BASE, BLEND, SEA_ROW, START, BIOMES, regions, planBiomes, weights, regionAt, shapeColumns, groundBlock, tree, pool, features, underground, SPELL_EVERY, biomeTick, setSpell, tidesTick, biomeAt, spellAt, resetBiomes, tideState, setTideState };
