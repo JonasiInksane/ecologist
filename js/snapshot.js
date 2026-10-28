@@ -17,7 +17,7 @@ const ARRAYS = {
 };
 const LISTS = { pumps, bodies, plants, regions, rivers };   // arrays of plain objects, refilled in place
 // Settings that belong to the viewer rather than the world, so undo and loading leave them alone.
-const VIEW_KEYS = new Set(['follow', 'zoom', 'sound', 'music', 'showHud', 'showChunks', 'lighting', 'heatView', 'dirtyAll', 'pendingIn', 'pendingLink', 'sandboxWeather']);
+const VIEW_KEYS = new Set(['follow', 'zoom', 'sound', 'music', 'showHud', 'showChunks', 'lighting', 'heatView', 'dirtyAll', 'pendingIn', 'pendingLink', 'sandboxWeather', 'sandboxPressure']);
 const FORMAT = 'tidepool-world', VERSION = 1, CODE_PREFIX = 'TIDEPOOL1:';
 
 function capture() {

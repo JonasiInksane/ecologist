@@ -38,7 +38,7 @@ const { resetWorld } = await import('../js/generate.js');
 // depends on which scenes ran before it in the same worker; then the test conventions: no sky, a stone floor.
 function clear() {
   resetWorld();
-  solid.fill(0); liq.fill(0); typ.fill(0); temp.fill(C.AMBIENT); sol.fill(0); Wd.drop.fill(0); Wd.vel.fill(0); Wd.S.weather = false; Wd.S.momentum = true;
+  solid.fill(0); liq.fill(0); typ.fill(0); temp.fill(C.AMBIENT); sol.fill(0); Wd.drop.fill(0); Wd.vel.fill(0); Wd.S.weather = false; Wd.S.momentum = true; Wd.S.pressure = true;
   Wd.under.fill(1); bodies.length = 0; pumps.length = 0;
   for (let x = 0; x < W; x++) solid[(H - 1) * W + x] = C.STONE;
   Wd.wakeAll();
@@ -188,7 +188,7 @@ scene('fire: oil ignites, spreads to wood, burns on water, water puts it out', (
   check('hot oil ignites', count(k => fire[k] > 0) > 0, `${count(k => fire[k] > 0)} tiles burning`);
   run(900);
   check('fire spreads to the wood and burns it away', count(k => solid[k] === C.WOOD) < 15, `${count(k => solid[k] === C.WOOD)} of 15 wood left`);
-  check('the oil burns up', count(k => typ[k] === C.OIL && (k % W) < 31) === 0);
+  check('the oil burns up', count(k => typ[k] === C.OIL && (k % W) < 31 && ((k / W) | 0) <= 49) === 0);   // on the ledge: a hot, runny drop can fall off it
   clear(); fire.fill(0);
   box(50, 50, 70, 50, C.STONE); box(50, 44, 50, 49, C.STONE); box(70, 44, 70, 49, C.STONE);
   fill(51, 47, 69, 49, C.WATER, 20); fill(51, 46, 69, 46, C.OIL, 20);
@@ -930,13 +930,27 @@ scene('puzzle levels can be solved, and fail when they should', () => {
   const { LEVELS, startLevel, checkLevel } = Lvl;
   const lever = (x, y) => devices.get(at(x, y));
   const play = (i, solve, ticks) => { startLevel(i); checkLevel(); const fresh = !S.level.done && !S.level.failed; solve(); for (let t = 0; t < ticks && !S.level.done && !S.level.failed; t += 30) { run(30); checkLevel(); } return fresh; };
-  check('there are five levels', LEVELS.length === 5);
+  check('there are nine levels', LEVELS.length === 9);
   check('1. Glassworks: opening the hopper over the lava makes enough glass', play(0, () => { lever(30, 79).on = true; }, 3000) && S.level.done, S.level.text);
   check('2. The cauldron: water, heat, honey and bloomwater brew tonic', play(1, () => {}, 0) && brew(lever), S.level.text);
   check('3. The lower chamber: the valve route fills it safely', play(2, () => { devices.get(at(32, 60)).manual = true; }, 3000) && S.level.done && !S.level.failed, S.level.text);
   check('3. The lower chamber: the floodgate route fails', play(2, () => { lever(26, 79).on = true; }, 3000) && !!S.level.failed, S.level.failed || S.level.text);
   check('4. Save the fish: a shaft dug down from the pond drops them into the lake', play(3, () => { box(37, 53, 41, 84, C.AIR); }, 4000) && S.level.done, S.level.text);
   check('5. Steam power: opening the valve opens the vault', play(4, () => { devices.get(at(50, 55)).manual = true; }, 4000) && S.level.done, S.level.text);
+  check('6. Two shafts: digging out the plug fills the high basin', play(5, () => { box(60, 75, 61, 76, C.AIR); }, 6000) && S.level.done, S.level.text);
+  check('7. Thunder dome: splitting the brine, then lighting the fuse, blows the vault open', play(6, () => {
+    lever(26, 79).on = true; run(600); temp[at(40, 52)] = 400; Wd.heatWake(at(40, 52));
+  }, 1500) && S.level.done, S.level.text);
+  check('7. Thunder dome: the fuse alone, with no gas made, leaves the wall standing', play(6, () => { temp[at(40, 52)] = 400; Wd.heatWake(at(40, 52)); }, 1500) && !S.level.done, S.level.text);
+  check('8. Depth gauge: filling to the mark and shutting the spring', play(7, () => {
+    lever(26, 79).on = true;
+    for (let i = 0; i < 600 && !devices.get(at(104, 70)).active; i++) run(5);
+    lever(26, 79).on = false;
+  }, 600) && S.level.done && !S.level.failed, S.level.failed || S.level.text);
+  check('8. Depth gauge: leaving the spring running overflows the tank', play(7, () => { lever(26, 79).on = true; }, 5000) && !!S.level.failed, S.level.failed || S.level.text);
+  check('9. Furnace: lighting the wood casts metal in the mould', play(8, () => {
+    for (const [x, y] of [[58, 64], [59, 64], [62, 64], [63, 64]]) { temp[at(x, y)] = 400; Wd.heatWake(at(x, y)); }   // the wood, from underneath
+  }, 6000) && S.level.done, S.level.text);
   S.level = null; S.weather = false;
 });
 // A scripted brew for the cauldron level: fill, warm, add honey and bloomwater, then hold it between 80° and 100°.
@@ -1927,7 +1941,7 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
     for (let y = 21; y <= 29; y++) for (let x = 31; x <= 59; x += 3) typ[at(x, y)] = C.OXYGEN;   // a mixture
     const walls = stone();
     run(5);
-    temp[at(45, 25)] = 500;
+    for (let y = 24; y <= 26; y++) for (let x = 44; x <= 46; x++) temp[at(x, y)] = 500;   // a patch, so it's sure to heat some of the fuel
     run(40);
     check(`${name} mixed with oxygen explodes when lit`, walls - stone() > 10, `${walls - stone()} blocks broken`);
   }

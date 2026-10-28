@@ -686,6 +686,37 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Four new puzzles (after the loose ends)
+
+- The project is under git now (`main`; `dist/` and `.claude/` are ignored).
+- Puzzles 6–9 in `js/levels.js`, each played by a scripted solution in `tools/simtest.mjs`:
+  6. **Two shafts** (pressure): dig out a dirt plug in a buried tunnel, and the reservoir's water rises up the far shaft
+     into a high basin.
+  7. **Thunder dome** (electrolysis, gas mixtures, fuse): split the brine under a low dome with a lever and a metal
+     rod, then light the fuse; the hydrogen and oxygen explode and break the brick wall into the vault. (Lighting the
+     fuse with no gas made leaves the wall standing.)
+  8. **Depth gauge** (depth sensors, pixels, a lamp): fill the tank until the gauge's lamp lights, then shut the spring
+     before it overflows (the goal needs the spring shut; overflowing loses).
+  9. **Furnace** (smelting, fire): set the wood stacked round the ore alight; the ore hangs over the mould's opening,
+     so each piece drops in as it melts and sets into metal.
+- Built to work, not just look right, so several things changed on the way:
+  - **Gases diffuse**: two neighbouring tiles of different gases trade places now and then (`mix` in `js/gases.js`),
+    so a rising and a sinking gas meet in a mixed band. Before, they always layered cleanly, and a lit hydrogen and
+    oxygen dome only burned.
+  - **Boilers heat the liquid touching them** (4% of the way to 200° a tick). A pot over boilers came to about 100°
+    and no further.
+  - **Puzzles turn pressure on** (as they turn weather off), and the sandbox gets the player's setting back; Two
+    shafts can't be solved without it. Each test scene starts with pressure on (one test had left it off for the next).
+  - The Thunder dome's dome is one row over the brine, and the Furnace's ore hangs over the opening with nothing under
+    it: molten metal sets within about 80 ticks out of the fire, sooner than logs under it burn through.
+  - The puzzles' room no longer shows the parallax hills; `failed` gets the level's region; `tools/shot.mjs --level N`
+    renders a puzzle.
+- A fifth, **Sugar works** (boil syrup down to sugar, then stop before it caramelises), was dropped: the first sugar to
+  form lies on the boilers and insulates the syrup above, which then never boils, and the sugar itself stays well under
+  180°, so there was neither a way to finish nor a way to lose.
+- Two old tests made robust: the oil test counts only the oil on its ledge (hot oil is runnier now, and a drop fell
+  off), and the gas-mixture test heats a small patch rather than one tile (with diffusion it could be oxygen).
+
 ### Loose ends, pressure and fine powders (after the level editor)
 
 - **Pressure is on by default.** Two shafts joined by a tunnel didn't level out because pressure was an option, off.

@@ -388,7 +388,7 @@ function devicesTick() {
       if (!d.active) continue;
       if (d.kind === SPRING) emit(k, d);
       else if (d.kind === DRAIN) drain(k);
-      else if (d.kind === BOILER) { temp[k] = Math.max(temp[k], BOILER_TEMP); heatWake(k); }
+      else if (d.kind === BOILER) { temp[k] = Math.max(temp[k], BOILER_TEMP); heatLiquid(k); heatWake(k); }
       else if (!(S.tick & 7)) separate(k, d);
     } else if (d.kind === GEYSER) geyser(k, d);
     else if (d.kind === MEMBRANE) membrane(k, d);
@@ -400,6 +400,15 @@ function devicesTick() {
   }
   shockTick();
   electrolysis();
+}
+// A working boiler heats the liquid touching it directly, so a pot over boilers comes to the boil.
+const BOILER_HEAT = 0.04;
+function heatLiquid(k) {
+  const x = k % W, y = (k / W) | 0;
+  for (let i = 0; i < 4; i++) {
+    const n = nbr(x, y, i);
+    if (n >= 0 && liq[n] && temp[n] < BOILER_TEMP) temp[n] += (BOILER_TEMP - temp[n]) * BOILER_HEAT;
+  }
 }
 function coolantTouching(k) {
   const x = k % W, y = (k / W) | 0;
@@ -433,4 +442,4 @@ function deviceState(k) {
   return `${DEVICE_NAMES[d.kind]} · ${d.on ? 'on' : 'off'}${links}`;
 }
 
-export { THERMO_LEVELS, DEPTH_LEVELS, PIXEL_COLOURS, depthOver, BATTERY_CAP, MOTOR_RATE, SOLAR_SUN, SOLAR_CLOUD, SOLAR_REACH, COOLANT_DRAW, sunlit, propel, coolantFed, coolantTouching, MEMBRANE_RATE, membrane, GEYSER_HEAT, GEYSER_BURST, VENT_EVERY, geyser, vent, SOURCES, LOGIC, TRIGGERS, TARGETS, DEVICE_NAMES, TIMER_PERIODS, COUNTER_LIMITS, SPRING_RATE, DRAIN_RATE, BOILER_TEMP, SEPARATE_RATE, SEPARATE_LIMIT, turbineSpins, wheelTurns, separate, pumpAt, isTarget, placeDevice, removeDevice, useDeviceTool, linkClick, toggleLeversNear, plateLoaded, sensed, setGate, emit, drain, devicesTick, deviceState };
+export { BOILER_HEAT, heatLiquid, THERMO_LEVELS, DEPTH_LEVELS, PIXEL_COLOURS, depthOver, BATTERY_CAP, MOTOR_RATE, SOLAR_SUN, SOLAR_CLOUD, SOLAR_REACH, COOLANT_DRAW, sunlit, propel, coolantFed, coolantTouching, MEMBRANE_RATE, membrane, GEYSER_HEAT, GEYSER_BURST, VENT_EVERY, geyser, vent, SOURCES, LOGIC, TRIGGERS, TARGETS, DEVICE_NAMES, TIMER_PERIODS, COUNTER_LIMITS, SPRING_RATE, DRAIN_RATE, BOILER_TEMP, SEPARATE_RATE, SEPARATE_LIMIT, turbineSpins, wheelTurns, separate, pumpAt, isTarget, placeDevice, removeDevice, useDeviceTool, linkClick, toggleLeversNear, plateLoaded, sensed, setGate, emit, drain, devicesTick, deviceState };

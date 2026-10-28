@@ -214,7 +214,7 @@ levelEl.addEventListener('change', () => {
   else if (v === 'custom') return;
   else if (+v < 0) {
     if (S.editing && !S.level) closeEditor();   // leaving the editor keeps its world
-    else { if (S.level && !S.level.custom) S.weather = S.sandboxWeather; closeEditor(); generate(); }   // puzzles switch weather off; give the sandbox its setting back
+    else { if (S.level && !S.level.custom) { S.weather = S.sandboxWeather; S.pressure = S.sandboxPressure ?? true; } closeEditor(); generate(); }   // puzzles set weather and pressure; give the sandbox its settings back
   } else { closeEditor(); startLevel(+v); }
   enterMode();
 });

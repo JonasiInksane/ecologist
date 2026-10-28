@@ -48,6 +48,7 @@ function compose() {
   // then only the tiles where background shows: cave walls wherever they show, hills where the sky reaches down to them
   const far = tops[0], near = tops[1], fBody = HILLS[0].body | 0, fRim = HILLS[0].rim | 0, nBody = HILLS[1].body | 0, nRim = HILLS[1].rim | 0;
   const cx = Math.round(VIEW.x * (1 - CAVE_F)), cy = Math.round(VIEW.y * (1 - CAVE_F));
+  const indoors = !!(S.level && !S.level.custom);
   for (let ty = VIEW.ty0; ty <= VIEW.ty1; ty++) for (let tx = VIEW.tx0; tx <= VIEW.tx1; tx++) {
     const k = ty * W + tx, f = bgTile[k];
     if (!f) continue;
@@ -58,7 +59,7 @@ function compose() {
       const trow = ((y - cy) & (TEX - 1)) * TEX;
       for (let x = x0, p = y * PW + x0; x < x1; x++, p++) if ((terrI[p] >>> 24) === 1) frameI[p] = caveI[trow + ((x - cx) & (TEX - 1))];
     }
-    if (!(f & BG_SKY) || liq[k] || y1 <= far[x0 - VIEW.x] - T) continue;   // no hills behind liquid, nor above the hilltops
+    if (!(f & BG_SKY) || liq[k] || y1 <= far[x0 - VIEW.x] - T || indoors) continue;   // no hills behind liquid, above the hilltops, or in a puzzle's room
     for (let y = y0; y < y1; y++) {
       const sky = SKY_ROWS[y] | 0;
       for (let x = x0, p = y * PW + x0; x < x1; x++, p++) {

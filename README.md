@@ -15,7 +15,7 @@ npm run test:full    # every scene (about 8 minutes): run before publishing or s
 npm test -- --list   # list the scenes; the quick ones are marked
 npm run build        # bundle everything into dist/tidepool.html, one self-contained page for sharing
 node tools/profile.mjs 400 --hot   # time the simulation and the drawing on the default world, and list the slowest functions
-node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render one frame headlessly and save it as a PNG
+node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render one frame headlessly and save it as a PNG (--level N for a puzzle)
 ```
 
 ## Layout
@@ -37,7 +37,7 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `js/pipes.js` | Pipe networks: liquid moves from the highest mouth to the lowest, through valves and filters |
 | `js/bodies.js` | Floating bodies: buoyancy, collision, rafts and boats, balloons on ropes, and the explorer's movement, air and health |
 | `js/creatures.js`, `js/plants.js` | Fish (grazing algae and snapping up moths), pike that hunt them, salamanders, slimelings and moths that eat leaves, rotting when they die; plants that drink water to grow, regrow leaves and drop seeds |
-| `js/levels.js`, `js/editor.js` | Puzzle levels: their scenes, goals, ways to lose and allowed tools; custom levels as data, made in the level editor and shared as level codes |
+| `js/levels.js`, `js/editor.js` | Puzzle levels (nine): their scenes, goals, ways to lose and allowed tools; custom levels as data, made in the level editor and shared as level codes |
 | `js/particles.js`, `js/audio.js`, `js/music.js`, `js/daynight.js` | Effects and bubbles, synthesized sound (each liquid its own), generative music, time of day (which the Time of day setting can hold or stop) |
 | `js/climate.js` | Each column's biome, temperature, humidity and wind; seasons; air colder with height, ground warmer with depth |
 | `js/air.js` | The air grid: vapour, clouds, wind, rain and snow, fog, lightning, gases drifting on the wind; moist air gathering over humid biomes |

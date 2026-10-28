@@ -8,8 +8,8 @@ import { DAY_TICKS } from './daynight.js';
 import { placeDevice } from './devices.js';
 import { resetWorld } from './generate.js';
 import { LIQ } from './liquids.js';
-import { S, bodies, devices, liq, solid, temp, typ, under, wakeAll } from './world.js';
-import { LAMP, PIXEL } from './config.js';
+import { S, bodies, devices, liq, sol, solid, temp, typ, under, wakeAll } from './world.js';
+import { BRICK, DEPTH, FUSE, LAMP, NSOL, ORE, PIXEL, SOL_SALT, WOOD } from './config.js';
 
 const at = (x, y) => y * W + x;
 function rect(x0, y0, x1, y1, f) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) f(at(x, y), x, y); }
@@ -119,14 +119,82 @@ const LEVELS = [
     },
     progress() { const g = devices.get(at(105, 78)); return { text: g && g.open ? 'the vault is open' : 'the vault is shut', done: !!(g && g.open) }; },
   },
+  {
+    name: 'Two shafts', goal: 'Fill the high basin with 20 tiles of water. The reservoir runs into a buried tunnel, but a plug of dirt blocks it.',
+    tools: ['dig'],
+    build() {
+      blocks(26, 60, 124, 79, STONE);   // the ground, with a reservoir, a tunnel and a far shaft carved into it
+      blocks(30, 34, 30, 59, STONE); blocks(52, 34, 52, 59, STONE);
+      blocks(31, 34, 51, 74, 0); pour(31, 36, 51, 74, WATER);
+      blocks(40, 75, 105, 76, 0); blocks(60, 75, 61, 76, DIRT);   // the tunnel and its plug
+      blocks(104, 44, 106, 76, 0); blocks(103, 44, 103, 59, STONE);   // the far shaft, rising to the basin
+      blocks(107, 52, 119, 59, STONE); blocks(119, 44, 119, 51, STONE);
+      return { x0: 107, y0: 44, x1: 118, y1: 51 };
+    },
+    progress(r) {
+      let v = 0;
+      rect(r.x0, r.y0, r.x1, r.y1, k => { if (liq[k] && typ[k] === WATER) v += liq[k]; });
+      return { text: `water in the basin ${Math.min(20, Math.floor(v / 255))}/20`, done: v >= 20 * 255 };
+    },
+  },
+  {
+    name: 'Thunder dome', goal: 'Blow a hole into the vault: split the brine into hydrogen and oxygen under the dome, then light the fuse.',
+    tools: ['lever', 'heat'],
+    build() {
+      blocks(30, 66, 72, 79, STONE);
+      blocks(36, 67, 56, 76, 0); pour(36, 68, 56, 76, WATER);   // the pool, with one row of air over it under the dome
+      rect(36, 68, 56, 76, k => { sol[k * NSOL + SOL_SALT] = 80; });   // brine: it carries the power
+      blocks(57, 67, 57, 74, BRICK);   // the pool's far wall is brick, with the vault behind it
+      blocks(58, 60, 70, 74, 0); blocks(57, 59, 71, 59, STONE); blocks(57, 60, 57, 66, STONE); blocks(71, 60, 71, 74, STONE);
+      blocks(27, 79, 35, 79, METAL); blocks(36, 70, 36, 79, METAL);   // a metal rod from the lever into the brine
+      blocks(40, 52, 40, 66, FUSE);   // a fuse from the room down into the dome's roof
+      device(LEVER, 26, 79);
+      return { x0: 58, y0: 60, x1: 70, y1: 74 };
+    },
+    progress() { const left = countIn({ x0: 57, y0: 67, x1: 57, y1: 74 }, k => solid[k] === BRICK); return { text: left < 6 ? 'the vault is open' : 'the vault wall stands', done: left < 6 }; },
+  },
+  {
+    name: 'Depth gauge', goal: 'Fill the tank until the gauge’s lamp lights, then shut the spring before the tank overflows.',
+    tools: ['lever'],
+    build() {
+      blocks(60, 59, 60, 77, STONE); blocks(70, 59, 70, 77, STONE); blocks(60, 77, 70, 77, STONE);   // the tank: 9 wide, 18 deep
+      const spring = device(SPRING, 61, 40); spring.liquid = WATER;   // over the tank's edge, clear of the sensors
+      device(LEVER, 26, 79); wire(at(26, 79), at(61, 40));
+      blocks(60, 78, 70, 79, STONE);
+      [[64, 4, 96], [65, 8, 98], [66, 12, 100], [67, 16, 104]].forEach(([x, depth, gx]) => {   // a sensor in the floor for each mark
+        const s = device(DEPTH, x, 77); s.level = depth;
+        if (gx < 104) { const p = device(PIXEL, gx, 70); p.colour = 1; } else device(LAMP, gx, 70);
+        wire(at(x, 77), at(gx, 70));
+      });
+      blocks(94, 71, 106, 71, STONE);
+      return { x0: 94, y0: 66, x1: 106, y1: 70 };
+    },
+    progress() {
+      const lamp = devices.get(at(104, 70)), spring = devices.get(at(61, 40));
+      const lit = !!(lamp && lamp.active), shut = !!(spring && !spring.active);
+      return { text: lit ? (shut ? 'the gauge reads full and the spring is shut' : 'the gauge reads full: shut the spring') : 'the gauge isn’t full yet', done: lit && shut };
+    },
+    failed() { return countAll(k => liq[k] && typ[k] === WATER && (k / W | 0) >= 59 && ((k % W) < 60 || (k % W) > 70)) ? 'The tank overflowed.' : null; },
+  },
+  {
+    name: 'Furnace', goal: 'Cast 3 metal blocks in the mould: set the wood around the ore alight, and the molten metal drops through the opening into the mould.',
+    tools: ['heat'],
+    build() {
+      blocks(55, 65, 67, 65, STONE); blocks(60, 65, 61, 65, 0);   // the mould's lid, open in the middle
+      blocks(58, 60, 63, 64, WOOD); blocks(60, 61, 61, 63, ORE); blocks(60, 64, 61, 64, 0);   // ore in a stack of wood, right over the opening
+      blocks(55, 66, 55, 73, STONE); blocks(67, 66, 67, 73, STONE); blocks(55, 73, 67, 73, STONE);   // the mould
+      return { x0: 56, y0: 66, x1: 66, y1: 72 };
+    },
+    progress(r) { const n = countIn(r, k => solid[k] === METAL); return { text: `metal in the mould ${Math.min(n, 3)}/3`, done: n >= 3 }; },
+  },
 ];
 
 function startLevel(i) {
   const L = LEVELS[i];
-  if (!S.level) S.sandboxWeather = S.weather;   // restored when the player goes back to the sandbox
+  if (!S.level) { S.sandboxWeather = S.weather; S.sandboxPressure = S.pressure; }   // restored when the player goes back to the sandbox
   arena();
   const region = L.build();
-  S.weather = false;
+  S.weather = false; S.pressure = true;   // puzzles are built for still weather and for pressure
   S.level = { index: i, name: L.name, goal: L.goal, tools: L.tools, region, text: '', done: false, failed: null };
   wakeAll();
   S.dirtyAll = true;
@@ -186,7 +254,7 @@ function checkLevel() {
   }
   const L = LEVELS[st.index], p = L.progress(st.region);
   st.text = p.text;
-  st.failed = st.fainted ? 'The explorer fainted.' : L.failed ? L.failed() : null;   // a broken rule counts even if the goal was reached at the same time
+  st.failed = st.fainted ? 'The explorer fainted.' : L.failed ? L.failed(st.region) : null;   // a broken rule counts even if the goal was reached at the same time
   st.done = p.done && !st.failed;
 }
 
