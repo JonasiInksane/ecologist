@@ -138,7 +138,7 @@ const LEVELS = [
     },
   },
   {
-    name: 'Thunder dome', goal: 'Blow a hole into the vault: split the brine into hydrogen and oxygen under the dome, then light the fuse.',
+    name: 'Thunder dome', goal: 'Blow a hole into the vault: split the brine until the dome is full of hydrogen and oxygen, then light the fuse.',
     tools: ['lever', 'heat'],
     build() {
       blocks(30, 66, 72, 79, STONE);

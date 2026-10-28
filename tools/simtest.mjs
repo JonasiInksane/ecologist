@@ -366,7 +366,7 @@ scene('sand piles up, sinks, turns to mud, glass and brick', () => {
   tank(20, 50, 30, 60);
   fill(21, 58, 29, 60, C.MUD, 20);
   for (let i = 0; i < 300; i++) { for (let x = 20; x <= 30; x++) temp[at(x, 61)] = 400; step(); }
-  check('heat dries mud into clay brick', count(k => solid[k] === C.BRICK) > 0, `${count(k => solid[k] === C.BRICK)} bricks`);
+  check('heat dries mud into dirt (firing it into brick takes lava)', count(k => solid[k] === C.DIRT) > 0, `${count(k => solid[k] === C.DIRT)} dirt`);
   clear();
   tank(80, 50, 90, 60);
   fill(81, 57, 89, 60, C.LAVA, 1000);
@@ -591,7 +591,7 @@ scene('methane burns in a flash', () => {
   box(30, 20, 60, 20, C.STONE); box(30, 20, 30, 30, C.STONE); box(60, 20, 60, 30, C.STONE);
   fill(31, 21, 59, 24, C.METHANE, 20);
   const gas = count(k => typ[k] === C.METHANE);
-  temp[at(31, 24)] = 500;
+  temp[at(31, 24)] = 1000;   // a spark
   let burning = 0;
   for (let i = 0; i < 60; i++) { step(); burning = Math.max(burning, count(k => fire[k] > 0)); }
   check('a spark sets the whole methane cloud alight', burning > 20 && count(k => typ[k] === C.METHANE) < gas / 10, `${burning} burning at once, ${count(k => typ[k] === C.METHANE)} of ${gas} left`);
@@ -795,8 +795,9 @@ scene('heat: quicksilver boils, foam breaks, wax and metal melt', () => {
   check('honeycomb wax melts above 70° and the honey runs', count(k => solid[k] === C.COMB) === 0 && count(k => typ[k] === C.HONEY) > 0);
   clear();
   box(70, 60, 72, 60, C.METAL);
-  for (let i = 0; i < 10; i++) { for (let x = 69; x <= 73; x++) { temp[at(x, 59)] = 1400; temp[at(x, 60)] = 1400; } step(); }
-  check('metal melts above 1300°', count(k => typ[k] === C.MOLTEN) > 0);
+  let melted = 0;
+  for (let i = 0; i < 60; i++) { for (let x = 69; x <= 73; x++) { temp[at(x, 59)] = 1700; temp[at(x, 60)] = 1700; } step(); melted = Math.max(melted, count(k => typ[k] === C.MOLTEN)); }
+  check('iron melts above 1538°, once it has taken in its latent heat', melted > 0);
 });
 scene('water: washes smoke away, warms with acid, dissolves caramel; salt melts ice', () => {
   clear(); devices.clear();
@@ -841,9 +842,9 @@ scene('mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; 
   run(3000);
   check('mud under still water bubbles up swamp gas', count(k => typ[k] === C.METHANE) > 0, `${count(k => typ[k] === C.METHANE)} methane tiles`);
   clear(); fire.fill(0);
-  box(80, 61, 90, 61, C.STONE); fill(81, 60, 89, 60, C.OIL, 130);
+  box(80, 61, 90, 61, C.STONE); fill(81, 60, 89, 60, C.OIL, 220);
   let smoke = 0;
-  for (let i = 0; i < 100; i++) { for (let x = 81; x <= 89; x++) temp[at(x, 60)] = 130; step(); smoke = Math.max(smoke, count(k => typ[k] === C.SMOKE)); }
+  for (let i = 0; i < 100; i++) { for (let x = 81; x <= 89; x++) temp[at(x, 60)] = 220; step(); smoke = Math.max(smoke, count(k => typ[k] === C.SMOKE)); }
   check('oil hot enough to smoke but not burn gives off smoke', smoke > 0 && count(k => fire[k]) === 0, `${smoke} smoke tiles`);
   clear();
   box(100, 61, 120, 61, C.STONE);
@@ -939,7 +940,7 @@ scene('puzzle levels can be solved, and fail when they should', () => {
   check('5. Steam power: opening the valve opens the vault', play(4, () => { devices.get(at(50, 55)).manual = true; }, 4000) && S.level.done, S.level.text);
   check('6. Two shafts: digging out the plug fills the high basin', play(5, () => { box(60, 75, 61, 76, C.AIR); }, 6000) && S.level.done, S.level.text);
   check('7. Thunder dome: splitting the brine, then lighting the fuse, blows the vault open', play(6, () => {
-    lever(26, 79).on = true; run(600); temp[at(40, 52)] = 400; Wd.heatWake(at(40, 52));
+    lever(26, 79).on = true; run(2000); temp[at(40, 52)] = 400; Wd.heatWake(at(40, 52));   // fill the dome first
   }, 1500) && S.level.done, S.level.text);
   check('7. Thunder dome: the fuse alone, with no gas made, leaves the wall standing', play(6, () => { temp[at(40, 52)] = 400; Wd.heatWake(at(40, 52)); }, 1500) && !S.level.done, S.level.text);
   check('8. Depth gauge: filling to the mark and shutting the spring', play(7, () => {
@@ -1085,7 +1086,7 @@ scene('generated worlds have their biomes and layers', () => {
   check('rivers run through some worlds, with a pike in their ponds, and moths and birds live in the forests', rivered >= 3 && stocked, `${rivered} of 12 worlds have a river`);
 });
 scene('biome weather: frozen tundra, drying desert, droughts, tides', () => {
-  sky(0); setClock(0.5); Clim.colTemp.fill(-32);
+  sky(0); setClock(0.5); Clim.colTemp.fill(-70);   // below freezing even at noon
   tank(60, 90, 80, 99); fill(61, 92, 79, 99, C.WATER, -10); box(61, 91, 79, 91, C.ICE);
   run(2000);
   check('a tundra lake stays frozen through a sunny day', count(k => solid[k] === C.ICE) >= 15);
@@ -1157,7 +1158,7 @@ scene('geysers, gas vents, clay and permafrost', () => {
   check('a gas vent puffs poison gas', count(k => typ[k] === C.POISON) > 0);
   clear();
   box(90, 60, 92, 60, C.CLAY);
-  for (let i = 0; i < 10; i++) { for (let x = 89; x <= 93; x++) { temp[at(x, 60)] = 600; temp[at(x, 59)] = 600; } step(); }
+  for (let i = 0; i < 10; i++) { for (let x = 89; x <= 93; x++) { temp[at(x, 60)] = 950; temp[at(x, 59)] = 950; } step(); }
   check('clay bakes into brick', count(k => solid[k] === C.BRICK) > 0);
   clear();
   box(100, 60, 104, 60, C.PERMAFROST);
@@ -1455,12 +1456,21 @@ scene('sponges, soil, porous rock, wool and copper, membranes, coral, fuses', ()
   run(300);
   check('water seeps down through porous rock', water(91, 51, 99, 60) > 255, `${water(91, 51, 99, 60)} seeped through`);
 
-  // wool barely carries heat; copper carries it fast
+  // wool barely lets heat through; copper carries it fast: water behind a hot wall of each, boxed in wool
   clear(); devices.clear();
-  box(10, 30, 10, 30, C.STONE); box(10, 34, 10, 34, C.STONE);   // the heat source is stone: wool is flammable
-  box(11, 30, 20, 30, C.WOOL); box(11, 34, 20, 34, C.COPPER);
-  for (let i = 0; i < 60; i++) { temp[at(10, 30)] = 800; temp[at(10, 34)] = 800; step(); }
-  check('copper takes up heat fast; wool barely does', temp[at(11, 34)] > 300 && temp[at(11, 30)] < 60, `copper next to the heat ${temp[at(11, 34)].toFixed(0)}°, wool ${temp[at(11, 30)].toFixed(0)}°`);
+  const wall = (y, b) => {
+    for (let yy = y; yy <= y + 2; yy++) {
+      solid[at(10, yy)] = C.STONE;   // the heat source is stone: wool is flammable
+      for (let x = 11; x <= 13; x++) solid[at(x, yy)] = b;
+      for (let x = 14; x <= 16; x++) { liq[at(x, yy)] = 255; typ[at(x, yy)] = C.WATER; }
+      solid[at(17, yy)] = C.WOOL;
+    }
+    for (let x = 10; x <= 17; x++) { solid[at(x, y - 1)] = C.WOOL; solid[at(x, y + 3)] = C.WOOL; }
+  };
+  wall(30, C.WOOL); wall(40, C.COPPER); Wd.wakeAll();
+  const behind = y => { let s = 0; for (let yy = y; yy <= y + 2; yy++) for (let x = 14; x <= 16; x++) s += temp[at(x, yy)]; return s / 9; };
+  for (let i = 0; i < 400; i++) { for (const y of [30, 31, 32, 40, 41, 42]) temp[at(10, y)] = 800; step(); }
+  check('copper carries heat fast; wool barely lets it through', behind(40) > 80 && behind(30) < 35, `water behind copper ${behind(40).toFixed(0)}°, behind wool ${behind(30).toFixed(0)}°`);
 
   // a membrane set to water lets water through and stops oil
   clear(); devices.clear();
@@ -1856,14 +1866,16 @@ scene('fine powders, gases that don’t shove, warm honey, planks, and pressure 
   // boiling brine leaves just the salt that was in it, as grains: a pinch from weak brine, most of a tile from strong
   for (const [salt, lo, hi] of [[20, 10, 30], [200, 180, 220]]) {
     clear(); devices.clear(); box(39, 61, 41, 61, C.STONE); box(39, 59, 39, 60, C.STONE); box(41, 59, 41, 60, C.STONE);
-    fill(40, 60, 40, 60, C.WATER, 150); setSol(40, 60, 40, 60, C.SOL_SALT, salt);
-    run(60);
+    fill(40, 60, 40, 60, C.WATER, 100); setSol(40, 60, 40, 60, C.SOL_SALT, salt);
+    for (let i = 0; i < 300 && typ[at(40, 60)] === C.WATER; i++) { temp[at(40, 61)] = 400; step(); }   // a hot plate under it
+    run(10);
     check(`boiling brine with ${salt} salt leaves that much salt as grains`, powder(C.SALT) >= lo && powder(C.SALT) <= hi && typ[at(40, 60)] !== C.WATER, `${powder(C.SALT)} grains`);
   }
   // syrup leaves sugar, which caramelises when hot
   clear(); devices.clear(); box(39, 61, 41, 61, C.STONE); box(39, 59, 39, 60, C.STONE); box(41, 59, 41, 60, C.STONE);
-  fill(40, 60, 40, 60, C.WATER, 150); setSol(40, 60, 40, 60, C.SOL_SUGAR, 120);
-  run(60);
+  fill(40, 60, 40, 60, C.WATER, 100); setSol(40, 60, 40, 60, C.SOL_SUGAR, 120);
+  for (let i = 0; i < 300 && typ[at(40, 60)] === C.WATER; i++) { temp[at(40, 61)] = 400; step(); }   // a hot plate under it
+  run(10);
   const sugar = powder(C.SUGAR);
   temp[at(40, 60)] = 300; run(20);
   check('boiling syrup leaves sugar grains, which caramelise when hot', sugar > 80 && solid[at(40, 60)] === C.CRISP, `${sugar} sugar grains`);
@@ -1950,6 +1962,49 @@ scene('a living world: seasons in the leaves, birds that hunt moths, hail and fl
   Bio.regions.length = 0;
 });
 
+scene('matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density', async () => {
+  const Ht = await import('../js/heat.js'), M = await import('../js/matter.js');
+  const woolBox = (x0, y0, x1, y1) => { for (let y = y0 - 2; y <= y1 + 2; y++) for (let x = x0 - 2; x <= x1 + 2; x++) if (x <= x0 || x >= x1 || y <= y0 || y >= y1) { solid[at(x, y)] = C.WOOL; temp[at(x, y)] = 20; } };   // walls three tiles thick
+  const heatIn = (x0, y0, x1, y1) => { Ht.fillMatter(); let e = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) e += Ht.cap[at(x, y)] * temp[at(x, y)] + Wd.latent[at(x, y)]; return e; };
+  // a 300° iron block dropped into 20 tiles of 20° water: water stores about 20× the heat per tile, so it ends near 32°
+  clear(); devices.clear(); woolBox(40, 40, 46, 45);
+  fill(41, 41, 45, 44, C.WATER, 20); liq[at(43, 42)] = 0; typ[at(43, 42)] = 0; solid[at(43, 42)] = C.METAL; temp[at(43, 42)] = 300;
+  const e0 = heatIn(38, 38, 48, 47), want = (M.BCAP[C.METAL] * 300 + 19 * M.LCAP[C.WATER] * 20) / (M.BCAP[C.METAL] + 19 * M.LCAP[C.WATER]);
+  run(800);
+  let wsum = 0; for (let y = 41; y <= 44; y++) for (let x = 41; x <= 45; x++) if (typ[at(x, y)] === C.WATER) wsum += temp[at(x, y)];
+  const e1 = heatIn(38, 38, 48, 47), water = wsum / 19;
+  check('hot iron in water warms it by the heat it brings: the water ends near the mixed temperature', Math.abs(water - want) < 2.5 && Math.abs(temp[at(43, 42)] - want) < 4 && Math.abs(e1 - e0) < e0 * 0.05, `water ${water.toFixed(1)}°, iron ${temp[at(43, 42)].toFixed(1)}°, expected ${want.toFixed(1)}°; heat in the box and its walls ${(100 * (e1 - e0) / e0).toFixed(1)}% changed`);
+  // ice in a drink holds it at 0° while it melts; there's more ice than the water's heat can melt
+  clear(); devices.clear(); woolBox(40, 40, 47, 43);
+  fill(41, 41, 46, 41, C.WATER, 20); box(41, 42, 46, 42, C.ICE); box(41, 41, 42, 41, C.ICE); liq[at(41, 41)] = liq[at(42, 41)] = 0; typ[at(41, 41)] = typ[at(42, 41)] = 0;
+  for (let x = 41; x <= 46; x++) temp[at(x, 42)] = -5; temp[at(41, 41)] = temp[at(42, 41)] = -5;
+  for (let y = 38; y <= 45; y++) for (let x = 38; x <= 49; x++) if (solid[at(x, y)] === C.WOOL) temp[at(x, y)] = 0;
+  run(800);
+  let ws = 0, wn = 0; for (let x = 41; x <= 46; x++) for (let y = 41; y <= 42; y++) if (typ[at(x, y)] === C.WATER) { ws += temp[at(x, y)]; wn++; }
+  const ice = count(k => solid[k] === C.ICE), wt = wn ? ws / wn : 99;
+  check('ice holds the water round it near 0° while it melts', wt > -0.5 && wt < 1.5 && ice > 0 && ice < 8, `the water at ${wt.toFixed(2)}° on average, ${ice} of 8 ice tiles left`);
+  // a pot on a hot plate boils at 100° and stays there while it boils away
+  clear(); devices.clear(); tank(40, 50, 46, 60); box(41, 61, 45, 61, C.STONE);
+  fill(41, 57, 45, 60, C.WATER, 90);
+  let hottest = 0, steam = 0;
+  for (let i = 0; i < 1500; i++) {
+    for (let x = 41; x <= 45; x++) temp[at(x, 61)] = 600;
+    step(); if (S.tick & 1) continue;   // look just after each heat tick
+    let s = 0, n = 0; for (let k = 0; k < W * H; k++) if (typ[k] === C.WATER && liq[k] > 64) { s += temp[k]; n++; }
+    if (n) hottest = Math.max(hottest, s / n);
+    steam = Math.max(steam, count(k => typ[k] === C.STEAM));
+  }
+  check('boiling water stays at 100° while it turns to steam', hottest <= 100.5 && hottest > 99 && steam > 3, `the pot at ${hottest.toFixed(1)}° at most, ${steam} steam tiles at most`);
+  // real densities: ferrofluid (magnetite in oil, 1.3) sinks through water and oil but floats on honey, lye and acid
+  for (const [t, sinks] of [[C.WATER, true], [C.OIL, true], [C.HONEY, false], [C.LYE, false], [C.ACID, false]]) {
+    clear(); devices.clear(); box(40, 51, 44, 51, C.GLASS); box(40, 40, 40, 50, C.GLASS); box(44, 40, 44, 50, C.GLASS);   // glass: acid doesn't eat it
+    fill(41, 47, 43, 50, t, 20); fill(41, 45, 43, 46, C.FERRO, 20);
+    run(600);
+    const low = count(k => typ[k] === C.FERRO && ((k / W) | 0) >= 48 && ((k / W) | 0) <= 50);
+    check(`ferrofluid ${sinks ? 'sinks through' : 'floats on'} ${['', 'water', '', 'honey', '', '', 'acid', '', '', 'oil'][t] || 'lye'}`, sinks ? low > 0 : low === 0, `${low} ferrofluid tiles at the bottom`);
+  }
+});
+
 scene('the deep caverns, rust, and frozen nitro', () => {
   // metal under water rusts, faster in brine; rust doesn't carry power, acid eats it and heat smelts it back into metal
   const rusted = salt => {
@@ -2029,7 +2084,7 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
   chamber();
   fill(31, 21, 59, 29, C.HYDROGEN, 20);
   const walls = stone(), gas = gasVol(C.HYDROGEN);
-  temp[at(31, 29)] = 500;
+  temp[at(31, 29)] = 1000;   // a spark
   run(60);
   check('a spark burns pure hydrogen into steam without a blast', gasVol(C.HYDROGEN) < gas / 10 && gasVol(C.STEAM) > gas * 0.8 && stone() === walls, `${(gasVol(C.HYDROGEN) / 255).toFixed(1)} tiles of hydrogen left, ${(gasVol(C.STEAM) / 255).toFixed(1)} of steam, ${walls - stone()} blocks broken`);
   for (const [name, fuel] of [['hydrogen', C.HYDROGEN], ['methane', C.METHANE]]) {
@@ -2038,7 +2093,7 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
     for (let y = 21; y <= 29; y++) for (let x = 31; x <= 59; x += 3) typ[at(x, y)] = C.OXYGEN;   // a mixture
     const walls = stone();
     run(5);
-    for (let y = 24; y <= 26; y++) for (let x = 44; x <= 46; x++) temp[at(x, y)] = 500;   // a patch, so it's sure to heat some of the fuel
+    for (let y = 24; y <= 26; y++) for (let x = 44; x <= 46; x++) temp[at(x, y)] = 1000;   // a patch, so it's sure to heat some of the fuel
     run(40);
     check(`${name} mixed with oxygen explodes when lit`, walls - stone() > 10, `${walls - stone()} blocks broken`);
   }
@@ -2048,7 +2103,7 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
   for (let y = 21; y <= 29; y++) for (let x = 31; x <= 59; x++) if (!solid[at(x, y)]) { liq[at(x, y)] = 255; typ[at(x, y)] = C.OXYGEN; }
   Wd.wakeAll();
   const o = gasVol(C.OXYGEN);
-  temp[at(45, 26)] = 400;
+  temp[at(45, 26)] = 1000;
   let burning = 0;
   for (let i = 0; i < 120; i++) { step(); burning = Math.max(burning, count(k => fire[k] > 0)); }
   check('wood burns in oxygen and uses it up', burning > 2 && gasVol(C.OXYGEN) < o - 255, `${burning} tiles burning, ${((o - gasVol(C.OXYGEN)) / 255).toFixed(1)} tiles of oxygen used`);
@@ -2077,7 +2132,7 @@ scene('smelting: ore melts into molten metal and slag', () => {
   // molten slag floats on molten metal, and water quenches it into slag
   clear(); devices.clear();
   tank(20, 60, 30, 70);
-  fill(21, 66, 29, 70, C.MOLTEN, 1400); fill(21, 61, 29, 65, C.MSLAG, 1400);
+  fill(21, 66, 29, 70, C.MOLTEN, 1600); fill(21, 61, 29, 65, C.MSLAG, 1600);
   for (let y = 61; y <= 65; y++) for (let x = 21; x <= 29; x++) typ[at(x, y)] = y % 2 ? C.MOLTEN : C.MSLAG;   // stirred together
   run(60);
   let floats = true;

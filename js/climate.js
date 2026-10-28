@@ -8,6 +8,7 @@ import { S } from './world.js';
 const SEA = (H * 0.36) | 0;   // the row the sky temperature is quoted at; air is colder above it and warmer below
 const LAPSE = 0.5;            // degrees colder per tile of height
 const DEPTH_WARM = 0.35;      // degrees warmer per tile of depth below the surface
+const MAGMA_ROWS = 8, MAGMA_T = 1100;   // the magma sea, its crust and the floor under it (js/biomes.js) rest this hot
 const SEASON_DAYS = 8, SEASON_SWING = 12;
 const SEASONS = ['winter', 'spring', 'summer', 'autumn'];   // centred on season phases 0, 0.25, 0.5 and 0.75
 
@@ -47,6 +48,7 @@ function ambientFrom(cols, surf, out) {
   for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
     const d = Math.max(0, y - surf[x]);
     out[y * W + x] = AMBIENT + cols[x] * Math.exp(-d / 24) + d * DEPTH_WARM;
+    if (y >= H - MAGMA_ROWS - 4) { const f = Math.min(1, (y - (H - MAGMA_ROWS - 4)) / 4); out[y * W + x] += (MAGMA_T - out[y * W + x]) * f; }   // the rock round the magma sea is as hot as it
   }
   return out;
 }

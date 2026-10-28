@@ -10,7 +10,7 @@ import { clearSol } from './solutes.js';
 import { S, bodies, heatWake, liq, markDirty, solid, temp, typ, vel, wake } from './world.js';
 import { GEM, SODA } from './config.js';
 import { BLEACHED, CORAL, FUSE, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from './config.js';
-import { ORE, RUST, SLAG, SUGAR } from './config.js';
+import { HYDROGEN, METHANE, ORE, RUST, SLAG, SUGAR } from './config.js';
 
 const BREAKS = new Uint8Array(NBLOCK);   // obsidian, metal and machines survive
 [DIRT, STONE, COMB, CRISP, ICE, CRYSTAL, BASALT, WOOD, MOSS, SALT, SAND, GLASS, BRICK, SODA, GEM, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, CORAL, BLEACHED, FUSE, ORE, SLAG, SUGAR, RUST].forEach(b => { BREAKS[b] = 1; });   // frozen nitro isn't broken: the blast's heat sets it off
@@ -40,6 +40,7 @@ function explode(k) {
       solid[n] = 0; markDirty(nx, ny);
     }
     temp[n] = Math.min(1400, temp[n] + BLAST_HEAT * f);
+    if (liq[n] && (typ[n] === METHANE || typ[n] === HYDROGEN)) temp[n] = Math.max(temp[n], 1000);   // the flame front runs on through any burnable gas it reaches
     if (liq[n] && d > 0) pushOut(n, nx, ny, dx, dy);
     else if (!liq[n] && !solid[n] && d <= r / 2) { liq[n] = Math.round(160 * f); typ[n] = SMOKE; clearSol(n); }
     wake(n);

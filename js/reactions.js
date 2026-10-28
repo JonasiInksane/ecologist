@@ -72,7 +72,7 @@ for (let t = 1; t < LIQ.length; t++) if (t !== VOID) setR(VOID, t, { fn(k, o, t2
   return true;
 } });
 setR(COOLANT, LAVA, { block: BASALT, fx: 'steam' });   // coolant quenches lava into basalt
-for (const t of [WATER, OIL, ACID, LYE, HONEY]) setR(FERRO, t, SWAP);   // ferrofluid is heavy and sinks through them
+for (const t of [WATER, OIL, ACID, LYE, HONEY]) setR(FERRO, t, SWAP);   // ferrofluid layers with them by density: under water and oil, over honey, lye and acid
 setR(WATER, FERT, { fn(k, o, t) { const f = t === FERT ? k : o; typ[f] = WATER; sol.fill(0, f * NSOL, f * NSOL + NSOL); sol[f * NSOL + SOL_FERT] = 200; return f === k; } });   // dissolves into water
 setR(LYE, LAVA, { fn(k, o, t) { const a = t === LYE ? k : o; liq[a] = 0; typ[a] = 0; puff(a, 'steam'); return a === k; } });
 setR(LAVA, ACID, { fn(k, o, t) { const a = t === ACID ? k : o; liq[a] = 0; typ[a] = 0; puff(a, 'smoke'); return a === k; } });

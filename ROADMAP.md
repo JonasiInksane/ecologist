@@ -687,6 +687,12 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Phase 19: Matter (after the deep caverns)
+
+Real physical properties for every material, conserved heat with latent heat, and real temperatures and densities.
+Research, design and what was built: `CHEMISTRY.md` (sections 1–7). Phases 20–23 (reactions, air and water chemistry,
+life cycles, showcase) are planned there.
+
 ### Deep caverns, rust and frozen nitro (after the living world)
 
 - **Deep caverns** (`caverns` in `js/biomes.js`, called at the end of `underground`): one hall in each fifth of the

@@ -9,6 +9,7 @@ import { fireTick } from './fire.js';
 import { gasTick } from './gases.js';
 import { heatTick } from './heat.js';
 import { LIQ, VISC_TEMP, viscAt } from './liquids.js';
+import { AIR_CAP, LCAP } from './matter.js';
 import { momentumTick } from './momentum.js';
 import { puff, splash } from './particles.js';
 import { pipesTick } from './pipes.js';
@@ -36,8 +37,11 @@ import { materialsTick } from './materials.js';
 const CONVECT = 8;   // how much warmer liquid must be than the liquid above it to rise through it
 // Moving liquid carries its temperature, what's dissolved in it and its momentum; for heat, an empty tile counts as a
 // little air.
+// Liquid moving into a tile mixes its heat with what's there: liquid by amount, an empty tile's air by its (small)
+// heat capacity, counted as that many units of the incoming liquid.
+const AIR_UNITS = new Float32Array(NLIQ).map((_, t) => LCAP[t] ? Math.min(255, AIR_CAP / LCAP[t] * 255) : 16);
 function carryHeat(src, dst, mv, had) {
-  const w = had > 0 ? had : 16;
+  const w = had > 0 ? had : AIR_UNITS[typ[src]];
   temp[dst] = (temp[dst] * w + temp[src] * mv) / (w + mv);
   vel[dst] = had > 0 ? (vel[dst] * had + vel[src] * mv) / (had + mv) : vel[src];
   carrySol(src, dst, mv, had);

@@ -25,12 +25,13 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `tidepool.html`, `css/tidepool.css` | Page, toolbar and notes |
 | `js/config.js` | World size, tile size, block and liquid ids |
 | `js/world.js` | Tile arrays (`solid`, `liq`, `typ`, `temp`, `fire`, `sol`, `vel`, …), shared state `S`, the camera `VIEW`, chunk sleep (`wake` for liquids, `heatWake` for heat) |
-| `js/liquids.js` | The liquid property table: one row per liquid (gravity, viscosity, density, colours, glow, heat) |
+| `js/matter.js` | Real physical properties of every block, liquid and gas: density, heat capacity, conductivity, latent heats, and how they're compressed for play (see `CHEMISTRY.md`) |
+| `js/liquids.js` | The liquid property table: one row per liquid (gravity, viscosity, colours, glow, pouring temperature; densities from `js/matter.js`) |
 | `js/reactions.js` | What happens when two liquids touch, and what liquids do to touching blocks |
 | `js/sim.js` | The per-tick update: react, fall, spread; then momentum, devices, pumps, pipes, powders, bodies, heat, fire, pressure, solutes, gases, erosion, air, biomes, weather, plants |
 | `js/solutes.js` | Dissolved contents (salt, sugar, essence, inks, acid, alkali, fertiliser, algae): carried with the flow, diffused, dissolved from salt blocks, brewed by the recipe table; acid and alkali neutralising and corroding, fizzing, salt crystals growing, metal rusting under water; algae growing in the light and dying back in the dark; pH; tint colours |
 | `js/powders.js` | Sand, salt, sugar, baking soda and snow: amounts per tile (in `held`), falling and settling into piles, slopes, sinking through lighter liquids; sand into mud and glass |
-| `js/heat.js`, `js/fire.js`, `js/pressure.js` | Temperature (settled chunks sleep) and phase changes (including smelting ore and rust, and nitro freezing), burning (methane and hydrogen flashes, explosive mixtures with oxygen), optional communicating vessels |
+| `js/heat.js`, `js/fire.js`, `js/pressure.js` | Conserved heat flow by conductivity and capacity (settled chunks sleep), latent heat, and phase changes (including smelting ore and rust, and nitro freezing), burning (methane and hydrogen flashes, explosive mixtures with oxygen), optional communicating vessels |
 | `js/gases.js`, `js/blast.js` | Smoke, poison and carbon dioxide fading, gases escaping into the sky; nitro explosions |
 | `js/pumps.js`, `js/devices.js` | Pumps; switches (lever, plate, liquid, temperature and depth sensors, timer), generators (turbine, water wheel, windmill, solar panel), batteries, logic (AND, OR, NOT, counter) and targets (gate, spring, drain, valve, boiler, separator, lamp, pixel, motor, electromagnet) |
 | `js/power.js` | Power networks: metal, stormwater and brine carry power from the switches touching them to the machines they touch; power fades along them (copper least, liquid most); electrolysis splits the water they touch into hydrogen and oxygen |
@@ -68,7 +69,7 @@ world codes will silently leave it out.
 ## Adding a liquid
 
 1. Add an id in `js/config.js`. Liquid ids 1–31 are all taken, so a new liquid has to raise `NLIQ` first; block ids 67–95 are free.
-2. Add a row to `LIQ` in `js/liquids.js`, plus its `HEAT`, `RHO` and `DRAG` entries.
+2. Add a row to `LIQ` in `js/liquids.js`, plus its `HEAT` (pouring temperature) and `DRAG` entries, and its real properties in `LIQUID_MATTER` (or `GAS_MATTER`) in `js/matter.js`.
 3. Add its reactions in `js/reactions.js` (`setR`) and any effect on touching blocks in `blockEffects`. A reaction `fn` gets
    `(k, o, t, above)` and returns true if tile `k` was used up.
 4. Add a tool in `js/input.js`, and a scene in `tools/simtest.mjs` that checks its behaviour.

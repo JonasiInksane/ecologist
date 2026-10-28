@@ -8,6 +8,7 @@ import { CO2, LYE } from './config.js';
 import { NLIQ } from './config.js';
 import { COOLANT, FERRO, FERT, LIGHT, MIMIC, VOID } from './config.js';
 import { HYDROGEN, MSLAG, OXYGEN } from './config.js';
+import { LRHO } from './matter.js';
 
 
 
@@ -78,16 +79,18 @@ function viscAt(t, T) {
 const ACIDITY = new Float32Array(NLIQ).fill(7);
 ACIDITY[ACID] = 1; ACIDITY[LYE] = 13; ACIDITY[HONEY] = 4; ACIDITY[SLIME] = 9; ACIDITY[BLOOM] = 6; ACIDITY[TONIC] = 6; ACIDITY[CO2] = 5;
 
-// Heat: hrate = how fast a tile follows its neighbours' temperature (low holds heat); paintT = temperature when poured.
-const HEAT = { [WATER]: [0.05, 20], [LAVA]: [0.004, 1000], [HONEY]: [0.03, 20], [AETHER]: [0.05, 20], [QUICK]: [0.15, 20], [ACID]: [0.05, 20], [FROST]: [0.03, -40], [STEAM]: [0.02, 110], [OIL]: [0.05, 20], [SLIME]: [0.04, 20], [BLOOM]: [0.05, 20],
+// paintT: temperature when poured. (How fast each liquid takes and gives heat comes from js/matter.js.)
+const HEAT = { [WATER]: [0.05, 20], [LAVA]: [0.004, 1150], [HONEY]: [0.03, 20], [AETHER]: [0.05, 20], [QUICK]: [0.15, 20], [ACID]: [0.05, 20], [FROST]: [0.03, -40], [STEAM]: [0.02, 110], [OIL]: [0.05, 20], [SLIME]: [0.04, 20], [BLOOM]: [0.05, 20],
   [MUD]: [0.04, 20], [TONIC]: [0.05, 20], [FOAM]: [0.05, 20],
-  [STORM]: [0.05, 20], [MOLTEN]: [0.006, 1400], [SMOKE]: [0.1, 120], [METHANE]: [0.12, 20], [POISON]: [0.08, 20], [NITRO]: [0.05, 20], [LYE]: [0.05, 20], [CO2]: [0.1, 20],
+  [STORM]: [0.05, 20], [MOLTEN]: [0.006, 1600], [SMOKE]: [0.1, 120], [METHANE]: [0.12, 20], [POISON]: [0.08, 20], [NITRO]: [0.05, 20], [LYE]: [0.05, 20], [CO2]: [0.1, 20],
   [VOID]: [0.05, 20], [MIMIC]: [0.05, 20], [COOLANT]: [0.3, 5], [FERRO]: [0.05, 20], [LIGHT]: [0.05, 20], [FERT]: [0.05, 20],
-  [HYDROGEN]: [0.15, 20], [OXYGEN]: [0.1, 20], [MSLAG]: [0.006, 1300] };
-for (const t in HEAT) { LIQ[t].hrate = HEAT[t][0]; LIQ[t].paintT = HEAT[t][1]; }
+  [HYDROGEN]: [0.15, 20], [OXYGEN]: [0.1, 20], [MSLAG]: [0.006, 1450] };
+for (const t in HEAT) LIQ[t].paintT = HEAT[t][1];
 
-// Real-world-ish densities (g/cm³) used for buoyancy, separate from the swap order above, and drag on bodies.
-const RHO = [0, 1.0, 3.1, 1.4, 0.05, 13.5, 1.2, 1.1, 0.001, 0.85, 1.6, 1.0, 1.7, 1.0, 0.5, 1.0, 7.8, 0.001, 0.001, 0.003, 1.6, 1.3, 0.002, 1.0, 1.0, 1.05, 2.5, 0.9, 1.2, 0.0001, 0.0014, 3.0];
+// Real densities (g/cm³, js/matter.js): one per liquid, for both which liquid sinks under which (dens) and how bodies
+// float in them (RHO). Drag on bodies stays per liquid.
+const RHO = Array.from(LRHO);
+for (let t = 1; t < LIQ.length; t++) LIQ[t].dens = LRHO[t];
 const DRAG = [0, 0.06, 0.2, 0.3, 0.02, 0.12, 0.06, 0.15, 0.01, 0.1, 0.35, 0.06, 0.4, 0.06, 0.2, 0.06, 0.25, 0.01, 0.01, 0.02, 0.1, 0.06, 0.01, 0.1, 0.06, 0.05, 0.3, 0.05, 0.1, 0.01, 0.01, 0.3];
 
 export { VISC_TEMP, viscAt, ACIDITY, liquid, LIQ, HEAT, RHO, DRAG };

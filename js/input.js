@@ -257,7 +257,7 @@ function applyAt(cx, cy, erase) {
     if ((erase || tool.dig || tool.block) && devices.has(k)) removeDevice(k);
     const isPump = solid[k] === PUMP_IN || solid[k] === PUMP_OUT;
     if (!erase && tool.seed) { if (dx === 0 && dy === 0) plantSeed(k); continue; }
-    if (!erase && tool.heat) { temp[k] = Math.min(1400, temp[k] + 60); continue; }
+    if (!erase && tool.heat) { temp[k] = Math.min(1800, temp[k] + 60); continue; }   // hot enough to melt iron
     if (!erase && tool.chill) { temp[k] = Math.max(-80, temp[k] - 30); continue; }
     if (erase || tool.dig) { if (solid[k]) { if (isPump) removePump(k); solid[k] = 0; markDirty(x, y); } }
     if (erase || tool.sponge) { liq[k] = 0; typ[k] = 0; continue; }

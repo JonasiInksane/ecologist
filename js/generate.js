@@ -14,7 +14,7 @@ import { vnoise, seededRandom } from './util.js';
 import { pipeShow, pipeTick } from './pipes.js';
 import { moved } from './momentum.js';
 import { restorePristine } from './snapshot.js';
-import { S, afloat, bodies, deco, devices, drop, fire, flux, held, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
+import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
 import { resetPressure } from './pressure.js';
 
 
@@ -32,7 +32,7 @@ import { resetPressure } from './pressure.js';
 // air, and the clock at zero.
 function resetWorld() {
   solid.fill(0); liq.fill(0); typ.fill(0); drop.fill(0); vel.fill(0); stamp.fill(0); S.tick = 0; parts.length = 0;
-  pumps.length = 0; bodies.length = 0; S.pendingIn = -1; temp.fill(AMBIENT); under.fill(0);
+  pumps.length = 0; bodies.length = 0; S.pendingIn = -1; temp.fill(AMBIENT); latent.fill(0); under.fill(0);
   devices.clear(); S.pendingLink = -1; fire.fill(0); deco.fill(0); sol.fill(0); held.fill(0); flux.fill(0); pipeTick.fill(0); pipeShow.fill(0); moved.fill(0); drifted.fill(0);   // tick stamps: the clock restarts
   plants.length = 0; afloat.fill(0); resetPressure();
   S.level = null; S.dirtyAll = true;

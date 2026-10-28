@@ -17,14 +17,14 @@ import { HYDROGEN, OXYGEN, STEAM } from './config.js';
 
 
 const IGNITE_BLOCK = new Float32Array(NBLOCK), BURN_TIME = new Uint8Array(NBLOCK);
-IGNITE_BLOCK[WOOD] = 180; BURN_TIME[WOOD] = 240;
-IGNITE_BLOCK[COMB] = 160; BURN_TIME[COMB] = 140;
+IGNITE_BLOCK[WOOD] = 260; BURN_TIME[WOOD] = 240;
+IGNITE_BLOCK[COMB] = 200; BURN_TIME[COMB] = 140;
 IGNITE_BLOCK[CRISP] = 200; BURN_TIME[CRISP] = 180;
-IGNITE_BLOCK[PLANT] = 170; BURN_TIME[PLANT] = 60;
-IGNITE_BLOCK[WOOL] = 230; BURN_TIME[WOOL] = 120;
+IGNITE_BLOCK[PLANT] = 250; BURN_TIME[PLANT] = 60;
+IGNITE_BLOCK[WOOL] = 570; BURN_TIME[WOOL] = 120;
 IGNITE_BLOCK[FUSE] = 120; BURN_TIME[FUSE] = 10;   // a fuse burns fast and lights the next fuse tile in any direction
-IGNITE_BLOCK[LEAF] = 140; BURN_TIME[LEAF] = 30;
-const OIL_IGNITE = 150, OIL_SMOKE = 110, METHANE_IGNITE = 120, HYDROGEN_IGNITE = 100, FLAME_TEMP = 1000, RADIANT = 0.04, FLASH = 0.45;
+IGNITE_BLOCK[LEAF] = 230; BURN_TIME[LEAF] = 30;
+const OIL_IGNITE = 250, OIL_SMOKE = 200, METHANE_IGNITE = 537, HYDROGEN_IGNITE = 500, FLAME_TEMP = 1000, RADIANT = 0.04, FLASH = 0.6;   // a flash heats the gas beside it past its ignition point, so the flame runs on
 const FED = 4;   // oxygen a fire uses up per tick from each oxygen tile it touches, burning hotter for it
 const DOUSERS = new Set([WATER, FROST, BLOOM, COOLANT]);
 
@@ -48,6 +48,7 @@ function burn(k, x, y) {
   wake(k);
   for (let d = 0; d < 3; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * RADIANT; }   // flames heat up and sideways
   if (solid[k] === FUSE) for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] = Math.max(temp[n], 300); }   // a burning fuse lights what it touches, even below it
+  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] && (typ[n] === METHANE || typ[n] === HYDROGEN)) temp[n] = Math.max(temp[n], FLAME_TEMP); }   // a flame lights a burnable gas it touches
   const w = windAt(x, y);   // and the wind fans them downwind
   if (Math.abs(w) > 0.1) { const n = nbr(x, y, w > 0 ? 2 : 1); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * RADIANT * 3 * Math.abs(w); }
   const o = oxygenBeside(x, y);   // oxygen feeds the fire: it burns hotter and uses the oxygen up
