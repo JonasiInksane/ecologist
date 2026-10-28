@@ -56,6 +56,7 @@ const FISH_SPR = sprite(['.bbbb.f', 'bebbbff', 'bbbbbff', '.bbbb.f'], { b: '#f0a
 const SALAMANDER_SPR = sprite(['.rr.....', 'rerrrrrt', 'rrrrrrtt', '.r..r...'], { r: '#ff7a2a', e: '#1a1420', t: '#ffb347' });
 const PIKE_SPR = sprite(['..ggggg...f', '.gsgsgsg.ff', 'gegggggggff', '.ddddddd.ff', '..ddddd...f'], { g: '#5a8a4a', s: '#a8c870', e: '#f0e070', d: '#c8d8a0', f: '#3e6a34' });
 const PLANK_SPR = sprite(['oooooooo', 'ollmmlmo', 'oooooooo'], { o: '#3d2410', l: '#c08a4a', m: '#9a6634' });
+const BIRD_SPR = sprite(['d...d', '.ddd.', '..b..'], { d: '#3a3440', b: '#e0a040' }), BIRD_FLAP = sprite(['.....', 'ddddd', '..b..'], { d: '#3a3440', b: '#e0a040' });
 const MOTH_SPR = sprite(['w.w', 'wbw'], { w: '#e8e0c8', b: '#6a5a48' });
 const SLIMELING_SPR = sprite(['..hhgg..', '.hggggg.', 'ggeggegg', 'gggggggg', 'gggggggg', '.gggggg.'], { g: '#4fc46a', h: '#c8ff9a', e: '#1a1420' });
 // A raft: lashed planks with dark seams.
@@ -89,7 +90,8 @@ const BALLOON_SPR = (() => {
 })();
 // creature: moved by js/creatures.js; walker: steps up ledges like the explorer; wooden: burns and rots;
 // vehicle: how hard the explorer can paddle it; lift: rises in air, and on a rope lifts LIFT_MASS worth of body;
-// small: other bodies don't push it or get pushed by it (moths flit past things)
+// small: other bodies don't push it or get pushed by it (moths and birds flit past things); flap: a second sprite it
+// alternates with while flying
 const KINDS = {
   crate:      { w: 10, h: 10, rho: 0.6,  sprite: CRATE_SPR, wooden: true },
   plank:      { w: 8,  h: 3,  rho: 0.5,  sprite: PLANK_SPR, wooden: true },   // broken wood, from blasts
@@ -101,6 +103,7 @@ const KINDS = {
   fish:       { w: 7,  h: 4,  rho: 1.0,  sprite: FISH_SPR, creature: true },
   pike:       { w: 11, h: 5,  rho: 1.0,  sprite: PIKE_SPR, creature: true },
   moth:       { w: 3,  h: 2,  rho: 0.3,  sprite: MOTH_SPR, creature: true, small: true },
+  bird:       { w: 5,  h: 3,  rho: 0.3,  sprite: BIRD_SPR, flap: BIRD_FLAP, creature: true, small: true },
   salamander: { w: 8,  h: 4,  rho: 3.1,  sprite: SALAMANDER_SPR, creature: true, walker: true },
   slimeling:  { w: 8,  h: 6,  rho: 1.6,  sprite: SLIMELING_SPR, creature: true },
 };
@@ -359,4 +362,4 @@ function updateBodies() {
   }
 }
 
-export { G, ROPE, LIFT, LIFT_MASS, PADDLE_TOP, RAFT_SPR, BOAT_SPR, BALLOON_SPR, tieBalloon, standingOn, ropes, hurt, breathe, sprite, CRATE_SPR, WEIGHT_SPR, FISH_SPR, SALAMANDER_SPR, SLIMELING_SPR, PLANK_SPR, PIKE_SPR, MOTH_SPR, EXPLORER_PAL, EXPLORER_TOP, EXPLORER_A, EXPLORER_B, KINDS, addBody, collides, moveBy, sampleLiquid, keys, driveExplorer, unstick, centerTile, updateBodies };
+export { G, ROPE, LIFT, LIFT_MASS, PADDLE_TOP, RAFT_SPR, BOAT_SPR, BALLOON_SPR, tieBalloon, standingOn, ropes, hurt, breathe, sprite, CRATE_SPR, WEIGHT_SPR, FISH_SPR, SALAMANDER_SPR, SLIMELING_SPR, PLANK_SPR, PIKE_SPR, MOTH_SPR, BIRD_SPR, BIRD_FLAP, EXPLORER_PAL, EXPLORER_TOP, EXPLORER_A, EXPLORER_B, KINDS, addBody, collides, moveBy, sampleLiquid, keys, driveExplorer, unstick, centerTile, updateBodies };

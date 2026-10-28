@@ -8,7 +8,8 @@
 import { sfx } from './audio.js';
 import { colHum, colWind, drought, shade, skyTempAt } from './climate.js';
 import { H, METHANE, NSOL, POISON, SALT, SMOKE, SNOW, STEAM, T, W, WATER } from './config.js';
-import { HYDROGEN, OXYGEN, SOL_SALT, SOL_SUGAR, SUGAR } from './config.js';
+import { HYDROGEN, LEAF, OXYGEN, SOL_SALT, SOL_SUGAR, SUGAR } from './config.js';
+import { hurt } from './bodies.js';
 import { sunHeight } from './daynight.js';
 import { puff } from './particles.js';
 import { S, VIEW, bodies, drop, heatWake, held, liq, markDirty, sol, solid, temp, typ, under, vel, wake } from './world.js';
@@ -23,6 +24,9 @@ const AIR_EVERY = 8;                  // ticks between air updates
 const SAT_BASE = 60, SAT_DOUBLING = 11, CONDENSE = 0.3, REEVAPORATE = 0.08;
 // A flake is a quarter tile of snow; a full tile of snow melts into 64 units of water, so a flake costs its cloud 16.
 const RAIN_AT = 160, DROP = 32, FLAKE = 64, SNOW_COST = 16, MAX_DROPS = 3;
+// Hail: a storm cloud that's above freezing but cold aloft (under HAIL_COLD) throws some of its drops as hail pellets,
+// small grains of snow (HAIL, so a quarter of that in water) that melt where they land.
+const HAIL = 32, HAIL_COLD = 8, HAIL_SHARE = 0.3;
 const STORM_AT = 420, STORM_COLUMN = 1000, STRIKE_CHANCE = 0.01, STRIKE_HEAT = 900, STORM_WARM = 5;
 const CONVERGE = 3, DIVERGE = 0.02, GATHER_MAX = 0.5;
 const AIR_MOVE = 0.25, WIND_CHANGE = [7200, 18000];
@@ -142,6 +146,9 @@ function precipitate() {
       if (cellT[c] < 0) {
         if (liq[k]) continue;
         solid[k] = SNOW; held[k] = FLAKE; temp[k] = Math.min(0, cellT[c]); markDirty(x, y); cloud[c] -= SNOW_COST;   // it settles onto the snow below
+      } else if (cloud[c] > STORM_AT && cellT[c] < HAIL_COLD && !liq[k] && Math.random() < HAIL_SHARE) {
+        solid[k] = SNOW; held[k] = HAIL; temp[k] = Math.min(0, cellT[c]); markDirty(x, y); cloud[c] -= HAIL / 4;
+        hailStrikes(x, y);
       } else {
         if (liq[k] && (typ[k] !== WATER || liq[k] > 255 - DROP)) continue;
         if (!liq[k]) { sol.fill(0, k * NSOL, k * NSOL + NSOL); drop[k] = 0; vel[k] = 0; temp[k] = Math.max(2, cellT[c]); }
@@ -154,6 +161,14 @@ function precipitate() {
       if (col > STORM_COLUMN && cellT[lowCell(cx)] > STORM_WARM) strike(cx, cy);
     }
   }
+}
+// A hailstone falling down column x from row y knocks a leaf off the first thing it reaches, and stings the explorer
+// if it's standing in the open below.
+function hailStrikes(x, y) {
+  let yy = y + 1;
+  while (yy < H && (!solid[yy * W + x] || solid[yy * W + x] === SNOW)) yy++;   // past falling rain and hail to what it lands on
+  if (yy < H && solid[yy * W + x] === LEAF && Math.random() < 0.3) { solid[yy * W + x] = 0; markDirty(x, yy); }
+  for (const b of bodies) if (b.kind === 'explorer' && !b.ward && b.x <= x * T + 7 && b.x + b.w >= x * T && b.y >= y * T && b.y < yy * T && !b.ouch) { hurt(b, 1); b.ouch = 20; }
 }
 // Lightning from cell (cx, cy) down to the first thing below it: it heats the tile hard (lighting wood, setting off
 // nitro), powers the network it's part of for a moment, and stuns the explorer if it's close.
@@ -285,4 +300,4 @@ function seedRain(amount = 500) {
 // All the water in the air, for checks that water is conserved.
 function airWater() { let s = 0; for (let c = 0; c < NC; c++) s += hum[c] + cloud[c]; return s; }
 
-export { FLAKE, drifted, CELL, AW, AH, NC, hum, cloud, u, v, open, cellT, AIR_EVERY, SAT_BASE, SAT_DOUBLING, RAIN_AT, DROP, SNOW_COST, STORM_AT, STORM_COLUMN, STORM_WARM, CONVERGE, DIVERGE, GATHER_MAX, lowCell, gather, scatter, converge, vapour, bolts, strikes, sat, cellOf, windAt, rainAt, resetAir, airTick, measure, blow, moveAir, condense, precipitate, strike, surfaces, drift, seedRain, airWater };
+export { HAIL, HAIL_COLD, HAIL_SHARE, hailStrikes, FLAKE, drifted, CELL, AW, AH, NC, hum, cloud, u, v, open, cellT, AIR_EVERY, SAT_BASE, SAT_DOUBLING, RAIN_AT, DROP, SNOW_COST, STORM_AT, STORM_COLUMN, STORM_WARM, CONVERGE, DIVERGE, GATHER_MAX, lowCell, gather, scatter, converge, vapour, bolts, strikes, sat, cellOf, windAt, rainAt, resetAir, airTick, measure, blow, moveAir, condense, precipitate, strike, surfaces, drift, seedRain, airWater };

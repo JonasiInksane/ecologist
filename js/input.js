@@ -144,6 +144,7 @@ const TOOLS = [
   { id: 'fish',       name: 'Fish',       place: 'fish',       color: '#f0a040' },
   { id: 'pike',       name: 'Pike',       place: 'pike',       color: '#5a8a4a' },
   { id: 'moth',       name: 'Moth',       place: 'moth',       color: '#e8e0c8' },
+  { id: 'bird',       name: 'Bird',       place: 'bird',       color: '#3a3440' },
   { id: 'salamander', name: 'Salamander', place: 'salamander', color: '#ff7a2a' },
   { id: 'slimeling',  name: 'Slimeling',  place: 'slimeling',  color: '#4fc46a' },
 ];

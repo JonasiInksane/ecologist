@@ -1076,13 +1076,13 @@ scene('generated worlds have their biomes and layers', () => {
     if (count(k => solid[k] === C.ORE) < 200) layers = false;
     if (Bio.regions[0].b !== 0 || !bodies.some(b => b.kind === 'explorer')) starts = false;
     if (Bio.rivers.length) { rivered++; if (!bodies.some(b => b.kind === 'pike')) stocked = false; }
-    if (Bio.regions.some(r => ['forest', 'jungle'].includes(Bio.BIOMES[r.b].name)) && !bodies.some(b => b.kind === 'moth')) stocked = false;
+    if (Bio.regions.some(r => ['forest', 'jungle'].includes(Bio.BIOMES[r.b].name)) && !(bodies.some(b => b.kind === 'moth') && bodies.some(b => b.kind === 'bird'))) stocked = false;
   }
   check('every biome turns up across twelve worlds', seen.size === Bio.BIOMES.length, [...seen].join(', '));
   check('each biome has its ground and features', !missing.length, missing.join('; '));
   check('every world has aquifers, ore and a magma sea underground', layers);
   check('every world starts in grassland with the explorer', starts);
-  check('rivers run through some worlds, with a pike in their ponds, and moths live in the forests', rivered >= 3 && stocked, `${rivered} of 12 worlds have a river`);
+  check('rivers run through some worlds, with a pike in their ponds, and moths and birds live in the forests', rivered >= 3 && stocked, `${rivered} of 12 worlds have a river`);
 });
 scene('biome weather: frozen tundra, drying desert, droughts, tides', () => {
   sky(0); setClock(0.5); Clim.colTemp.fill(-32);
@@ -1909,6 +1909,45 @@ scene('fine powders, gases that don’t shove, warm honey, planks, and pressure 
   run(6000);
   const top = x => { let y = 0; while (y < H && !liq[at(x, y)]) y++; return y; };
   check('pressure is on by default: shafts joined by a long tunnel level out', S.pressure && Math.abs(top(20) - top(120)) <= 2, `left arm at row ${top(20)}, right at ${top(120)}`);
+});
+
+scene('a living world: seasons in the leaves, birds that hunt moths, hail and flash floods', async () => {
+  const Tr2 = await import('../js/render/terrain.js'), { terr } = await import('../js/canvas.js');
+  // the leaves are drawn in the season's colours: green in summer, orange-red in autumn, sparse in winter
+  clear(); devices.clear(); S.weather = true;
+  solid[at(40, 50)] = C.LEAF;
+  const leafPixels = step => { Tr2.setShownSeason(step); Tr2.drawTile(40, 50); const px = []; for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { const c = terr[(50 * 8 + y) * C.PW + 40 * 8 + x]; if ((c >>> 24) === 255) px.push(c); } return px; };
+  const avg = (px, sh) => px.reduce((n, c) => n + ((c >>> sh) & 255), 0) / px.length;
+  const summer = leafPixels(4), autumn = leafPixels(6), winter = leafPixels(0);
+  const steps = [0, 2, 4, 6].map(d => { S.tick = Math.round(d * DAY_TICKS); return Clim.seasonStep(); });
+  check('the leaves turn with the seasons: green in summer, orange-red in autumn, sparse in winter',
+    avg(summer, 8) > avg(summer, 0) && avg(autumn, 0) > avg(autumn, 8) && winter.length < summer.length * 0.6 && steps.join() === '2,4,6,0', `steps ${steps.join()}, ${summer.length} summer pixels, ${winter.length} winter`);
+  Tr2.setShownSeason(4); S.weather = false;
+  // a bird chases down a moth and eats it; at night it roosts
+  clear(); devices.clear(); setClock(0.5); box(20, 70, 120, 70, C.STONE);
+  const bird = Bd.addBody('bird', 30 * C.T, 60 * C.T), moth = Bd.addBody('moth', 70 * C.T, 64 * C.T);
+  run(600);
+  check('a bird chases down a moth and eats it', !bodies.includes(moth) && bodies.includes(bird) && bird.hunger < 600, `bird hunger ${bird.hunger}`);
+  setClock(0.02); run(400);
+  check('at night birds come down and roost', bird.resting && bird.y + bird.h >= 70 * C.T - 1, `bird at row ${((bird.y + bird.h) / C.T).toFixed(1)}`);
+  // a storm cloud that's above freezing but cold aloft drops hail: it knocks leaves off and melts into water
+  sky(0); setClock(0.5);
+  for (let x = 40; x <= 47; x++) solid[at(x, 90)] = C.LEAF;
+  const c = 5 * Air.AW + 11;   // a cell over x 44-47
+  const leaves = count(k => solid[k] === C.LEAF);
+  let hail = 0;
+  for (let i = 0; i < 80; i++) { Air.cloud[c] = 900; Air.cellT[c] = 4; Air.precipitate(); hail = Math.max(hail, count(k => solid[k] === C.SNOW && Wd.held[k] === Air.HAIL)); run(2); }   // the drops fall clear between
+  run(600);
+  check('a cold-topped storm drops hail that knocks leaves off, and the hail melts into water', hail > 0 && count(k => solid[k] === C.LEAF) < leaves && count(k => solid[k] === C.SNOW) === 0 && count(k => typ[k] === C.WATER) > 0,
+    `${hail} hailstones at once, ${leaves - count(k => solid[k] === C.LEAF)} leaves knocked off`);
+  // a flash flood: a cloudburst over a dry region takes its water from the sky, making none
+  sky(0); setClock(0.5); Air.hum.fill(80);
+  Bio.regions.length = 0; Bio.regions.push({ b: 4, x0: 100, x1: 200, spell: null, left: 0, hum: 0.15 });
+  const before = Air.airWater(), got = Bio.cloudburst(Bio.regions[0]), after = Air.airWater();
+  let rained = 0;
+  for (let i = 0; i < 20; i++) { run(20); rained = Math.max(rained, vol(100, 200, 0, 99)); }
+  check('a flash flood gathers the sky’s moisture over a dry region and pours it down', got > 255 * 20 && Math.abs(after - before) < 1 && rained > 255 * 10, `${(got / 255).toFixed(0)} tiles of water gathered, ${(rained / 255).toFixed(0)} on the ground at most`);
+  Bio.regions.length = 0;
 });
 
 // ---- drawing: every block can be drawn ----

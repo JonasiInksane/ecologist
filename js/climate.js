@@ -28,6 +28,8 @@ function day() { return S.tick / DAY_TICKS; }
 function seasonPhase() { return (day() / SEASON_DAYS + 0.25) % 1; }
 function seasonOffset() { return S.weather ? -Math.cos(seasonPhase() * Math.PI * 2) * SEASON_SWING : 0; }
 function seasonName() { return SEASONS[Math.round(seasonPhase() * 4) % 4]; }
+// The year in eight steps, 0 at midwinter, for drawing; early summer (4) when there's no weather or in a puzzle.
+function seasonStep() { return !S.weather || (S.level && !S.level.custom) ? 4 : Math.floor(seasonPhase() * 8 + 0.5) % 8; }
 // Air temperature in the open at tile (x, y): about 45° at noon and −15° at midnight at sea level in grassland,
 // shifted by the biome, the season and cloud cover, and colder with height. Without weather it stays at 20°.
 function skyTempAt(x, y) {
@@ -54,4 +56,4 @@ function resetClimate() {
   ambient.fill(AMBIENT);
 }
 
-export { ambientFrom, SEA, LAPSE, DEPTH_WARM, SEASON_DAYS, SEASON_SWING, SEASONS, colTemp, colHum, colWind, colSwing, colBiome, surface, shade, drought, spellTemp, ambient, day, seasonPhase, seasonOffset, seasonName, skyTempAt, skyColumns, rebuildAmbient, resetClimate };
+export { seasonStep, ambientFrom, SEA, LAPSE, DEPTH_WARM, SEASON_DAYS, SEASON_SWING, SEASONS, colTemp, colHum, colWind, colSwing, colBiome, surface, shade, drought, spellTemp, ambient, day, seasonPhase, seasonOffset, seasonName, skyTempAt, skyColumns, rebuildAmbient, resetClimate };

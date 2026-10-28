@@ -686,6 +686,29 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Living world (after the smaller world codes)
+
+- **Seasons show** (`js/render/terrain.js`, `js/render/render.js`): `seasonStep()` (`js/climate.js`) splits the year
+  into eight looks; with Weather off or in a built-in puzzle it stays at summer. Leaves and grass on open ground take
+  that step's palette (`SEASON_LEAVES`, `SEASON_GRASS`): fresh green in spring, deep green in summer, yellow, orange and
+  red in autumn, sparse brown in winter, when a share of each canopy's leaf pixels (by a fixed hash, so the same ones)
+  shows sky instead, and grass is frosted. `turnSeason()` redraws only leaf, plant and grass tiles when the step changes.
+- **Birds** (`driveBird` in `js/creatures.js`, `bird` in `js/bodies.js`, a Bird tool): a two-frame flapping sprite.
+  By day a bird wanders 6–12 tiles above the ground and chases the nearest moth within 15 tiles, eating it on contact;
+  after three meals it breeds with a bird within 60 px (at most 8). At night it roosts and drifts down. It dies in water,
+  lava or acid, above 70°, inside a block, of hunger (4 minutes) or after half a minute below −25°. Forests and jungles
+  get two each, so moths there now have a predator as well as winter.
+- **Hail** (`js/air.js`): a storm cloud (past `STORM_AT`) over air below 8° drops hail (a heavy fall of snow, 32 held)
+  a third of the time instead of rain or snow, costing the cloud more. Each stone knocks the leaf it lands on loose
+  three times in ten and hurts an explorer in the column under it.
+- **Flash floods** (`cloudburst` in `js/biomes.js`): desert and badland regions (`flood: 0.3`) now and then gather up to
+  1500 water per air cell from the air into storm clouds over themselves, which rain it all out soon after. It's
+  gathered, not made, so water is still conserved (tested).
+- `tools/shot.mjs --day D` moves the calendar on D days, to look at a season.
+- Test: `a living world: seasons in the leaves, birds that hunt moths, hail and flash floods`; the generated-world test
+  now wants birds in forests too. All 70 scenes pass. A tick costs about 3.2 ms (3.0 before), mostly the gas mixing
+  from the puzzles; birds and seasons barely register.
+
 ### Smaller world codes (after the four puzzles)
 
 - A world code was about 475 KB; now it's about 70 KB. Measured on a played default world, temperatures were three

@@ -4,7 +4,7 @@
 // at the borders. This file also runs the biomes' moving parts: dry and wet spells, the coast's tides, and rivers.
 import { AW, CELL, hum } from './air.js';
 import { colBiome, colHum, colSwing, colTemp, colWind, drought, spellTemp } from './climate.js';
-import { gather, measure } from './air.js';
+import { cloud, gather, lowCell, measure } from './air.js';
 import { ORE } from './config.js';
 import { BASALT, BLOOM, BRICK, CLAY, DIRT, GEYSER, H, ICE, LAVA, LEAF, MOSS, MUD, NSOL, OBSIDIAN, OIL, PERMAFROST, QUICK, SALT, SAND, SLIME, SNOW, SOL_SALT, SOL_SILT, STONE, VENT, W, WATER, WOOD } from './config.js';
 import { DAY_TICKS, dayPhase } from './daynight.js';
@@ -19,15 +19,15 @@ import { addBody } from './bodies.js';
 const BASE = (H * 0.36) | 0, BLEND = 16, SEA_ROW = BASE + 10, START = 96;
 // temp: °C offset; hum: evaporation relative to grassland; wind: exposure; swing: day/night temperature swing;
 // drought, wet: chance per day of a dry or wet spell starting; height: rows lower (+) or higher (−) than the base;
-// rough: how hilly.
+// rough: how hilly; flood: chance per day of a flash flood (a cloudburst) in a dry region.
 const BIOMES = [
   { name: 'grassland',  temp: 0,   hum: 1,    wind: 1,   swing: 1,   drought: 0.1,  wet: 0.1,  height: 0,   rough: 1 },
   { name: 'forest',     temp: -2,  hum: 1.3,  wind: 0.6, swing: 0.8, drought: 0.08, wet: 0.15, height: -2,  rough: 1 },
   { name: 'jungle',     temp: 10,  hum: 2.2,  wind: 0.5, swing: 0.5, drought: 0.02, wet: 0.4,  height: -1,  rough: 0.8 },
   { name: 'swamp',      temp: 6,   hum: 1.8,  wind: 0.3, swing: 0.6, drought: 0.05, wet: 0.3,  height: 6,   rough: 0.2 },
-  { name: 'desert',     temp: 14,  hum: 0.15, wind: 1.2, swing: 1.6, drought: 0.6,  wet: 0.03, height: 2,   rough: 0.6 },
+  { name: 'desert',     temp: 14,  hum: 0.15, wind: 1.2, swing: 1.6, drought: 0.6,  wet: 0.03, height: 2,   rough: 0.6, flood: 0.3 },
   { name: 'salt flats', temp: 12,  hum: 0.2,  wind: 1.3, swing: 1.4, drought: 0.5,  wet: 0.03, height: 5,   rough: 0.05 },
-  { name: 'badlands',   temp: 8,   hum: 0.3,  wind: 1.1, swing: 1.3, drought: 0.4,  wet: 0.05, height: -4,  rough: 2 },
+  { name: 'badlands',   temp: 8,   hum: 0.3,  wind: 1.1, swing: 1.3, drought: 0.4,  wet: 0.05, height: -4,  rough: 2, flood: 0.3 },
   { name: 'tundra',     temp: -32, hum: 0.6,  wind: 1.3, swing: 0.7, drought: 0.1,  wet: 0.1,  height: 0,   rough: 0.6 },
   { name: 'glacier',    temp: -36, hum: 0.8,  wind: 1.5, swing: 0.6, drought: 0.05, wet: 0.15, height: -22, rough: 1.4 },
   { name: 'coast',      temp: 2,   hum: 1.5,  wind: 1.6, swing: 0.6, drought: 0.05, wet: 0.2,  height: 2,   rough: 0.4 },
@@ -218,6 +218,7 @@ function features(surf) {
         for (let x = bx - 2; x <= bx + 2; x++) setLiquid(y * W + x, BLOOM);
       }
       for (let i = 0; i < 3; i++) { const mx = x0 + 10 + ((rnd(40 + i) * (x1 - x0 - 20)) | 0); addBody('moth', mx * T, (surf[mx] - 4) * T); }   // moths among the trees
+      for (let i = 0; i < 2; i++) { const bx = x0 + 20 + ((rnd(50 + i) * (x1 - x0 - 40)) | 0); addBody('bird', bx * T, (surf[bx] - 10) * T); }   // and birds that hunt them
     } else if (B.name === 'swamp') {
       for (let x = x0 + 6; x < x1 - 12; x += 14 + ((rnd(x) * 6) | 0)) {
         const w = 6 + ((rnd(x + 1) * 4) | 0);
@@ -304,9 +305,23 @@ function biomeTick() {
         for (let cx = cx0; cx <= cx1; cx++) hum[cx + AW * 2] += got / (cx1 - cx0 + 1);
       }
       if (r.left <= 0) setSpell(r, null);
-    } else if (Math.random() < B.drought * SPELL_EVERY / DAY_TICKS) setSpell(r, 'drought');
+    } else if (B.flood && Math.random() < B.flood * SPELL_EVERY / DAY_TICKS) cloudburst(r);
+    else if (Math.random() < B.drought * SPELL_EVERY / DAY_TICKS) setSpell(r, 'drought');
     else if (Math.random() < B.wet * SPELL_EVERY / DAY_TICKS) setSpell(r, 'wet');
   }
+}
+// A flash flood in a dry region: a cloudburst gathers vapour from the whole sky (it makes none) and heaps it as heavy
+// cloud low over the region, which rains out all at once; the runoff tears down the dry ground.
+const CLOUDBURST = 1500;
+function cloudburst(r) {
+  measure();
+  const cx0 = (r.x0 / CELL) | 0, cx1 = Math.min(AW - 1, (r.x1 / CELL) | 0), cells = [];
+  for (let cx = cx0; cx <= cx1; cx++) { const c = lowCell(cx); if (c >= 0) cells.push(c - AW >= 0 ? c - AW : c); }
+  if (!cells.length) return 0;
+  const got = gather(CLOUDBURST * cells.length);
+  for (const c of cells) cloud[c] += got / cells.length;
+  r.flood = S.tick;
+  return got;
 }
 function setSpell(r, spell) {
   r.spell = spell; r.left = spell ? DAY_TICKS * (1 + Math.random()) : 0;
@@ -343,4 +358,4 @@ function resetBiomes() { regions.length = 0; tide = null; rivers.length = 0; }
 function tideState() { return tide; }
 function setTideState(t) { tide = t; }
 
-export { RIVER_LONGEST, rivers, river, riversTick, RIVER_EVERY, RIVER_RATE, RIVER_START, DROUGHT_WARM, WET_COOL, WET_DRAW, TIDE_STORE, TIDE_EVERY, BASE, BLEND, SEA_ROW, START, BIOMES, regions, planBiomes, weights, regionAt, shapeColumns, groundBlock, tree, pool, features, underground, SPELL_EVERY, biomeTick, setSpell, tidesTick, biomeAt, spellAt, resetBiomes, tideState, setTideState };
+export { CLOUDBURST, cloudburst, RIVER_LONGEST, rivers, river, riversTick, RIVER_EVERY, RIVER_RATE, RIVER_START, DROUGHT_WARM, WET_COOL, WET_DRAW, TIDE_STORE, TIDE_EVERY, BASE, BLEND, SEA_ROW, START, BIOMES, regions, planBiomes, weights, regionAt, shapeColumns, groundBlock, tree, pool, features, underground, SPELL_EVERY, biomeTick, setSpell, tidesTick, biomeAt, spellAt, resetBiomes, tideState, setTideState };

@@ -6,9 +6,12 @@ import { brushEl, cursor, inBrush, tool } from '../input.js';
 import { LIQ } from '../liquids.js';
 import { parts, puff } from '../particles.js';
 import { hash } from '../util.js';
-import { CHH, CW, S, VIEW, awake, bodies, deco, dirty, dirtyList, fall, fire, liq, pumps, salign, solid, temp, typ } from '../world.js';
+import { CHH, CW, S, VIEW, awake, bodies, deco, dirty, dirtyList, fall, fire, liq, pumps, salign, solid, temp, typ, under } from '../world.js';
 import { ambience, familyOf } from '../audio.js';
 import { compose } from './backdrop.js';
+import { seasonStep } from '../climate.js';
+import { setShownSeason } from './terrain.js';
+import { DIRT, LEAF, PLANT } from '../config.js';
 import { present } from './camera.js';
 import { drawDeviceLinks, drawDeviceOverlays, drawPipeFlow } from './devices.js';
 import { applyLight, updateLight } from './lighting.js';
@@ -41,7 +44,22 @@ function classifyFalling(k, x, y, t) {
   else if (x < W - 1 && liq[k + 1] && typ[k + 1] === t) salign[k] = 2;
   else salign[k] = 1;
 }
+// As the year turns, the leaves, plants and grass are redrawn in the season's colours (only those tiles).
+let drawnSeason = -1;
+function turnSeason() {
+  const step = seasonStep();
+  if (step === drawnSeason) return;
+  const first = drawnSeason < 0;
+  drawnSeason = step; setShownSeason(step);
+  if (first || S.dirtyAll) return;   // the whole terrain is drawn anyway
+  for (let k = W; k < W * H; k++) {
+    const b = solid[k];
+    if (b === LEAF || b === PLANT || (b === DIRT && !solid[k - W] && !under[k])) markTile(k);
+  }
+}
+function markTile(k) { if (!dirty[k]) { dirty[k] = 1; dirtyList.push(k); } }
 function render(time) {
+  turnSeason();
   if (S.dirtyAll) {
     for (let ty = 0; ty < H; ty++) for (let tx = 0; tx < W; tx++) drawTile(tx, ty);
     S.dirtyAll = false; dirty.fill(0); dirtyList.length = 0;
@@ -218,6 +236,7 @@ function drawBodies() {
   }
   for (const b of bodies) {
     let spr = KINDS[b.kind].sprite;
+    if (KINDS[b.kind].flap && !b.resting && ((S.tick >> 2) + b.id) & 1) spr = KINDS[b.kind].flap;
     if (b.kind === 'explorer' && b.walk > 0 && ((b.walk / 6) | 0) & 1) spr = EXPLORER_B;
     const bx = Math.round(b.x), by = Math.round(b.y), flip = b.face < 0;
     const hurt = b.ouch > 0 && (b.ouch >> 2) & 1, heat = Math.min(0.75, b.heat / 50);

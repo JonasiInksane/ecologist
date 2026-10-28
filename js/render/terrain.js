@@ -58,6 +58,19 @@ const PAL = {
 };
 const MORTAR = P(['#d8c8b0'])[0];
 const STEM = P(['#3f8f2e', '#5fb84a', '#2e6b22']), LEAVES = P(['#4fa83a', '#7fd35a', '#2e6b22']);
+// The year in eight steps from midwinter (seasonStep in js/climate.js): leaf colours (body, light, dark) and how much
+// of a leaf is left; grass colours (two body shades, highlight). Leaves thin out from late autumn to late winter and
+// grass frosts over in midwinter; spring is fresh green, summer deep, autumn orange and red.
+const SEASON_LEAVES = [
+  [['#7a5a3a', '#94704a', '#5a3e26'], 0.35], [['#7f6a3e', '#9a8450', '#5e4a28'], 0.5], [['#6fc04a', '#a6e86e', '#4a9a32'], 1],
+  [['#5fb84a', '#8fdc62', '#3a8228'], 1], [['#4fa83a', '#7fd35a', '#2e6b22'], 1], [['#8fa83a', '#b8c84a', '#5e7a22'], 1],
+  [['#d8862a', '#f0b040', '#a8501a'], 0.85], [['#b8481e', '#d86a2a', '#7a3014'], 0.55],
+].map(([c, keep]) => ({ c: P(c), keep }));
+const SEASON_GRASS = [
+  ['#b8c8c0', '#98a8a0', '#e8f0f4'], ['#7f9a5a', '#6a8248', '#a8c07a'], ['#5fb84a', '#4fa83a', '#8fe06a'], ['#4fa83a', '#3f8f2e', '#7fd35a'],
+  ['#4fa83a', '#3f8f2e', '#7fd35a'], ['#8a9a3a', '#748230', '#b8c45a'], ['#a8963a', '#8a7a2e', '#d0bc5a'], ['#8a7a4a', '#74663c', '#b0a070'],
+].map(P);
+const SUMMER = 4;
 // Glass shows the background through a faint blue-white tint.
 function glassPixel(c) {
   const r = c & 255, g = (c >>> 8) & 255, b = (c >>> 16) & 255;
@@ -87,6 +100,9 @@ function bgPixel(wx, wy, u) {
   shows |= BG_SKY;
   return SKY_ROWS[wy];
 }
+// The season step leaves and grass are drawn for (render.js changes it, and redraws them, as the year turns).
+let shownSeason = SUMMER;
+function setShownSeason(step) { shownSeason = step; }
 function drawTile(tx, ty) {
   const k = ty * W + tx, b = solid[k];
   shows = 0;
@@ -100,7 +116,11 @@ function drawTile(tx, ty) {
     if (isDeviceBlock(b)) { terr[p] = devicePixel(b, px, py, devices.get(k), tx, ty) || bgPixel(wx, wy, under[k]); continue; }
     // plants are drawn over the background with no outline
     if (b === PLANT) { terr[p] = px === 3 ? STEM[1] : px === 4 ? STEM[0] : px === 2 || px === 5 ? (hash(wx, wy) > 0.7 ? STEM[2] : bgPixel(wx, wy, under[k])) : bgPixel(wx, wy, under[k]); continue; }
-    if (b === LEAF) { const d = Math.abs(px - 3.5) + Math.abs(py - 3.5); terr[p] = d < 3 ? LEAVES[py < 3 ? 1 : 0] : d < 4 ? LEAVES[2] : bgPixel(wx, wy, under[k]); continue; }
+    if (b === LEAF) {
+      const L = SEASON_LEAVES[shownSeason], d = Math.abs(px - 3.5) + Math.abs(py - 3.5);
+      terr[p] = d >= 4 || (L.keep < 1 && hash(wx, wy + 8191) > L.keep) ? bgPixel(wx, wy, under[k]) : L.c[d < 3 ? (py < 3 ? 1 : 0) : 2];
+      continue;
+    }
     if (POWDER[b]) {   // loose single-pixel grains, as deep as the tile's amount, with a ragged top where it's open
       const h = Math.max(1, Math.round((held[k] || 255) * T / 255)), top = T - h, open = h < T || up;
       if (py < top || (open && py === top && hash(wx, 4111) < 0.4)) { terr[p] = bgPixel(wx, wy, under[k]); continue; }
@@ -113,8 +133,9 @@ function drawTile(tx, ty) {
     const edge = (up && py === 0) || (dn && py === 7) || (lf && px === 0) || (rt && px === 7);
     if (grassy) {
       const gd = 2 + (hash(wx, 77) > 0.55 ? 1 : 0);
+      const G = SEASON_GRASS[shownSeason];
       if (py === 0) { terr[p] = GRASS_OUT; continue; }
-      if (py < gd) { terr[p] = edge ? GRASS_OUT : (py === 1 && hash(wx, 78) > 0.6 ? GRASS_HL : GRASS[hash(wx >> 1, wy) > 0.5 ? 0 : 1]); continue; }
+      if (py < gd) { terr[p] = edge ? GRASS_OUT : (py === 1 && hash(wx, 78) > 0.6 ? G[2] : G[hash(wx >> 1, wy) > 0.5 ? 0 : 1]); continue; }
     }
     if (edge) { terr[p] = pal.out; continue; }
     if (b === GLASS) { terr[p] = (px === py + 2 || px === py + 3) && hash(tx, ty) > 0.4 ? pal.hl : glassPixel(bgPixel(wx, wy, under[k])); continue; }
@@ -141,4 +162,4 @@ function pumpPixel(b, px, py) {
   return d < 1 ? MET.slot : d < 3 ? MET.dark : MET.body;
 }
 
-export { BG_SKY, BG_CAVE, bgTile, PAL, MORTAR, STEM, LEAVES, glassPixel, GRASS, GRASS_OUT, GRASS_HL, WALL, SKY_STOPS, SKY_ROWS, isSolid, bgPixel, drawTile, MET, pumpPixel };
+export { SEASON_LEAVES, SEASON_GRASS, SUMMER, setShownSeason, BG_SKY, BG_CAVE, bgTile, PAL, MORTAR, STEM, LEAVES, glassPixel, GRASS, GRASS_OUT, GRASS_HL, WALL, SKY_STOPS, SKY_ROWS, isSolid, bgPixel, drawTile, MET, pumpPixel };

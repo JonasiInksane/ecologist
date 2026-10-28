@@ -1,7 +1,8 @@
 // Renders one frame headlessly and saves the view as a PNG, to check how things look without a browser:
-// `node tools/shot.mjs [out.png] [--seed N] [--level N] [--at X,Y] [--ticks N] [--hour H] [--zoom 2]`
+// `node tools/shot.mjs [out.png] [--seed N] [--level N] [--at X,Y] [--ticks N] [--day D] [--hour H] [--zoom 2]`
 // --level plays puzzle N (1 is the first) instead of the seed's world, centred on its room.
-// --at centres the view on tile X,Y (default: the explorer); --hour sets the time of day (0-24, default the start's).
+// --at centres the view on tile X,Y (default: the explorer); --hour sets the time of day (0-24, default the start's);
+// --day moves the calendar on that many days (the year is 8 days, starting in spring: 2 is summer, 4 autumn, 6 winter).
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
@@ -32,6 +33,7 @@ S.seed = +arg('--seed', S.seed);
 generate();
 if (arg('--level')) { const { startLevel } = await import('../js/levels.js'); startLevel(+arg('--level') - 1); }
 if (arg('--hour')) S.tick = Math.round((((+arg('--hour') / 24 - 0.35) % 1 + 1) % 1) * DAY_TICKS);   // as the tests' setClock: phase 0.5 is noon
+S.tick += Math.round(+arg('--day', 0) * DAY_TICKS);
 const ticks = +arg('--ticks', 60);
 for (let i = 0; i < ticks; i++) step();
 setZoom(+arg('--zoom', 1));

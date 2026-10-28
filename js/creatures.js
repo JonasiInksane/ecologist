@@ -14,6 +14,7 @@ import { NSOL, SOL_FERT } from './config.js';
 import { sol } from './world.js';
 import { FERT, SOL_ALGAE } from './config.js';
 import { addSol } from './solutes.js';
+import { sunHeight } from './daynight.js';
 import { LIQ } from './liquids.js';
 import { AIR, LEAF } from './config.js';
 import { S, markDirty } from './world.js';
@@ -21,6 +22,7 @@ import { S, markDirty } from './world.js';
 const MAX_OF_KIND = 30, STRANDED = 400, COLD = 900, SPLIT_MASS = 255;
 const WELL_FED = 1200, BITE = 2, SMOTHER = 120, ROT = 60;
 const PIKE_MAX = 6, PIKE_STARVE = 7200, PIKE_DIGEST = 1200, HUNT_RANGE = 48, FLEE_RANGE = 32;   // ticks; pixels
+const BIRD_MAX = 8, BIRD_STARVE = 14400, BIRD_SEEK = 120, BIRD_COLD = -25, BIRD_FROZEN = 1800;   // BIRD_SEEK in pixels
 const MOTH_MAX = 20, MOTH_STARVE = 10800, MOTH_REST = 5, MOTH_COLD = -20, MOTH_FROZEN = 1200, MOTH_HOT = 60, MOTH_SEEK = 16, MOTH_EAT = 0.03, MOTH_GIVE_UP = 300;   // MOTH_SEEK in tiles
 
 function centre(b) { return Math.min(H - 1, Math.max(0, ((b.y + b.h / 2) / T) | 0)) * W + Math.min(W - 1, Math.max(0, ((b.x + b.w / 2) / T) | 0)); }
@@ -43,6 +45,7 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
   if (b.eaten) return false;
   const k = centre(b), Tk = temp[k];
   if (b.kind === 'moth') return driveMoth(b, s, k, Tk, A, addBody);
+  if (b.kind === 'bird') return driveBird(b, s, k, Tk, grounded, addBody);
   if (solid[k] || s.acid / A > 0.1 || s.poison / A > 0.2 || s.shock / A > 0.1) return die(b, k, 'fizz');
   if (b.kind === 'fish' || b.kind === 'pike') {
     if (s.lava || (liq[k] && Tk > 45)) return die(b, k, 'steam');   // hot water (not hot air: a fish mid-leap is fine)
@@ -162,6 +165,34 @@ function driveMoth(b, s, k, Tk, A, addBody) {
   return true;
 }
 const LIQ_SINKS = t => t !== 0 && !LIQ[t].gas;   // a liquid a moth can drown in
+// Birds fly six to twelve tiles over the land by day and chase down the nearest moth they can see, eating it when they
+// reach it; after three, with another bird near, they breed. At night they settle and rest. They die in water, lava,
+// acid or fire, in a long hard frost, or after four minutes without a moth.
+function driveBird(b, s, k, Tk, grounded, addBody) {
+  const drowned = liq[k] >= 128 && !LIQ[typ[k]].gas;
+  b.chill = Tk < BIRD_COLD ? (b.chill || 0) + 1 : 0;
+  b.hunger = (b.hunger || 0) + 1;
+  if (drowned || s.lava || s.acid || Tk > 70 || solid[k] || b.hunger > BIRD_STARVE || b.chill > BIRD_FROZEN) { puff(k, 'smoke'); return false; }
+  b.resting = sunHeight() < -0.1;
+  if (b.resting) { b.vx *= 0.8; if (!grounded) b.vy = Math.min(b.vy, 0.6); return true; }   // drifts down and roosts
+  let wx, wy;
+  const m = nearest(b, 'moth', BIRD_SEEK);
+  if (m) {
+    const dx = m.x + 1.5 - b.x - 2.5, dy = m.y + 1 - b.y - 1.5, d = Math.hypot(dx, dy) || 1;
+    wx = dx / d * 1.3; wy = dy / d * 1.3;
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) { m.eaten = true; b.hunger = 0; b.fed = (b.fed || 0) + 1; }
+  } else {
+    if (!b.dir || b.hitX || Math.random() < 0.004) b.dir = b.dir ? -b.dir : Math.random() < 0.5 ? -1 : 1;
+    let clear = 0;
+    for (let o = k + W; clear < 14 && o < W * H && !solid[o] && !liq[o]; o += W) clear++;
+    wx = b.dir * 0.8; wy = clear < 6 ? -0.6 : clear > 12 ? 0.4 : 0;
+  }
+  b.vx += (wx - b.vx) * 0.15;
+  b.vy += (wy - b.vy) * 0.35 + (Math.random() - 0.5) * 0.1;   // holds itself up against gravity
+  b.face = b.vx < 0 ? -1 : 1;
+  if (b.fed >= 3 && Math.random() < 0.01 && howMany('bird') < BIRD_MAX && nearest(b, 'bird', 60)) { b.fed = 0; addBody('bird', b.x, b.y); }
+  return true;
+}
 // The nearest leaf within MOTH_SEEK tiles of tile k, or -1; not the one it just gave up on, if there's another.
 function findLeaf(k, skip) {
   const x = k % W, y = (k / W) | 0;
@@ -210,4 +241,4 @@ function absorb(b) {
   }
 }
 
-export { PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, SMOTHER, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
+export { BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, SMOTHER, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
