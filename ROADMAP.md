@@ -686,6 +686,23 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Smaller world codes (after the four puzzles)
+
+- A world code was about 475 KB; now it's about 70 KB. Measured on a played default world, temperatures were three
+  quarters of it: every tile's full-precision float, whose last digits are noise that doesn't compress.
+- Version 2 codes (`TIDEPOOL2:`, `encode`/`decode` in `js/snapshot.js`) are binary before they're gzipped and turned
+  into base64 (a length, a JSON header, then the arrays' bytes), which compresses about twice as well as JSON with
+  base64 arrays inside it. Temperatures are rounded to 1/4° and stored as the change from the tile before (226 KB of
+  compressed arrays became about 19); resting temperatures are left out when the saved climate gives them exactly (as
+  in any generated world) and rebuilt with `ambientFrom` (`js/climate.js`); the tick each tile last flowed is stored as
+  ticks ago, up to 255; liquid speed is rounded to 1/127. Everything else is exact, and undo and save slots still keep
+  the unrounded snapshot.
+- Version 1 codes and files still load (tested with one made the old way). Level codes are world codes, so they
+  shrank too.
+- Storing a seed plus the changes, as suggested earlier, wasn't needed: the tiles, liquids and dissolved contents
+  compress to about 15 KB on their own, and temperatures change everywhere as a world runs, so a seed wouldn't save
+  much on them.
+
 ### Four new puzzles (after the loose ends)
 
 - The project is under git now (`main`; `dist/` and `.claude/` are ignored).

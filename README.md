@@ -47,7 +47,7 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `js/generate.js` | World generation from the biomes, and `resetWorld` |
 | `js/util.js`, `js/canvas.js` | Seeded hashing, noise and colour helpers; the canvas, its pixel buffers and blending |
 | `js/render/*` | Drawing: terrain, the scrolling background (`backdrop.js`), liquids (with reflections and caustics), devices, lighting, sky, camera and frame composition |
-| `js/snapshot.js`, `js/history.js` | Snapshots of the whole world and world codes; undo |
+| `js/snapshot.js`, `js/history.js` | Snapshots of the whole world and world codes (binary, with temperatures rounded to 1/4°: about 70 KB); undo |
 | `js/worldmenu.js` | The Save & share menu: undo, save slots, world codes and files, seeds |
 | `js/materials.js` | Sponges and soil soaking water up and giving it back (groundwater: a water table, springs and wells), floating lake ice, porous rock seeping, coral growing and bleaching, magnets pulling ferrofluid |
 | `js/explorer.js`, `js/hud.js` | The explorer's bucket, pickaxe and bag; the corner panel with health, air, bucket and bag |

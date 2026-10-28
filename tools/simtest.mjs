@@ -1216,11 +1216,19 @@ scene('freezing, melting and dissolving keep mass', () => {
 const Sn = await import('../js/snapshot.js');
 const Hi = await import('../js/history.js');
 // name of the first array that differs between two snapshots, or ''
-function differs(a, b) {
+// The first array that differs between two snapshots, or ''. near: how far each array may be off (world codes round
+// temperatures and liquid speed); flux is compared as ticks ago, up to 255, which is all a code keeps.
+function differs(a, b, near = {}) {
+  const tick = a.state.tick || 0;
   for (const n of Object.keys(Sn.ARRAYS)) {
     const x = a.arrays[n], y = b.arrays[n];
     if (!y || x.length !== y.length) return n;
-    for (let i = 0; i < x.length; i++) if (x[i] !== y[i] && !(x[i] !== x[i] && y[i] !== y[i])) return n;
+    for (let i = 0; i < x.length; i++) {
+      if (x[i] === y[i] || (x[i] !== x[i] && y[i] !== y[i])) continue;
+      if (near[n] && Math.abs(x[i] - y[i]) <= near[n]) continue;
+      if (n === 'flux' && near.flux && Math.min(255, Math.max(0, tick - x[i])) === Math.min(255, Math.max(0, tick - y[i]))) continue;
+      return n;
+    }
   }
   return '';
 }
@@ -1231,8 +1239,14 @@ scene('snapshots: exact restore, world codes, seeds and undo', async () => {
   Sn.restore(a);
   const b = Sn.capture(), d1 = differs(a, b);
   check('restoring a snapshot puts every tile, column and air cell back', !d1 && JSON.stringify(a.lists) === JSON.stringify(b.lists) && JSON.stringify(a.state) === JSON.stringify(b.state) && a.devices.length === b.devices.length, d1 && `${d1} differs`);
-  const code = await Sn.packWorld(a), c = await Sn.unpackWorld(code), d2 = differs(a, c);
-  check('a world code unpacks to the same world', !d2 && JSON.stringify(a.lists) === JSON.stringify(c.lists) && JSON.stringify(a.state) === JSON.stringify(c.state), d2 ? `${d2} differs` : `code is ${(code.length / 1024).toFixed(0)} KB`);
+  const near = { temp: 0.126, ambient: 0.126, vel: 0.004, flux: true };
+  const code = await Sn.packWorld(a), c = await Sn.unpackWorld(code), d2 = differs(a, c, near);
+  check('a world code unpacks to the same world (temperatures to within 1/8°)', !d2 && JSON.stringify(a.lists) === JSON.stringify(c.lists) && JSON.stringify(a.state) === JSON.stringify(c.state) && code.length < 120 * 1024, d2 ? `${d2} differs` : `code is ${(code.length / 1024).toFixed(0)} KB`);
+  // a version 1 code (JSON with the arrays in base64, gzipped) still loads, exactly
+  const v1json = JSON.stringify({ ...a, arrays: Object.fromEntries(Object.entries(a.arrays).map(([n, x]) => [n, Sn.toBase64(new Uint8Array(x.buffer, x.byteOffset, x.byteLength))])) });
+  const v1 = Sn.OLD_PREFIX + Sn.toBase64(new Uint8Array(await new Response(new Blob([new TextEncoder().encode(v1json)]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()));
+  const old = await Sn.unpackWorld(v1);
+  check('an older (version 1) world code still loads', !differs(a, old) && JSON.stringify(a.state) === JSON.stringify(old.state));
   let refused = '';
   try { await Sn.unpackWorld('hello'); } catch (e) { refused = e.message; }
   check('text that is not a world code is refused with a reason', refused.includes('world code'), refused);

@@ -39,11 +39,14 @@ function skyColumns(skyRow) {
   for (let x = 0; x < W; x++) skyRow[x] = skyTempAt(x, SEA);
 }
 // The resting temperature underground: near the surface it follows the biome, deeper down the rock gets warmer.
-function rebuildAmbient() {
+function rebuildAmbient() { ambientFrom(colTemp, surface, ambient); }
+// The resting temperature of every tile from each column's temperature offset and ground surface, into out.
+function ambientFrom(cols, surf, out) {
   for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) {
-    const d = Math.max(0, y - surface[x]);
-    ambient[y * W + x] = AMBIENT + colTemp[x] * Math.exp(-d / 24) + d * DEPTH_WARM;
+    const d = Math.max(0, y - surf[x]);
+    out[y * W + x] = AMBIENT + cols[x] * Math.exp(-d / 24) + d * DEPTH_WARM;
   }
+  return out;
 }
 // Back to a plain grassland world with no climate (used by resetWorld).
 function resetClimate() {
@@ -51,4 +54,4 @@ function resetClimate() {
   ambient.fill(AMBIENT);
 }
 
-export { SEA, LAPSE, DEPTH_WARM, SEASON_DAYS, SEASON_SWING, SEASONS, colTemp, colHum, colWind, colSwing, colBiome, surface, shade, drought, spellTemp, ambient, day, seasonPhase, seasonOffset, seasonName, skyTempAt, skyColumns, rebuildAmbient, resetClimate };
+export { ambientFrom, SEA, LAPSE, DEPTH_WARM, SEASON_DAYS, SEASON_SWING, SEASONS, colTemp, colHum, colWind, colSwing, colBiome, surface, shade, drought, spellTemp, ambient, day, seasonPhase, seasonOffset, seasonName, skyTempAt, skyColumns, rebuildAmbient, resetClimate };

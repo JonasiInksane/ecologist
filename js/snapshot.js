@@ -2,7 +2,7 @@
 // memory, save slots keep them in the browser, and a world code (text, also used for world files) carries one anywhere.
 import { cellT, cloud, drifted, hum, open, u, v, bolts, strikes } from './air.js';
 import { regions, rivers, setTideState, tideState } from './biomes.js';
-import { ambient, colBiome, colHum, colSwing, colTemp, colWind, drought, shade, surface } from './climate.js';
+import { ambient, ambientFrom, colBiome, colHum, colSwing, colTemp, colWind, drought, shade, surface } from './climate.js';
 import { H, NSOL, W } from './config.js';
 import { moved } from './momentum.js';
 import { parts } from './particles.js';
@@ -18,7 +18,7 @@ const ARRAYS = {
 const LISTS = { pumps, bodies, plants, regions, rivers };   // arrays of plain objects, refilled in place
 // Settings that belong to the viewer rather than the world, so undo and loading leave them alone.
 const VIEW_KEYS = new Set(['follow', 'zoom', 'sound', 'music', 'showHud', 'showChunks', 'lighting', 'heatView', 'dirtyAll', 'pendingIn', 'pendingLink', 'sandboxWeather', 'sandboxPressure']);
-const FORMAT = 'tidepool-world', VERSION = 1, CODE_PREFIX = 'TIDEPOOL1:';
+const FORMAT = 'tidepool-world', VERSION = 1, CODE_PREFIX = 'TIDEPOOL2:', OLD_PREFIX = 'TIDEPOOL1:';
 
 function capture() {
   const arrays = {}, lists = {}, state = {};
@@ -64,11 +64,55 @@ function fromBase64(text) {
   for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
   return bytes;
 }
-function serialize(snap) {
-  const arrays = {};
-  for (const [name, a] of Object.entries(snap.arrays)) arrays[name] = toBase64(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
-  return JSON.stringify({ ...snap, arrays });
+// A world code (version 2) is binary, gzipped, then base64: a 4-byte length, a JSON header (the snapshot without its
+// arrays, plus each array's name and size), then the arrays' bytes one after another. Compressing raw bytes rather than
+// text roughly halves it. The arrays that would make it big are stored smaller (`packed` lists which): temperatures
+// are rounded to 1/4° and stored as the change from the tile before, which is mostly nothing, so they pack tight
+// (they were most of a code), and the resting temperatures are left out when the saved climate gives them exactly (as
+// in a generated world); the tick each tile last had a good flow becomes how many ticks ago, up to 255 (the rules
+// only ask whether it was lately); liquid speed is rounded to 1/127. The rest is exact. Undo and save slots keep the
+// snapshot itself, unrounded. Version 1 codes (JSON with base64 arrays inside) still load.
+function deltas(a, scale) { const o = new Int16Array(a.length); let prev = 0; for (let i = 0; i < a.length; i++) { const v = Math.round(a[i] * scale); o[i] = v - prev; prev = v; } return o; }
+function undeltas(d, scale) { const o = new Float32Array(d.length); let v = 0; for (let i = 0; i < d.length; i++) { v += d[i]; o[i] = v / scale; } return o; }
+const PACKED = {
+  temp: { type: Int16Array, pack: a => deltas(a, 4), unpack: d => undeltas(d, 4) },
+  ambient: { type: Int16Array, pack: a => deltas(a, 4), unpack: d => undeltas(d, 4) },
+  flux: { type: Uint8Array, pack: (a, tick) => Uint8Array.from(a, f => Math.min(255, Math.max(0, tick - f))), unpack: (d, tick) => Uint32Array.from(d, ago => Math.max(0, tick - ago)) },
+  vel: { type: Int8Array, pack: a => Int8Array.from(a, v => Math.round(v * 127)), unpack: d => Float32Array.from(d, v => v / 127) },
+};
+function encode(snap) {
+  const tick = snap.state.tick || 0, index = [], parts = [];
+  const fromClimate = sameArray(snap.arrays.ambient, ambientFrom(snap.arrays.colTemp, snap.arrays.surface, new Float32Array(W * H)));
+  for (const [name, a] of Object.entries(snap.arrays)) {
+    if (name === 'ambient' && fromClimate) continue;
+    const b = PACKED[name] ? PACKED[name].pack(a, tick) : a;
+    parts.push(new Uint8Array(b.buffer, b.byteOffset, b.byteLength)); index.push([name, b.byteLength]);
+  }
+  const head = new TextEncoder().encode(JSON.stringify({ ...snap, arrays: index, packed: Object.keys(PACKED), fromClimate }));
+  const out = new Uint8Array(4 + head.length + parts.reduce((n, p) => n + p.length, 0));
+  new DataView(out.buffer).setUint32(0, head.length);
+  out.set(head, 4);
+  let at = 4 + head.length;
+  for (const p of parts) { out.set(p, at); at += p.length; }
+  return out;
 }
+function decode(bytes) {
+  const n = new DataView(bytes.buffer, bytes.byteOffset).getUint32(0), snap = JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + n)));
+  const packed = new Set(snap.packed || []), tick = (snap.state && snap.state.tick) || 0, arrays = {};
+  let at = 4 + n;
+  for (const [name, len] of snap.arrays) {
+    const chunk = bytes.slice(at, at + len); at += len;   // a copy, so typed arrays of any width line up
+    if (!ARRAYS[name]) continue;   // a field from a newer version: ignore it
+    const P = packed.has(name) && PACKED[name], Ctor = P ? P.type : ARRAYS[name].constructor;
+    const a = new Ctor(chunk.buffer, 0, len / Ctor.BYTES_PER_ELEMENT);
+    arrays[name] = P ? P.unpack(a, tick) : a;
+  }
+  if (snap.fromClimate && arrays.colTemp && arrays.surface) arrays.ambient = ambientFrom(arrays.colTemp, arrays.surface, new Float32Array(W * H));
+  delete snap.packed; delete snap.fromClimate;
+  return { ...snap, arrays };
+}
+function sameArray(a, b) { if (a.length !== b.length) return false; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false; return true; }
+// Version 1: the snapshot as JSON, typed arrays as base64 inside it.
 function deserialize(json) {
   const snap = JSON.parse(json), arrays = {};
   for (const [name, text] of Object.entries(snap.arrays || {})) {
@@ -82,16 +126,15 @@ async function pipeBytes(bytes, stream) {
   return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
 }
 async function packWorld(snap) {
-  const json = new TextEncoder().encode(serialize(snap));
-  return CODE_PREFIX + toBase64(await pipeBytes(json, new CompressionStream('gzip')));
+  return CODE_PREFIX + toBase64(await pipeBytes(encode(snap), new CompressionStream('gzip')));
 }
 async function unpackWorld(code) {
-  const text = String(code).trim();
-  if (!text.startsWith(CODE_PREFIX)) throw new Error('That isn\'t a Tidepool world code; it should start with ' + CODE_PREFIX);
+  const text = String(code).trim(), prefix = [CODE_PREFIX, OLD_PREFIX].find(p => text.startsWith(p));   // version 1 codes still load
+  if (!prefix) throw new Error('That isn\'t a Tidepool world code; it should start with ' + CODE_PREFIX);
   let bytes;
-  try { bytes = await pipeBytes(fromBase64(text.slice(CODE_PREFIX.length).replace(/\s+/g, '')), new DecompressionStream('gzip')); }
+  try { bytes = await pipeBytes(fromBase64(text.slice(prefix.length).replace(/\s+/g, '')), new DecompressionStream('gzip')); }
   catch { throw new Error('That world code is damaged or cut short; copy the whole code and try again.'); }
-  return deserialize(new TextDecoder().decode(bytes));
+  return prefix === OLD_PREFIX ? deserialize(new TextDecoder().decode(bytes)) : decode(bytes);
 }
 
-export { ARRAYS, LISTS, VIEW_KEYS, FORMAT, VERSION, CODE_PREFIX, PRISTINE, restorePristine, capture, restore, toBase64, fromBase64, serialize, deserialize, packWorld, unpackWorld };
+export { PACKED, deltas, undeltas, OLD_PREFIX, ARRAYS, LISTS, VIEW_KEYS, FORMAT, VERSION, CODE_PREFIX, PRISTINE, restorePristine, capture, restore, toBase64, fromBase64, encode, decode, deserialize, packWorld, unpackWorld };
