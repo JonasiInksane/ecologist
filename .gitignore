@@ -1,0 +1,7 @@
+# Built by `npm run build`
+dist/
+
+# Local tooling and system files
+.claude/
+.DS_Store
+node_modules/

@@ -1,0 +1,11 @@
+{
+  "name": "tidepool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8765",
+    "test": "node tools/simtest.mjs",
+    "test:full": "node tools/simtest.mjs --full",
+    "build": "node tools/build.mjs"
+  }
+}
