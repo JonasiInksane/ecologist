@@ -10,7 +10,7 @@
 // - air and gases get a heat capacity of CAP_GAS, about 80× real, so a tile of air can't swing further than a tick
 //   can follow; steam counts as the water it holds;
 // - latent heats are scaled by LATENT, so boiling a pot takes seconds, not minutes.
-import { EMULSION, ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, PATINA, QUICKLIME, ZINC } from './config.js';
+import { FLOWER, EMULSION, ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, PATINA, QUICKLIME, ZINC } from './config.js';
 import { AETHER, ACID, AND, BASALT, BATTERY, BLEACHED, BLOOM, BOILER, BRICK, CLAY, CO2, COMB, COOLANT, COPPER, CORAL, COUNTER, CRISP, CRYSTAL, DEPTH, DIRT, DRAIN, EMAGNET, FERRO, FERT, FILTER, FNITRO, FOAM, FROST, FUSE, GATE, GEM, GEYSER, GLASS, HONEY, HYDROGEN, ICE, LAMP, LAVA, LEAF, LEVER, LIGHT, LYE, MAGNET, MEMBRANE, METAL, METHANE, MIMIC, MOLTEN, MOSS, MOTOR, MSLAG, MUD, NBLOCK, NITRO, NLIQ, NOT, OBSIDIAN, OIL, OR, ORE, OXYGEN, PERMAFROST, PIPE, PIXEL, PLANT, PLATE, POISON, POROUS, PUMP_IN, PUMP_OUT, QUICK, RUST, SALT, SAND, SENSOR, SEPARATOR, SLAG, SLIME, SMOKE, SNOW, SODA, SOLAR, SPONGE, SPRING, STEAM, STONE, STORM, SUGAR, THERMO, TIMER, TONIC, TURBINE, VALVE, VENT, VOID, WATER, WETDIRT, WETSPONGE, WHEEL, WINDMILL, WOOD, WOOL } from './config.js';
 
 // [density g/cm³, specific heat J/g·K, thermal conductivity W/m·K, what it stands for]
@@ -30,7 +30,7 @@ const BLOCK_MATTER = {
   [ORE]: [5.25, 0.67, 11, 'hematite'], [LIMESTONE]: [2.6, 0.91, 1.3, 'limestone'], [QUICKLIME]: [1.5, 0.75, 0.3, 'quicklime, lumps'],
   [LIME]: [1.7, 1.2, 0.8, 'lime mortar (slaked lime)'], [CHARCOAL]: [0.4, 1.0, 0.08, 'charcoal'], [ASH]: [0.7, 0.84, 0.1, 'wood ash'],
   [ALUMINIUM]: [2.7, 0.9, 236, 'aluminium'], [ZINC]: [7.14, 0.39, 122, 'zinc'], [GOLD]: [19.3, 0.13, 318, 'gold'], [PATINA]: [8.9, 0.39, 300, 'copper under a green patina'], [SLAG]: [2.9, 0.8, 1.0, 'slag'], [SUGAR]: [0.85, 1.25, 0.15, 'sugar, loose'],
-  [RUST]: [2.5, 0.7, 0.6, 'flaky rust'], [FNITRO]: [1.73, 1.3, 0.3, 'frozen nitroglycerin'],
+  [RUST]: [2.5, 0.7, 0.6, 'flaky rust'], [FLOWER]: [0.4, 3.0, 0.3, 'flower'], [FNITRO]: [1.73, 1.3, 0.3, 'frozen nitroglycerin'],
   [PIPE]: [7.85, 0.49, 50, 'steel'], [VALVE]: [7.85, 0.49, 50, 'steel'], [FILTER]: [7.85, 0.49, 50, 'steel'], [BOILER]: [7.85, 0.49, 50, 'steel'],
   [THERMO]: [8.96, 0.39, 401, 'copper probe'], [GEYSER]: [2.7, 0.79, 2.8, 'rock'], [VENT]: [2.7, 0.79, 2.8, 'rock'],
 };

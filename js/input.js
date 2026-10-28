@@ -159,6 +159,7 @@ const TOOLS = [
   { id: 'fish',       name: 'Fish',       place: 'fish',       color: '#f0a040' },
   { id: 'pike',       name: 'Pike',       place: 'pike',       color: '#5a8a4a' },
   { id: 'moth',       name: 'Moth',       place: 'moth',       color: '#e8e0c8' },
+  { id: 'bee',        name: 'Bee',        place: 'bee',        color: '#f2c230' },
   { id: 'bird',       name: 'Bird',       place: 'bird',       color: '#3a3440' },
   { id: 'salamander', name: 'Salamander', place: 'salamander', color: '#ff7a2a' },
   { id: 'slimeling',  name: 'Slimeling',  place: 'slimeling',  color: '#4fc46a' },
@@ -382,7 +383,7 @@ const BLOCKS = ['', 'dirt', 'stone', 'obsidian', 'honeycomb', 'crisp honey', 'ic
   'metal', 'pipe', 'valve', 'pipe filter', 'steam turbine', 'water wheel', 'boiler', 'separator', 'AND gate', 'OR gate', 'NOT gate', 'counter', 'plant', 'leaf',
   'snow', 'permafrost', 'clay', 'windmill', 'geyser', 'gas vent', 'baking soda', 'salt crystal',
   'sponge', 'wet sponge', 'wet soil', 'porous rock', 'wool', 'copper', 'membrane', 'coral', 'bleached coral', 'fuse cord', 'magnet',
-  'battery', 'lamp', 'motor', 'electromagnet', 'solar panel', 'ore', 'slag', 'temperature sensor', 'depth sensor', 'pixel', 'sugar', 'rust', 'frozen nitro', 'limestone', 'quicklime', 'lime mortar', 'charcoal', 'ash', 'aluminium', 'zinc', 'gold', 'green copper'];
+  'battery', 'lamp', 'motor', 'electromagnet', 'solar panel', 'ore', 'slag', 'temperature sensor', 'depth sensor', 'pixel', 'sugar', 'rust', 'frozen nitro', 'limestone', 'quicklime', 'lime mortar', 'charcoal', 'ash', 'aluminium', 'zinc', 'gold', 'green copper', 'flower'];
 setupEditor({ tools: TOOLS, blocks: BLOCKS, enterMode });
 // Text from a level code (its name, goal and labels) is shown as text, never as markup.
 function escapeHtml(text) { return String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }
@@ -394,8 +395,8 @@ function solText(k) {
 }
 // The air in an empty tile, when it isn't plain air.
 function airText(k) {
-  if (airOx[k] === AIR_OX && airCarb[k] <= 2) return 'air';
-  return `air · oxygen ${(airOx[k] / 10).toFixed(1)}% · CO₂ ${(airCarb[k] / 20).toFixed(1)}%${stifling(k) ? ' · <b>stale</b>' : ''}`;
+  if (airOx[k] === AIR_OX && airCarb[k] <= 8) return 'air';
+  return `air · oxygen ${(airOx[k] / 10).toFixed(1)}% · CO₂ ${(airCarb[k] / 100).toFixed(2)}%${stifling(k) ? ' · <b>stale</b>' : ''}`;
 }
 function pumpState(k) {
   const pp = pumps.find(q => q.in === k || q.out === k);

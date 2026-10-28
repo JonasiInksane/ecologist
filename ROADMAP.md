@@ -687,6 +687,11 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Phase 22: Life cycles
+
+Plants that live on light and CO₂, flowers, bees and honey, rot and the nitrogen cycle, CO₂ in water, yeast, alcohol
+and vinegar; a sealed jar that lives. What was built: `CHEMISTRY.md` section 7.
+
 ### Phase 21: Air and water
 
 Oxygen and CO₂ in every pocket of air and dissolved in water, fires that need oxygen, fish that need it, layering by

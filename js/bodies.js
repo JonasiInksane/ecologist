@@ -59,6 +59,7 @@ const PIKE_SPR = sprite(['..ggggg...f', '.gsgsgsg.ff', 'gegggggggff', '.ddddddd.
 const PLANK_SPR = sprite(['oooooooo', 'ollmmlmo', 'oooooooo'], { o: '#3d2410', l: '#c08a4a', m: '#9a6634' });
 const BIRD_SPR = sprite(['d...d', '.ddd.', '..b..'], { d: '#3a3440', b: '#e0a040' }), BIRD_FLAP = sprite(['.....', 'ddddd', '..b..'], { d: '#3a3440', b: '#e0a040' });
 const MOTH_SPR = sprite(['w.w', 'wbw'], { w: '#e8e0c8', b: '#6a5a48' });
+const BEE_SPR = sprite(['.w.', 'yby'], { w: '#e8f4ff', y: '#f2c230', b: '#2a2018' });
 const SLIMELING_SPR = sprite(['..hhgg..', '.hggggg.', 'ggeggegg', 'gggggggg', 'gggggggg', '.gggggg.'], { g: '#4fc46a', h: '#c8ff9a', e: '#1a1420' });
 // A raft: lashed planks with dark seams.
 const RAFT_SPR = (() => {
@@ -104,6 +105,7 @@ const KINDS = {
   fish:       { w: 7,  h: 4,  rho: 1.0,  sprite: FISH_SPR, creature: true },
   pike:       { w: 11, h: 5,  rho: 1.0,  sprite: PIKE_SPR, creature: true },
   moth:       { w: 3,  h: 2,  rho: 0.3,  sprite: MOTH_SPR, creature: true, small: true },
+  bee:        { w: 3,  h: 2,  rho: 0.3,  sprite: BEE_SPR, creature: true, small: true },
   bird:       { w: 5,  h: 3,  rho: 0.3,  sprite: BIRD_SPR, flap: BIRD_FLAP, creature: true, small: true },
   salamander: { w: 8,  h: 4,  rho: 3.1,  sprite: SALAMANDER_SPR, creature: true, walker: true },
   slimeling:  { w: 8,  h: 6,  rho: 1.6,  sprite: SLIMELING_SPR, creature: true },
@@ -365,4 +367,4 @@ function updateBodies() {
   }
 }
 
-export { G, ROPE, LIFT, LIFT_MASS, PADDLE_TOP, RAFT_SPR, BOAT_SPR, BALLOON_SPR, tieBalloon, standingOn, ropes, hurt, breathe, sprite, CRATE_SPR, WEIGHT_SPR, FISH_SPR, SALAMANDER_SPR, SLIMELING_SPR, PLANK_SPR, PIKE_SPR, MOTH_SPR, BIRD_SPR, BIRD_FLAP, EXPLORER_PAL, EXPLORER_TOP, EXPLORER_A, EXPLORER_B, KINDS, addBody, collides, moveBy, sampleLiquid, keys, driveExplorer, unstick, centerTile, updateBodies };
+export { G, ROPE, LIFT, LIFT_MASS, PADDLE_TOP, RAFT_SPR, BOAT_SPR, BALLOON_SPR, tieBalloon, standingOn, ropes, hurt, breathe, sprite, CRATE_SPR, WEIGHT_SPR, FISH_SPR, SALAMANDER_SPR, SLIMELING_SPR, PLANK_SPR, PIKE_SPR, MOTH_SPR, BEE_SPR, BIRD_SPR, BIRD_FLAP, EXPLORER_PAL, EXPLORER_TOP, EXPLORER_A, EXPLORER_B, KINDS, addBody, collides, moveBy, sampleLiquid, keys, driveExplorer, unstick, centerTile, updateBodies };

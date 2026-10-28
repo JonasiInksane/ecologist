@@ -8,7 +8,7 @@ import { SUGAR } from '../config.js';
 import { devicePixel, isDeviceBlock, pipePixel } from './devices.js';
 import { GEM, SODA } from '../config.js';
 import { BLEACHED, COPPER, CORAL, FUSE, MAGNET, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from '../config.js';
-import { ALUMINIUM, ASH, CHARCOAL, FNITRO, GOLD, LIME, LIMESTONE, ORE, PATINA, QUICKLIME, RUST, SLAG, ZINC } from '../config.js';
+import { FLOWER, ALUMINIUM, ASH, CHARCOAL, FNITRO, GOLD, LIME, LIMESTONE, ORE, PATINA, QUICKLIME, RUST, SLAG, ZINC } from '../config.js';
 
 
 
@@ -65,6 +65,7 @@ const PAL = {
   [ZINC]:     { base: P(['#a4aab0', '#949aa2', '#bcc2c8', '#848a92']), out: P(['#4c5056'])[0], hl: P(['#d6dbe0'])[0] },
   [GOLD]:     { base: P(['#e8b830', '#d4a020', '#f8d860', '#b88410']), out: P(['#6a4a08'])[0], hl: P(['#fff0a8'])[0] },
   [PATINA]:   { base: P(['#5aa88a', '#4a9478', '#7cc4a4', '#b0643a']), out: P(['#24483a'])[0], hl: P(['#a8e0c8'])[0] },   // verdigris over copper
+  [FLOWER]:   { base: P(['#f4d84a', '#f6a8c8', '#ffffff', '#e86a9a']), out: P(['#4a9a32'])[0], hl: P(['#fff6b0'])[0] },   // petals round a yellow heart
   [SLAG]:     { base: P(['#4a4240', '#3e3735', '#5a5048', '#2e2826']), out: P(['#161210'])[0], hl: P(['#7a6a5a'])[0] },
 };
 const MORTAR = P(['#d8c8b0'])[0];

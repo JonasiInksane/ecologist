@@ -9,7 +9,7 @@ import { nbr } from './pumps.js';
 import { clearSol } from './solutes.js';
 import { fire, held, liq, markDirty, solid, temp, typ, wake } from './world.js';
 import { COOLANT, FUSE, WOOL } from './config.js';
-import { ASH, CHARCOAL, CHLORINE, HYDROGEN, OXYGEN, STEAM } from './config.js';
+import { FLOWER, ASH, CHARCOAL, CHLORINE, HYDROGEN, OXYGEN, STEAM } from './config.js';
 import { breatheAir, burnable } from './oxygen.js';
 
 
@@ -25,6 +25,7 @@ IGNITE_BLOCK[PLANT] = 250; BURN_TIME[PLANT] = 60;
 IGNITE_BLOCK[WOOL] = 570; BURN_TIME[WOOL] = 120;
 IGNITE_BLOCK[FUSE] = 120; BURN_TIME[FUSE] = 10;   // a fuse burns fast and lights the next fuse tile in any direction
 IGNITE_BLOCK[LEAF] = 230;
+IGNITE_BLOCK[FLOWER] = 230; BURN_TIME[FLOWER] = 20;
 IGNITE_BLOCK[CHARCOAL] = 350; BURN_TIME[CHARCOAL] = 255;   // charcoal glows a long time, hotter and with little smoke
 const BURN_DRAW = 2;   // oxygen (tenths of a percent) a flame takes from each tile of air beside it per tick
 const CHARCOAL_FLAME = 1300, ASH_LEFT = 0.4, ASH_PINCH = 48;   // burnt wood leaves a pinch of ash, sometimes BURN_TIME[LEAF] = 30;

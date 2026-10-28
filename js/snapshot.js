@@ -35,10 +35,11 @@ function restore(snap) {
     for (let k = 0; k < W * H; k++) for (let i = 0; i < n; i++) fresh[k * NSOL + i] = old[k * snap.NSOL + i];
     snap = { ...snap, NSOL, arrays: { ...snap.arrays, sol: fresh } };
   }
-  for (const [name, a] of Object.entries(ARRAYS)) if (snap.arrays[name]) a.set(snap.arrays[name]);
+  for (const [name, a] of Object.entries(ARRAYS)) if (snap.arrays[name] && snap.arrays[name].length === a.length) a.set(snap.arrays[name]);   // (a field whose size has changed is left as it is)
   if (!snap.arrays.afloat) afloat.fill(0);   // saved before lake ice floated
   if (!snap.arrays.latent) latent.fill(0);   // saved before latent heat
-  if (!snap.arrays.airOx) { airOx.fill(AIR_OX); airCarb.fill(AIR_CARB); }   // saved before the air had oxygen in it
+  if (!snap.arrays.airOx) airOx.fill(AIR_OX);   // saved before the air had oxygen in it
+  if (!snap.arrays.airCarb || snap.arrays.airCarb.length !== W * H) airCarb.fill(AIR_CARB);   // or before CO2 was counted finely
   for (const [name, l] of Object.entries(LISTS)) l.splice(0, l.length, ...structuredClone(snap.lists[name] || []));
   devices.clear();
   for (const [k, d] of structuredClone(snap.devices)) devices.set(k, d);

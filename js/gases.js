@@ -26,7 +26,7 @@ function gasTick() {
     const n = Math.floor(f) + (Math.random() < f % 1 ? 1 : 0);
     if (!n) continue;
     liq[k] = Math.max(0, liq[k] - n);
-    if (t === CO2) { airCarb[k] = Math.min(255, airCarb[k] + n * 8); stir(k); }   // thinning out into the air: a unit of gas is 0.4% of a tile
+    if (t === CO2) { airCarb[k] = Math.min(65535, airCarb[k] + n * 40); stir(k); }   // thinning out into the air: a unit of gas is 0.4% of a tile
     else if (t === OXYGEN) { airOx[k] = Math.min(255, airOx[k] + n * 4); stir(k); }
     if (!liq[k]) typ[k] = 0;
   }

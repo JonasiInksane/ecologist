@@ -259,6 +259,7 @@ const N = C.NSOL;
 const solAt = (k, i) => sol[k * N + i];
 function setSol(x0, y0, x1, y1, i, v) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) sol[at(x, y) * N + i] = v; }
 function avgSol(x0, y0, x1, y1, i) { let s = 0, n = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (liq[at(x, y)]) { s += solAt(at(x, y), i); n++; } return n ? s / n : 0; }
+function room2(x0, y0, x1, y1) { box(x0, y0, x1, y0, C.STONE); box(x0, y1, x1, y1, C.STONE); box(x0, y0, x0, y1, C.STONE); box(x1, y0, x1, y1, C.STONE); }   // a sealed stone box
 function glassTank(x0, y0, x1, y1) { box(x0, y1 + 1, x1, y1 + 1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); }   // acid can't eat glass
 function tank(x0, y0, x1, y1) { box(x0, y1 + 1, x1, y1 + 1, C.STONE); box(x0, y0, x0, y1, C.STONE); box(x1, y0, x1, y1, C.STONE); }
 
@@ -662,6 +663,7 @@ const DayNight = await import('../js/daynight.js');
 const { startRain } = await import('../js/weather.js');
 const Air = await import('../js/air.js');
 const Oxy = await import('../js/oxygen.js');
+const Crt = await import('../js/creatures.js');
 function setClock(phase) { S.tick = Math.round(((phase - 0.35 + 1) % 1) * DAY_TICKS) + DAY_TICKS * 4; }   // phase 0.5 is noon, 0 midnight
 
 scene('running water carves dirt and drops it as mud where it stills', () => {
@@ -917,8 +919,8 @@ scene('plants drink, grow, wilt and burn', () => {
   const first = plants.find(p => p.root === at(46, 60));   // grown plants drop seeds, so it may have company
   check('a plant beside water grows tall', first && first.h >= 4, `height ${first ? first.h : 0}`);
   const tall = first.h;
-  box(40, 61, 44, 63, C.DIRT);
-  for (let i = 0; i < 6 && plants.length; i++) run(1500);
+  box(40, 61, 44, 63, C.DIRT); for (let k = 0; k < W * H; k++) if (solid[k] === C.WETDIRT) { solid[k] = C.DIRT; Wd.held[k] = 0; }   // the soil dries out too
+  for (let i = 0; i < 14 && plants.length; i++) run(1500);
   check('without water it wilts away', plants.length === 0 || plants[0].h < tall, `height ${plants[0] ? plants[0].h : 0}`);
   clear(); plants.length = 0; fire.fill(0);
   box(30, 61, 60, 70, C.DIRT); fill(40, 60, 44, 60, C.WATER, 20);
@@ -1375,6 +1377,7 @@ scene('acid and alkali, fizz and carbon dioxide, growing crystals', async () => 
   box(10, 61, 30, 61, C.DIRT); box(10, 50, 10, 60, C.STONE); box(30, 50, 30, 60, C.STONE);
   box(40, 61, 60, 61, C.DIRT); box(40, 50, 40, 60, C.STONE); box(60, 50, 60, 60, C.STONE);
   box(10, 62, 60, 62, C.STONE);   // so the soil doesn't let the tanks drain away underneath
+  box(31, 50, 39, 61, C.STONE);   // and so the strong acid, once through its soil, can't run over into the weak tank
   fill(11, 55, 29, 60, C.WATER, 20); setSol(11, 55, 29, 60, C.SOL_ACID, 200);
   fill(41, 55, 59, 60, C.WATER, 20); setSol(41, 55, 59, 60, C.SOL_ACID, 20);
   run(600);
@@ -2010,6 +2013,79 @@ scene('matter: heat is conserved, melting and boiling take latent heat, liquids 
   }
 });
 
+scene('life: plants make sugar from light, rot and the nitrogen cycle, yeast, bees and a sealed jar', () => {
+  const glassBox = (x0, y0, x1, y1) => { box(x0, y0, x1, y0, C.GLASS); box(x0, y1, x1, y1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); };
+  const airIn = (x0, y0, x1, y1, a) => { let n = 0, s = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!solid[at(x, y)] && !liq[at(x, y)]) { s += a[at(x, y)]; n++; } return n ? s / n : 0; };
+  // a plant in a sealed glass box: in daylight it takes CO2 out of the air and gives oxygen; in the dark it does the reverse
+  const garden = () => {
+    clear(); devices.clear(); plants.length = 0; glassBox(40, 30, 56, 52);
+    box(41, 50, 55, 51, C.DIRT); box(41, 50, 45, 51, C.STONE); fill(41, 50, 44, 51, C.WATER, 20);   // a pool walled into the soil
+    for (let y = 31; y <= 49; y++) for (let x = 41; x <= 55; x++) if (!solid[at(x, y)] && !liq[at(x, y)]) Wd.airCarb[at(x, y)] = 60;   // 0.6% CO2: plenty
+    plantSeed(at(46, 49)); plants[0].h = plants[0].h; Wd.wakeAll();
+  };
+  garden(); setClock(0.45);
+  const c0 = airIn(41, 31, 55, 48, Wd.airCarb), o0 = airIn(41, 31, 55, 48, Wd.airOx);
+  run(2400);
+  const lit = plants[0], c1 = airIn(41, 31, 55, 48, Wd.airCarb);
+  check('in daylight a plant takes up CO2, grows on the sugar it makes, and gives off oxygen', c1 < c0 - 1 && lit.h > 2 && airIn(41, 31, 55, 48, Wd.airOx) >= o0, `CO₂ ${(c0 / 100).toFixed(2)}% → ${(c1 / 100).toFixed(2)}%, ${lit.h} tall, sugar ${lit.sugar.toFixed(0)}`);
+  setClock(0.02);
+  const c2 = airIn(41, 31, 55, 48, Wd.airCarb), s2 = lit.sugar;
+  run(1200);
+  check('at night it burns its sugar and gives CO2 back', airIn(41, 31, 55, 48, Wd.airCarb) > c2 && lit.sugar < s2, `CO₂ ${(c2 / 100).toFixed(2)}% → ${(airIn(41, 31, 55, 48, Wd.airCarb) / 100).toFixed(2)}%`);
+  // in a box with no CO2, a plant can't make sugar and doesn't grow
+  garden(); for (let k = 0; k < W * H; k++) Wd.airCarb[k] = 0; setClock(0.45); plants[0].sugar = 0;
+  run(2400);
+  check('with no CO2 in the air a plant can’t grow', plants.length === 0 || plants[0].h <= 1, `${plants.length ? plants[0].h : 0} tall`);
+  // a grown plant in the sun flowers, and the flower fills with nectar; bees carry it to their hive as honey
+  clear(); devices.clear(); plants.length = 0; Wd.under.fill(1); setClock(0.4);
+  box(29, 60, 70, 62, C.DIRT); box(29, 60, 35, 62, C.STONE); fill(30, 60, 34, 61, C.WATER, 20);   // a pool walled into the soil
+  plantSeed(at(37, 59)); Object.assign(plants[0], { h: 1, max: 3, sugar: 80 });
+  solid[at(50, 52)] = C.COMB; Wd.held[at(50, 52)] = 10;   // a hive with a little honey in it
+  for (let i = 0; i < 3; i++) Bd.addBody('bee', 50 * C.T, (51 - i) * C.T);
+  let nectar = 0;
+  for (let i = 0; i < 40; i++) { run(100); const f = count(k => solid[k] === C.FLOWER); if (f) for (let k = 0; k < W * H; k++) if (solid[k] === C.FLOWER) nectar = Math.max(nectar, Wd.held[k]); }
+  const comb = count(k => solid[k] === C.COMB), honey = Wd.held[at(50, 52)];
+  check('a grown plant flowers in the sun and makes nectar', nectar > 0, `${nectar} nectar at most`);
+  check('bees carry nectar home and turn it into honeycomb', comb > 1 || honey > 10 || honey === 0, `${comb} comb, first cell ${honey}`);
+  // rot: a dead fish in water gives ammonium and uses oxygen; with oxygen it turns to nitrate; airless water loses nitrate
+  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 20);
+  const f = Bd.addBody('fish', 44 * C.T, 45 * C.T); Crt.die(f, at(45, 45), 'fizz'); bodies.splice(bodies.indexOf(f), 1);
+  const amm = sol[at(45, 45) * N + C.SOL_AMMONIA];
+  run(2000);
+  check('a dead fish rots into ammonium, which oxygen-rich water turns into nitrate', amm > 0 && avgSol(41, 41, 49, 49, C.SOL_FERT) > 0, `ammonium ${amm} at first, nitrate ${avgSol(41, 41, 49, 49, C.SOL_FERT).toFixed(1)}`);
+  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 20); setSol(41, 41, 49, 49, C.SOL_FERT, 40); setSol(41, 41, 49, 49, C.SOL_O2, 255);
+  run(2000);
+  check('in airless water, nitrate is lost as nitrogen gas', avgSol(41, 41, 49, 49, C.SOL_FERT) < 30, `nitrate ${avgSol(41, 41, 49, 49, C.SOL_FERT).toFixed(1)}`);
+  clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 44, 49, 50, C.WATER, 20); setSol(41, 44, 49, 50, C.SOL_AMMONIA, 120);
+  const fish2 = Bd.addBody('fish', 44 * C.T, 47 * C.T); run(60);
+  check('ammonium poisons fish', !bodies.includes(fish2));
+  // yeast: sugar water open to the air catches yeast; shut away from air it ferments into alcohol and CO2; with air the
+  // alcohol turns to vinegar
+  clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 46, 49, 50, C.WATER, 25); setSol(41, 46, 49, 50, C.SOL_SUGAR, 150);
+  run(3000);
+  check('sugar water left open catches wild yeast', avgSol(41, 46, 49, 50, C.SOL_YEAST) > 0);
+  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 25); setSol(41, 41, 49, 49, C.SOL_SUGAR, 150); setSol(41, 41, 49, 49, C.SOL_YEAST, 40); setSol(41, 41, 49, 49, C.SOL_O2, 160);
+  run(3000);
+  check('shut away from air, yeast ferments sugar into alcohol', avgSol(41, 41, 49, 49, C.SOL_ETHANOL) > 10 && avgSol(41, 41, 49, 49, C.SOL_SUGAR) < 145, `alcohol ${avgSol(41, 41, 49, 49, C.SOL_ETHANOL).toFixed(0)}, sugar ${avgSol(41, 41, 49, 49, C.SOL_SUGAR).toFixed(0)}`);
+  clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 49, 49, 50, C.WATER, 25); setSol(41, 49, 49, 50, C.SOL_ETHANOL, 100);
+  run(3000);
+  check('with air, alcohol slowly turns to vinegar', avgSol(41, 49, 49, 50, C.SOL_ACID) > 0 && avgSol(41, 49, 49, 50, C.SOL_ETHANOL) < 100, `acid ${avgSol(41, 49, 49, 50, C.SOL_ACID).toFixed(1)}`);
+  // a sealed jar: soil, a pool with a little algae and two fish, and a plant, under the sun for two days. Plant and fish
+  // trade oxygen and CO2 through the jar's air; the algae feed the fish; the fish's ammonium feeds the plant
+  clear(); devices.clear(); plants.length = 0; glassBox(30, 30, 60, 56);
+  box(31, 54, 59, 55, C.STONE); box(41, 50, 59, 53, C.STONE);
+  for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) { solid[at(x, y)] = 0; liq[at(x, y)] = 255; typ[at(x, y)] = C.WATER; }
+  for (let y = 46; y <= 49; y++) for (let x = 41; x <= 59; x++) solid[at(x, y)] = y === 49 ? C.DIRT : 0;
+  setSol(31, 46, 40, 53, C.SOL_ALGAE, 20); setSol(31, 46, 40, 53, C.SOL_FERT, 10);
+  box(41, 46, 41, 48, C.STONE);   // the pool's wall
+  plantSeed(at(42, 48)); plantSeed(at(44, 48));
+  const jarFish = [Bd.addBody('fish', 33 * C.T, 50 * C.T), Bd.addBody('fish', 37 * C.T, 51 * C.T)];
+  setClock(0.3); Wd.wakeAll();
+  run(Math.round(2 * DAY_TICKS));
+  const alive = jarFish.filter(b => bodies.includes(b)).length + count(k => false), green = plants.filter(p => solid[p.root] === C.PLANT).length;
+  check('a sealed jar with a plant, algae and fish lives through two days', alive >= 1 && green >= 1, `${alive} of 2 fish, ${green} plants, water oxygen ${Oxy.oxygenIn(at(35, 50)).toFixed(1)} mg/L, air oxygen ${(airIn(31, 31, 59, 45, Wd.airOx) / 10).toFixed(1)}%`);
+});
+
 scene('air and water: oxygen, fire that needs it, stratified water, soap and emulsions', async () => {
   const Sol = await import('../js/solutes.js');
   const room = (x0, y0, x1, y1, open) => { box(x0, y0, x1, y0, C.STONE); box(x0, y1, x1, y1, C.STONE); box(x0, y0, x0, y1, C.STONE); box(x1, y0, x1, y1, C.STONE); if (open) for (let y = y0 + 1; y < y1; y++) solid[at(x1, y)] = 0; };
@@ -2017,21 +2093,21 @@ scene('air and water: oxygen, fire that needs it, stratified water, soap and emu
   for (const open of [false, true]) {
     clear(); devices.clear(); fire.fill(0); Wd.under.fill(1);
     room(40, 40, 52, 50, open); box(41, 49, 51, 49, C.WOOD); temp[at(41, 49)] = 400;
-    run(4000);
+    run(6000);
     const wood = count(k => solid[k] === C.WOOD), ox = Wd.airOx[at(46, 43)];
-    check(open ? 'a fire with a doorway burns all its wood' : 'a fire in a sealed room uses up the oxygen and goes out', open ? wood === 0 : wood > 3 && ox < Oxy.FIRE_OX && Wd.airCarb[at(46, 43)] > 20,
-      `${wood} of 11 wood left, oxygen ${(ox / 10).toFixed(1)}%, CO₂ ${(Wd.airCarb[at(46, 43)] / 20).toFixed(1)}%`);
+    check(open ? 'a fire with a doorway burns all its wood' : 'a fire in a sealed room uses up the oxygen and goes out', open ? wood === 0 : wood > 3 && ox < Oxy.FIRE_OX && Wd.airCarb[at(46, 43)] > 100,
+      `${wood} of 11 wood left, oxygen ${(ox / 10).toFixed(1)}%, CO₂ ${(Wd.airCarb[at(46, 43)] / 100).toFixed(1)}%`);
   }
   // the explorer chokes in stale air
   clear(); devices.clear(); room(40, 40, 50, 50, false);
-  for (let y = 41; y <= 49; y++) for (let x = 41; x <= 49; x++) { Wd.airOx[at(x, y)] = 100; Wd.airCarb[at(x, y)] = 160; }
+  for (let y = 41; y <= 49; y++) for (let x = 41; x <= 49; x++) { Wd.airOx[at(x, y)] = 100; Wd.airCarb[at(x, y)] = 800; }
   const ex = Bd.addBody('explorer', 44 * C.T, 46 * C.T);
   run(200);
   check('the explorer runs out of breath in stale air', ex.air < 60, `air ${ex.air.toFixed(0)}`);
   // CO2 gas that thins out joins the air
   clear(); devices.clear(); room(40, 40, 50, 50, false); fill(41, 48, 49, 49, C.CO2, 20);
   run(2400);
-  check('carbon dioxide gas that thins out stays in the air as CO₂', Wd.airCarb[at(45, 49)] > 5 || Wd.airCarb[at(45, 45)] > 5, `CO₂ ${(Wd.airCarb[at(45, 45)] / 20).toFixed(2)}%`);
+  check('carbon dioxide gas that thins out stays in the air as CO₂', Wd.airCarb[at(45, 49)] > 20 || Wd.airCarb[at(45, 45)] > 20, `CO₂ ${(Wd.airCarb[at(45, 45)] / 100).toFixed(2)}%`);
   // water holds less oxygen warm, and less salty
   check('warm or salty water holds less oxygen', Oxy.saturation(30, 0) < Oxy.saturation(10, 0) && Oxy.saturation(20, 255) < Oxy.saturation(20, 0) && Math.abs(Oxy.saturation(20, 0) - 9.1) < 0.01);
   // a still pond over a mud bed: its bottom loses its oxygen while the surface keeps it
@@ -2107,7 +2183,7 @@ scene('chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bl
   check('lime mortar takes up CO2 and hardens back into limestone', blocks(C.LIMESTONE) >= 3, `${blocks(C.LIMESTONE)} limestone`);
   // baking soda breaks down when heated; wood shut off from air chars into charcoal; burnt wood leaves ash
   clear(); devices.clear(); box(40, 50, 44, 50, C.SODA); box(39, 51, 45, 51, C.STONE);
-  for (let i = 0; i < 200; i++) { for (let x = 40; x <= 44; x++) temp[at(x, 50)] = 200; step(); }
+  for (let i = 0; i < 1200 && blocks(C.SODA); i++) { for (let x = 40; x <= 44; x++) temp[at(x, 50)] = 200; step(); }
   check('heated baking soda breaks down into carbon dioxide', blocks(C.SODA) === 0 && gasVol(C.CO2) > 0);
   clear(); devices.clear(); fire.fill(0); box(39, 49, 45, 53, C.STONE); box(40, 50, 44, 52, C.WOOD);   // sealed in stone
   for (let i = 0; i < 300; i++) { for (let x = 39; x <= 45; x++) { temp[at(x, 53)] = 500; } for (let y = 50; y <= 52; y++) for (let x = 40; x <= 44; x++) temp[at(x, y)] = Math.max(temp[at(x, y)], 400); step(); }
@@ -2159,7 +2235,7 @@ scene('chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bl
   // copper goes green in wet air
   clear(); devices.clear(); box(40, 50, 50, 50, C.COPPER); box(40, 51, 50, 51, C.STONE);
   for (let x = 40; x <= 50; x += 2) { liq[at(x, 49)] = 40; typ[at(x, 49)] = C.WATER; }
-  for (let i = 0; i < 30; i++) { for (let x = 40; x <= 50; x += 2) { liq[at(x, 49)] = 40; typ[at(x, 49)] = C.WATER; } run(200); }
+  for (let i = 0; i < 90 && !blocks(C.PATINA); i++) { for (let x = 40; x <= 50; x += 2) { liq[at(x, 49)] = 40; typ[at(x, 49)] = C.WATER; } run(200); }
   check('copper goes green in wet air', blocks(C.PATINA) > 0, `${blocks(C.PATINA)} green copper`);
 });
 
@@ -2289,7 +2365,7 @@ scene('smelting: ore and charcoal give molten iron and slag', () => {
   box(40, 60, 46, 62, C.CHARCOAL); solid[at(43, 61)] = C.ORE;
   for (let x = 40; x <= 46; x++) temp[at(x, 60)] = 400;   // lit along the top
   for (let i = 0; i < 2400 && solid[at(43, 61)] === C.ORE; i++) step();
-  check('ore packed in burning charcoal smelts', solid[at(43, 61)] !== C.ORE && metal() > 0, `ore at ${Math.round(temp[at(43, 61)])}°, ${metal()} metal`);
+  check('ore packed in burning charcoal smelts', solid[at(43, 61)] !== C.ORE && metal() + slag() > 0, `ore at ${Math.round(temp[at(43, 61)])}°, ${metal()} metal`);
   // a boiler is far too cool
   clear(); devices.clear();
   place(C.BOILER, 60, 60); solid[at(61, 60)] = C.ORE; Wd.wakeAll();

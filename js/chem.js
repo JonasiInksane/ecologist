@@ -16,7 +16,7 @@
 // into the nearest room; `sol` [[channel, amount]] goes into the liquid; `uses` is how much of the liquid's strength
 // (acid, alkali) or amount (water, gas) it takes; `heat` J; `fx` a puff.
 import { AIR, ALUMINIUM, ASH, BLEACHED, CHARCOAL, CHLORINE, CO2, COMB, COPPER, CORAL, CRISP, DIRT, FUSE, GLASS, H, HYDROGEN, ICE, LEAF, LIME, LIMESTONE, LYE, METAL, MOLTEN, MOSS, MSLAG, NBLOCK, NLIQ, NSOL, ORE, OXYGEN, PATINA, PLANT, QUICKLIME, RUST, SALT, SAND, SMOKE, SODA, SOL_ACID, SOL_BASE, SOL_METAL, SOL_SALT, SPONGE, STEAM, STORM, SUGAR, W, WATER, WETDIRT, WETSPONGE, WOOD, WOOL, ZINC } from './config.js';
-import { ACID } from './config.js';
+import { ACID, FLOWER } from './config.js';
 import { AIR_CAP, BCAP, LCAP } from './matter.js';
 import { puff } from './particles.js';
 import { CORRODE_AT } from './solutes.js';
@@ -55,7 +55,7 @@ rule({ name: 'acid on aluminium', with: 'acid', block: ALUMINIUM, rate: 0.006, t
 rule({ name: 'acid on rust', with: 'acid', block: RUST, rate: 0.04, to: AIR, sol: [[SOL_METAL, 30]], uses: 40 });
 rule({ name: 'acid on ore', with: 'acid', block: ORE, rate: 0.004, to: AIR, sol: [[SOL_METAL, 40]], uses: 60 });
 // Acid eats soft and living things: soil, wood, plants, wax, sugar, wool.
-rule({ name: 'acid eats', with: 'acid', block: [DIRT, WETDIRT, COMB, CRISP, ICE, WOOD, MOSS, SALT, PLANT, LEAF, SPONGE, WETSPONGE, WOOL, FUSE], rate: 0.025, to: AIR, uses: 32, fx: 'fizz' });
+rule({ name: 'acid eats', with: 'acid', block: [DIRT, WETDIRT, COMB, CRISP, ICE, WOOD, MOSS, SALT, PLANT, LEAF, FLOWER, SPONGE, WETSPONGE, WOOL, FUSE], rate: 0.025, to: AIR, uses: 32, fx: 'fizz' });
 // Strong acid chars sugar into a black, steaming lump of carbon.
 rule({ name: 'acid chars sugar', with: ACID, block: SUGAR, rate: 0.05, to: CHARCOAL, gas: [STEAM, 120], uses: 20, heat: 100, fx: 'smoke' });
 // Lye eats aluminium and zinc too, giving hydrogen, and dissolves wool.

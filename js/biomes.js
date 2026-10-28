@@ -6,7 +6,7 @@ import { AW, CELL, hum } from './air.js';
 import { colBiome, colHum, colSwing, colTemp, colWind, drought, spellTemp } from './climate.js';
 import { cloud, gather, lowCell, measure } from './air.js';
 import { AETHER, AIR, CRYSTAL, ORE } from './config.js';
-import { BASALT, BLOOM, BRICK, CLAY, DIRT, GEYSER, H, ICE, LAVA, LEAF, MOSS, MUD, NSOL, OBSIDIAN, OIL, PERMAFROST, QUICK, SALT, SAND, SLIME, SNOW, SOL_SALT, SOL_SILT, STONE, VENT, W, WATER, WOOD } from './config.js';
+import { COMB, BASALT, BLOOM, BRICK, CLAY, DIRT, GEYSER, H, ICE, LAVA, LEAF, MOSS, MUD, NSOL, OBSIDIAN, OIL, PERMAFROST, QUICK, SALT, SAND, SLIME, SNOW, SOL_SALT, SOL_SILT, STONE, VENT, W, WATER, WOOD } from './config.js';
 import { DAY_TICKS, dayPhase } from './daynight.js';
 import { placeDevice } from './devices.js';
 import { LIQ } from './liquids.js';
@@ -219,6 +219,13 @@ function features(surf) {
       }
       for (let i = 0; i < 3; i++) { const mx = x0 + 10 + ((rnd(40 + i) * (x1 - x0 - 20)) | 0); addBody('moth', mx * T, (surf[mx] - 4) * T); }   // moths among the trees
       for (let i = 0; i < 2; i++) { const bx = x0 + 20 + ((rnd(50 + i) * (x1 - x0 - 40)) | 0); addBody('bird', bx * T, (surf[bx] - 10) * T); }   // and birds that hunt them
+      for (let x = (x0 + x1) >> 1; x < x1 - 2; x++) {   // a wild bees' nest: a little honeycomb against a trunk, and its bees
+        const y = surf[x] - 3, k = y * W + x;
+        if (solid[k] !== WOOD || solid[k + 1] || solid[k + 1 - W]) continue;
+        solid[k + 1] = COMB; solid[k + 1 - W] = COMB;
+        for (let i = 0; i < 3; i++) addBody('bee', (x + 2) * T, (y - 1 - i) * T);
+        break;
+      }
     } else if (B.name === 'swamp') {
       for (let x = x0 + 6; x < x1 - 12; x += 14 + ((rnd(x) * 6) | 0)) {
         const w = 6 + ((rnd(x + 1) * 4) | 0);

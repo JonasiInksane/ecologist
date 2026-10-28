@@ -18,11 +18,14 @@ import { sunHeight } from './daynight.js';
 import { LIQ } from './liquids.js';
 import { AIR, LEAF } from './config.js';
 import { FISH_GASPS, PIKE_GASPS, breatheAir, breatheWater, oxygenIn, stifling } from './oxygen.js';
+import { COMB, FLOWER, SOL_AMMONIA } from './config.js';
+import { held } from './world.js';
+import { ROT_OX } from './solutes.js';
 import { S, markDirty } from './world.js';
 
 const MAX_OF_KIND = 30, STRANDED = 400, COLD = 900, SPLIT_MASS = 255;
 const WELL_FED = 1200, BITE = 2, ROT = 60;
-const FISH_BREATH = 0.001, SUFFOCATE = 300, AIR_GONE = 300;   // mg/L of oxygen a fish uses a tick; ticks it lasts without enough
+const FISH_BREATH = 0.001, SUFFOCATE = 300, AIR_GONE = 300, AMMONIA_KILLS = 80;   // mg/L of oxygen a fish uses a tick; ticks it lasts without enough
 const PIKE_MAX = 6, PIKE_STARVE = 7200, PIKE_DIGEST = 1200, HUNT_RANGE = 48, FLEE_RANGE = 32;   // ticks; pixels
 const BIRD_MAX = 8, BIRD_STARVE = 14400, BIRD_SEEK = 120, BIRD_COLD = -25, BIRD_FROZEN = 1800;   // BIRD_SEEK in pixels
 const MOTH_MAX = 20, MOTH_STARVE = 10800, MOTH_REST = 5, MOTH_COLD = -20, MOTH_FROZEN = 1200, MOTH_HOT = 60, MOTH_SEEK = 16, MOTH_EAT = 0.03, MOTH_GIVE_UP = 300;   // MOTH_SEEK in tiles
@@ -54,6 +57,7 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
   const k = centre(b), Tk = temp[k];
   if (b.kind === 'moth') return driveMoth(b, s, k, Tk, A, addBody);
   if (b.kind === 'bird') return driveBird(b, s, k, Tk, grounded, addBody);
+  if (b.kind === 'bee') return driveBee(b, s, k, Tk, addBody);
   if (solid[k] || s.acid / A > 0.1 || s.poison / A > 0.2 || s.shock / A > 0.1) return die(b, k, 'fizz');
   if (b.kind === 'fish' || b.kind === 'pike') {
     if (s.lava || (liq[k] && Tk > 45)) return die(b, k, 'steam');   // hot water (not hot air: a fish mid-leap is fine)
@@ -63,7 +67,8 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
     if (liq[k] && typ[k] === WATER) {   // breathing: it uses the water's oxygen, and suffocates where there's too little
       breatheWater(k, pike ? FISH_BREATH * 2 : FISH_BREATH);
       b.gasp = oxygenIn(k) < (pike ? PIKE_GASPS : FISH_GASPS) ? (b.gasp || 0) + 1 : 0;
-      if (b.gasp > SUFFOCATE) return die(b, k, 'fizz');
+      if (b.gasp > SUFFOCATE || sol[k * NSOL + SOL_AMMONIA] > AMMONIA_KILLS) return die(b, k, 'fizz');   // or poisoned by ammonium
+      if (b.grazed && Math.random() < 0.01) addSol(k, SOL_AMMONIA, 1);   // a fed fish gives off ammonium
     }
     if (pike) { if (b.hunger > PIKE_STARVE) return die(b, k, 'fizz'); }
     else if (algae >= BITE && Math.random() < 0.02) { sol[k * NSOL + SOL_ALGAE] -= BITE; b.hunger = 0; b.grazed = true; }   // grazes
@@ -207,6 +212,57 @@ function driveBird(b, s, k, Tk, grounded, addBody) {
   return true;
 }
 // The nearest leaf within MOTH_SEEK tiles of tile k, or -1; not the one it just gave up on, if there's another.
+// Bees: by day, while it's warm, a bee flies to the nearest flower with nectar, drinks its fill and carries it home to
+// its hive (honeycomb), where it turns it into honey: each load fills the comb a little, and a full comb gets a new
+// cell built beside it. A well-stocked hive raises new bees. At night, or in the cold, bees go home and wait. They
+// drown, burn, choke and starve like moths; the hive's honey feeds them.
+const BEE_MAX = 12, BEE_LOAD = 32, BEE_SEEK = 30, BEE_HOME = 40, BEE_STARVE = 10800, BEE_COLD = 10, BEE_FROZEN = 1800, HONEY_PER_LOAD = 8;
+function driveBee(b, s, k, Tk, addBody) {
+  const drowned = liq[k] >= 128 && LIQ_SINKS(typ[k]);
+  if (drowned || s.lava || s.acid || Tk > 50 || solid[k] || !airless(b, k)) { puff(k, 'fizz'); return false; }
+  b.load = b.load || 0; b.hunger = (b.hunger || 0) + 1;
+  b.chill = Tk < 0 ? (b.chill || 0) + 1 : 0;
+  if (b.hunger > BEE_STARVE || b.chill > BEE_FROZEN) { puff(k, 'fizz'); return false; }
+  if (b.home == null || solid[b.home] !== COMB || S.tick - (b.homeAt || 0) > 600) { b.home = findBlock(k, COMB, BEE_HOME); b.homeAt = S.tick; }
+  const out = sunHeight() > 0 && Tk >= BEE_COLD && b.load < BEE_LOAD;
+  if (out && (b.target == null || solid[b.target] !== FLOWER || held[b.target] < 8 || S.tick - (b.since || 0) > 600)) { b.target = findBlock(k, FLOWER, BEE_SEEK, f => held[f] >= 8); b.since = S.tick; }
+  const goal = out && b.target >= 0 ? b.target : b.home;
+  if (goal >= 0) {
+    const tx = (goal % W) * T + 4, ty = ((goal / W) | 0) * T + 4, near = Math.abs(tx - b.x - 1.5) < 10 && Math.abs(ty - b.y - 1) < 10;
+    b.vx += (Math.sign(tx - b.x - 1.5) * 0.7 - b.vx) * 0.25; b.vy += (Math.sign(ty - b.y - 1) * 0.5 - b.vy) * 0.35 + (Math.random() - 0.5) * 0.3;
+    if (near && goal === b.target) { const sip = Math.min(held[goal], BEE_LOAD - b.load); held[goal] -= sip; b.load += sip; b.target = -1; }
+    else if (near && goal === b.home) {
+      b.hunger = 0;   // eats at the hive
+      if (b.load >= BEE_LOAD) { b.load = 0; storeHoney(b.home); if (Math.random() < 0.1 && howMany('bee') < BEE_MAX) addBody('bee', b.x, b.y); }
+      b.vx *= 0.5; b.vy *= 0.5;
+    }
+  } else {   // no hive and nothing to do: wanders like a moth
+    if (!b.dir || b.hitX || Math.random() < 0.01) b.dir = b.dir ? -b.dir : Math.random() < 0.5 ? -1 : 1;
+    b.vx += (b.dir * 0.5 - b.vx) * 0.2; b.vy += (-b.vy) * 0.35 + (Math.random() - 0.5) * 0.3;
+  }
+  b.face = b.vx < 0 ? -1 : 1;
+  return true;
+}
+// Honey goes into the hive's comb: into a cell that isn't full yet, or a new cell built onto the comb.
+function storeHoney(home) {
+  const cells = [home], seen = new Set(cells);
+  for (let i = 0; i < cells.length && cells.length < 64; i++) for (const o of [cells[i] - W, cells[i] - 1, cells[i] + 1, cells[i] + W]) if (o >= 0 && o < W * H && solid[o] === COMB && !seen.has(o)) { seen.add(o); cells.push(o); }
+  const part = cells.find(c => held[c] > 0 && held[c] < 255);   // held: a cell's honey (0 is a full cell)
+  if (part >= 0) { held[part] = Math.min(255, held[part] + HONEY_PER_LOAD); if (held[part] === 255) held[part] = 0; return; }
+  for (const c of cells) for (const o of [c - 1, c + 1, c + W, c - W]) if (o >= 0 && o < W * H && !solid[o] && !liq[o]) { solid[o] = COMB; held[o] = HONEY_PER_LOAD; markDirty(o % W, (o / W) | 0); return; }
+}
+// The nearest block b within `reach` tiles of k (that passes `ok`), or -1.
+function findBlock(k, b, reach, ok) {
+  const x = k % W, y = (k / W) | 0;
+  let best = -1, bd = Infinity;
+  for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+    const nx = x + dx, ny = y + dy, o = ny * W + nx;
+    if (nx < 0 || ny < 0 || nx >= W || ny >= H || solid[o] !== b || (ok && !ok(o))) continue;
+    const d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
 function findLeaf(k, skip) {
   const x = k % W, y = (k / W) | 0;
   let best = -1, bd = Infinity;
@@ -222,7 +278,7 @@ function findLeaf(k, skip) {
 function die(b, k, fx) {
   puff(k, fx);
   if (fx !== 'steam' && fx !== 'smoke' && !solid[k]) {
-    if (liq[k] && typ[k] === WATER) addSol(k, SOL_FERT, ROT);
+    if (liq[k] && typ[k] === WATER) { addSol(k, SOL_AMMONIA, ROT); breatheWater(k, ROT * ROT_OX); }   // rots in the water, using its oxygen
     else if (!liq[k]) { liq[k] = 40; typ[k] = FERT; sol.fill(0, k * NSOL, k * NSOL + NSOL); wake(k); }
   }
   return false;
@@ -254,4 +310,4 @@ function absorb(b) {
   }
 }
 
-export { BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
+export { BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };

@@ -248,7 +248,7 @@ fantasy in the notes and tool palette.
 | 19. Matter (built) | The material table; one density everywhere; conserved heat with latent heat; real thresholds | Tests: ice holds a drink at 0°, hot iron in water warms it by the right amount, boiling holds at 100°; every existing scene passes or is re-tuned with a note |
 | 20. Reactions (built) | The reaction engine; existing reactions moved into it; the inorganic set (acid + metals/carbonates, lime cycle, chlorine and bleach, rust with oxygen, patina, charcoal, glass, smelting with carbon, thermite) and new materials | Every reaction in section 3's inorganic list has a test and conserves mass |
 | 21. Air and water (built) | Oxygen and CO₂ in the air grid; dissolved oxygen and CO₂ in water; combustion that needs oxygen; layering by concentration and temperature; emulsions and soap | A sealed fire goes out; a stratified pond's bottom goes anoxic; brine stays under fresh water |
-| 22. Life cycles | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey | A sealed jar with water, plants, algae and fish stays alive for days; overfeeding it causes a bloom and a fish kill at night |
+| 22. Life cycles (built) | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey | A sealed jar with water, plants, algae and fish stays alive for days; overfeeding it causes a bloom and a fish kill at night |
 | 23. Showcase | The fantasy pass; a sealed-jar "terrarium" mode; puzzles about the new chemistry | |
 
 Each phase is about the size of Phase 17. Phase 19 changes how everything feels, so the puzzles will need re-tuning.
@@ -377,6 +377,41 @@ Each phase is about the size of Phase 17. Phase 19 changes how everything feels,
 - Cost: the air pass is about 1% of the time, the tick about 3.9 ms.
 - Left for later: oxygen and CO₂ don't drift with the weather's wind; plants and the explorer's respiration are
   token; insects standing on clean water (surface tension) aren't modelled.
+
+### Phase 22: Life cycles (built)
+
+- **CO₂ in finer steps**: the air's CO₂ is now hundredths of a percent (normal 4, the real 0.04%; stored as 16-bit),
+  so plants can live on it. A breath or a flame trades oxygen and CO₂ one for one.
+- **Plants** (`js/plants.js`): each plant has a sugar store (a seed starts with 12). Every plant tick, in daylight
+  that reaches its top (glass, water, leaves and its own flower let light through) and while it drinks, it takes
+  1 hundredth of a percent of CO₂ per stem tile from the air beside its top and gains that much sugar, giving back
+  oxygen; always, it burns 0.25 sugar per stem tile, giving CO₂ back. A new tile costs 6 sugar. Out of sugar it wilts
+  as from thirst; wilting now takes about a day (700 plant ticks) instead of a seventh of one, which let generated
+  plants in dry soil die before the first rain. Roots drink from damp soil as well as water. Under a roof (no open
+  sky above the plant), transpired water runs back instead of leaving as vapour, as on a jar's glass.
+- **Flowers, nectar, bees, honey**: a grown plant with 40 sugar flowers (a new block on its top, holding nectar in
+  `held`) and turns 2 sugar a plant tick into 4 nectar, up to 200. Bees (`driveBee` in `js/creatures.js`): by day
+  above 10° a bee flies to the nearest flower with nectar within 30 tiles and drinks 32, carries it to its hive (the
+  nearest honeycomb within 40) and adds 8 to a comb cell's honey (0 means a full cell, so old comb counts as full),
+  building a new cell when they're all full; a delivery may raise a new bee (up to 12). They eat at the hive, rest
+  there at night, and die like moths. Forests generate a two-cell nest on a trunk with three bees.
+- **Nitrogen** (`nitrogen` in `js/solutes.js`): rot (dead creatures in water, dying algae) gives ammonium
+  (`SOL_AMMONIA`) and uses 0.05 mg/L of oxygen per unit; fed fish give off ammonium; over 80 kills fish. With 2 mg/L
+  of oxygen or more, ammonium becomes nitrate (fertiliser, which stands for nitrate) using oxygen; under 0.5 mg/L,
+  nitrate is lost (denitrification). Soil under water uses a little oxygen. Phosphate isn't modelled separately.
+- **Dissolved CO₂** (`SOL_CO2`): anything that uses the water's oxygen adds as much CO₂; algae need it to make
+  oxygen; water trades it with the air above it towards 2.5 units per hundredth of a percent of the air's CO₂.
+- **Yeast** (`ferment`): sugar water with air above catches yeast at 0.2% a solute tick. Between 10° and 40°, with
+  oxygen yeast burns sugar and grows; without, it turns sugar into alcohol (`SOL_ETHANOL`) and bubbles CO₂ out at the
+  surface, warming slightly, up to 150 (about 14%). Above 45° it dies. With oxygen, alcohol turns slowly into acid
+  (vinegar).
+- Tests: `life: plants make sugar from light, rot and the nitrogen cycle, yeast, bees and a sealed jar` (14 checks),
+  including a sealed glass jar with a pool, algae, two fish and two plants that lives through two game days; the
+  drought test dries the soil and waits longer. All 75 scenes pass; the full run takes about 3.8 minutes now (the
+  jar is two days long).
+- Cost: a tick about 4 ms.
+- Left for later: alcohol doesn't burn or distil; plants don't take nitrate from the air; moss doesn't photosynthesise;
+  a generated world's fish multiply quickly in the cave lake (they did before this phase too).
 
 ## Sources
 
