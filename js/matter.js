@@ -10,7 +10,7 @@
 // - air and gases get a heat capacity of CAP_GAS, about 80× real, so a tile of air can't swing further than a tick
 //   can follow; steam counts as the water it holds;
 // - latent heats are scaled by LATENT, so boiling a pot takes seconds, not minutes.
-import { ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, PATINA, QUICKLIME, ZINC } from './config.js';
+import { EMULSION, ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, PATINA, QUICKLIME, ZINC } from './config.js';
 import { AETHER, ACID, AND, BASALT, BATTERY, BLEACHED, BLOOM, BOILER, BRICK, CLAY, CO2, COMB, COOLANT, COPPER, CORAL, COUNTER, CRISP, CRYSTAL, DEPTH, DIRT, DRAIN, EMAGNET, FERRO, FERT, FILTER, FNITRO, FOAM, FROST, FUSE, GATE, GEM, GEYSER, GLASS, HONEY, HYDROGEN, ICE, LAMP, LAVA, LEAF, LEVER, LIGHT, LYE, MAGNET, MEMBRANE, METAL, METHANE, MIMIC, MOLTEN, MOSS, MOTOR, MSLAG, MUD, NBLOCK, NITRO, NLIQ, NOT, OBSIDIAN, OIL, OR, ORE, OXYGEN, PERMAFROST, PIPE, PIXEL, PLANT, PLATE, POISON, POROUS, PUMP_IN, PUMP_OUT, QUICK, RUST, SALT, SAND, SENSOR, SEPARATOR, SLAG, SLIME, SMOKE, SNOW, SODA, SOLAR, SPONGE, SPRING, STEAM, STONE, STORM, SUGAR, THERMO, TIMER, TONIC, TURBINE, VALVE, VENT, VOID, WATER, WETDIRT, WETSPONGE, WHEEL, WINDMILL, WOOD, WOOL } from './config.js';
 
 // [density g/cm³, specific heat J/g·K, thermal conductivity W/m·K, what it stands for]
@@ -46,7 +46,7 @@ const LIQUID_MATTER = {
   [STORM]: [1.0, 4.18, 0.6, true, 'fantasy: charged water'], [MOLTEN]: [6.98, 0.82, 35, true, 'molten iron'], [NITRO]: [1.59, 1.6, 0.2, true, 'nitroglycerin'],
   [LYE]: [1.52, 3.2, 0.6, true, 'sodium hydroxide, 50%'], [VOID]: [1.0, 4.0, 0.6, true, 'fantasy'], [MIMIC]: [1.0, 4.0, 0.6, true, 'fantasy'],
   [COOLANT]: [1.07, 3.3, 6, true, 'glycol coolant (carries heat far better than real glycol)'], [FERRO]: [1.3, 1.7, 0.2, true, 'magnetite in oil'],
-  [LIGHT]: [0.9, 3.0, 0.5, true, 'fantasy'], [BLEACH]: [1.09, 3.9, 0.6, true, 'sodium hypochlorite, 5%'], [FERT]: [1.32, 2.9, 0.5, true, 'UAN fertiliser solution'], [MSLAG]: [2.7, 1.2, 1.0, false, 'molten slag'],
+  [LIGHT]: [0.9, 3.0, 0.5, true, 'fantasy'], [BLEACH]: [1.09, 3.9, 0.6, true, 'sodium hypochlorite, 5%'], [EMULSION]: [0.95, 3.2, 0.4, true, 'oil and water in droplets'], [FERT]: [1.32, 2.9, 0.5, true, 'UAN fertiliser solution'], [MSLAG]: [2.7, 1.2, 1.0, false, 'molten slag'],
 };
 // Gases at their usual temperature: [density g/cm³, conductivity, what it stands for]
 const GAS_MATTER = {

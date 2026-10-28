@@ -28,7 +28,9 @@ import { S, VIEW, awake, bodies, deco, devices, drop, fall, fire, heatWake, held
 import { CO2, LYE, SODA } from './config.js';
 import { HYDROGEN, MSLAG, ORE, OXYGEN, SLAG } from './config.js';
 import { DEPTH, FNITRO, PIXEL, RUST, SUGAR, THERMO } from './config.js';
-import { ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, QUICKLIME, ZINC } from './config.js';
+import { ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, QUICKLIME, SOL_O2, SOL_OIL, ZINC } from './config.js';
+import { oxygenIn, stifling } from './oxygen.js';
+import { AIR_OX, airCarb, airOx } from './world.js';
 import { phOf } from './solutes.js';
 import { BATTERY, EMAGNET, LAMP, MOTOR, SOLAR } from './config.js';
 import { COOLANT, COPPER, CORAL, FERRO, FERT, FUSE, LIGHT, MAGNET, MEMBRANE, MIMIC, POROUS, SPONGE, VOID, WOOL } from './config.js';
@@ -386,8 +388,14 @@ setupEditor({ tools: TOOLS, blocks: BLOCKS, enterMode });
 function escapeHtml(text) { return String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }
 function solText(k) {
   let s = '';
-  for (let i = 0; i < NSOL; i++) if (sol[k * NSOL + i] > 4) s += ` · ${SOL_NAMES[i]} ${sol[k * NSOL + i]}`;
+  for (let i = 0; i < NSOL; i++) if (i !== SOL_O2 && i !== SOL_OIL && sol[k * NSOL + i] > 4) s += ` · ${SOL_NAMES[i]} ${sol[k * NSOL + i]}`;
+  if (typ[k] === WATER) s += ` · oxygen ${oxygenIn(k).toFixed(1)} mg/L`;
   return s;
+}
+// The air in an empty tile, when it isn't plain air.
+function airText(k) {
+  if (airOx[k] === AIR_OX && airCarb[k] <= 2) return 'air';
+  return `air · oxygen ${(airOx[k] / 10).toFixed(1)}% · CO₂ ${(airCarb[k] / 20).toFixed(1)}%${stifling(k) ? ' · <b>stale</b>' : ''}`;
 }
 function pumpState(k) {
   const pp = pumps.find(q => q.in === k || q.out === k);
@@ -409,7 +417,7 @@ function updateStatus() {
   else if (tool.wire && S.pendingLink >= 0) hoverEl.innerHTML = 'Click gates, springs, drains or pumps to link or unlink them · click the switch again to finish';
   else if (cursor.x >= 0 && cursor.x < W && cursor.y >= 0 && cursor.y < H) {
     const k = cursor.y * W + cursor.x;
-    const what = devices.has(k) ? deviceState(k) : solid[k] ? BLOCKS[solid[k]] + (solid[k] === PUMP_IN || solid[k] === PUMP_OUT ? pumpState(k) : '') : liq[k] ? `${LIQ[typ[k]].name} <b>${liq[k]}</b>/255 · pH ${phOf(k).toFixed(1)}${solText(k)}` : 'empty';
+    const what = devices.has(k) ? deviceState(k) : solid[k] ? BLOCKS[solid[k]] + (solid[k] === PUMP_IN || solid[k] === PUMP_OUT ? pumpState(k) : '') : liq[k] ? `${LIQ[typ[k]].name} <b>${liq[k]}</b>/255 · pH ${phOf(k).toFixed(1)}${solText(k)}` : airText(k);
     hoverEl.innerHTML = `tile ${cursor.x}, ${cursor.y} · ${what}${fall[k] ? ' · falling' : ''}${fire[k] ? ' · burning' : ''}${charged(k) ? ` · <b>live</b> (${Math.round(powerLeft(k) * 100)}% power)` : ''}${deco[k] ? ' · glowcaps' : ''} · ${Math.round(temp[k])}°`;
   }
   statsEl.innerHTML = `wet tiles <b>${lastStats.cells}</b> · volume <b>${(lastStats.vol / 255).toFixed(1)}</b> full tiles · tick <b>${S.tick}</b> · ${clockText()}${S.level ? '' : ` · ${biomeAt((VIEW.x + VIEW.w / 2) / T).name}${spellAt((VIEW.x + VIEW.w / 2) / T) ? ` (${spellAt((VIEW.x + VIEW.w / 2) / T)} spell)` : ''}`}${S.weather ? ` · ${seasonName()}, day ${Math.floor(day()) + 1} · wind ${S.wind > 0.05 ? '→' : S.wind < -0.05 ? '←' : '·'}${Math.round(Math.abs(S.wind) * 10)}${S.rain > 0.05 ? ' · rain' : ''}` : ''}${S.showChunks ? ` · <b>${awake.reduce((n, v) => n + (v > 0), 0)}</b> of ${awake.length} chunks awake` : ''}`;

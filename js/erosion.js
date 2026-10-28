@@ -4,12 +4,14 @@
 // build up deltas. Over time a river cuts a valley: it wears the soil over it as well as beside and under it, and a
 // bank it has undercut slumps into it as mud, which it washes away. At its mouth, in still water, the silt sinks to
 // the bottom and settles there, and even lightly silty water lays its silt on a mud bed, so the delta grows.
-import { DIRT, H, METHANE, MUD, NSOL, SAND, SOL_SILT, W, WATER, WETDIRT } from './config.js';
+import { DIRT, H, METHANE, MUD, NSOL, SAND, SOL_O2, SOL_SILT, W, WATER, WETDIRT } from './config.js';
+import { oxygenIn } from './oxygen.js';
 import { held } from './world.js';
 import { S, drop, flux, liq, markDirty, sol, solid, typ, vel, wake } from './world.js';
 
 const ERODE = 0.004, FALL_BOOST = 3;   // chance per eroding side per erosion tick; water landing from a fall erodes more
 const SILT_PER_BLOCK = 48, STILL_TICKS = 40, SETTLE_SILT = 120, PACK = 0.002, SWAMP_GAS = 0.004, MUD_WASH = 0.04;
+const MUD_BREATH = 1, ANOXIC = 0.5;   // mud's use of oxygen; the water's oxygen (mg/L) below which mud gives methane
 const SLUMP = 0.5, BED_SILT = 24;   // a slump's chance relative to wearing; silt that settles onto a mud bed
 
 // Water that's really moving: it has had a good amount flow in lately, and it's running sideways or has fallen from
@@ -59,8 +61,8 @@ function erosionTick() {
         // still, silty water on the bottom drops its load as mud
         liq[k] = Math.max(32, (liq[k] * sol[p] / 255) | 0); typ[k] = MUD; sol.fill(0, k * NSOL, k * NSOL + NSOL); wake(k);
       }
-    } else if (t === MUD && liq[k - W] && typ[k - W] === WATER && Math.random() < SWAMP_GAS) {
-      // mud rotting under water bubbles methane up to the surface
+    } else if (t === MUD && liq[k - W] && typ[k - W] === WATER && rots(k)) {
+      // with the water's oxygen gone, mud rotting under it bubbles methane up to the surface
       let s = k - W;
       while (s >= W && liq[s - W] && typ[s - W] === WATER) s -= W;
       const top = s - W;
@@ -71,4 +73,11 @@ function erosionTick() {
   }
 }
 
-export { SLUMP, BED_SILT, SOFT, ERODE, FALL_BOOST, SILT_PER_BLOCK, STILL_TICKS, SETTLE_SILT, PACK, SWAMP_GAS, MUD_WASH, flowing, erosionTick };
+// Rot in a mud bed uses the oxygen in the water over it; true when, with that oxygen gone, it gives off swamp gas.
+function rots(k) {
+  const p = (k - W) * NSOL + SOL_O2;
+  if (Math.random() < MUD_BREATH) sol[p] = Math.min(255, sol[p] + 1);
+  return oxygenIn(k - W) < ANOXIC && Math.random() < SWAMP_GAS;
+}
+
+export { rots, SLUMP, BED_SILT, SOFT, ERODE, FALL_BOOST, SILT_PER_BLOCK, STILL_TICKS, SETTLE_SILT, PACK, SWAMP_GAS, MUD_WASH, flowing, erosionTick };

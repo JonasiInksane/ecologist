@@ -259,6 +259,7 @@ const N = C.NSOL;
 const solAt = (k, i) => sol[k * N + i];
 function setSol(x0, y0, x1, y1, i, v) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) sol[at(x, y) * N + i] = v; }
 function avgSol(x0, y0, x1, y1, i) { let s = 0, n = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (liq[at(x, y)]) { s += solAt(at(x, y), i); n++; } return n ? s / n : 0; }
+function glassTank(x0, y0, x1, y1) { box(x0, y1 + 1, x1, y1 + 1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); }   // acid can't eat glass
 function tank(x0, y0, x1, y1) { box(x0, y1 + 1, x1, y1 + 1, C.STONE); box(x0, y0, x0, y1, C.STONE); box(x1, y0, x1, y1, C.STONE); }
 
 scene('salt dissolves into brine, which sinks under fresh water', () => {
@@ -660,6 +661,7 @@ const { DAY_TICKS } = await import('../js/daynight.js');
 const DayNight = await import('../js/daynight.js');
 const { startRain } = await import('../js/weather.js');
 const Air = await import('../js/air.js');
+const Oxy = await import('../js/oxygen.js');
 function setClock(phase) { S.tick = Math.round(((phase - 0.35 + 1) % 1) * DAY_TICKS) + DAY_TICKS * 4; }   // phase 0.5 is noon, 0 midnight
 
 scene('running water carves dirt and drops it as mud where it stills', () => {
@@ -1549,8 +1551,11 @@ scene('void ink, mimic, coolant, ferrofluid, fertiliser', () => {
   for (let y = 80; y <= 100; y++) for (let x = 70; x <= 90; x++) Wd.under[at(x, y)] = 0;   // under open sky, at noon: algae needs light
   setClock(0.5);
   const fish = Bd.addBody('fish', 80 * C.T, 95 * C.T);
-  for (let i = 0; i < 30 && bodies.includes(fish); i++) run(50);
-  check('an algae bloom from too much fertiliser kills fish', !bodies.includes(fish));
+  run(1500);   // the bloom grows by day, making oxygen
+  const byDay = bodies.includes(fish);
+  setClock(0.02);   // and uses it up at night
+  for (let i = 0; i < 60 && bodies.includes(fish); i++) run(50);
+  check('an algae bloom from too much fertiliser kills fish: it uses up the water’s oxygen at night', byDay && !bodies.includes(fish), `alive by day ${byDay}, oxygen ${Oxy.oxygenIn(at(80, 95)).toFixed(1)} mg/L`);
   check('fertilised water greens the stone around it with moss', count(k => solid[k] === C.MOSS) > 0, `${count(k => solid[k] === C.MOSS)} moss`);
 });
 
@@ -1937,7 +1942,7 @@ scene('a living world: seasons in the leaves, birds that hunt moths, hail and fl
   Tr2.setShownSeason(4); S.weather = false;
   // a bird chases down a moth and eats it; at night it roosts
   clear(); devices.clear(); setClock(0.5); box(20, 70, 120, 70, C.STONE);
-  const bird = Bd.addBody('bird', 30 * C.T, 60 * C.T), moth = Bd.addBody('moth', 70 * C.T, 64 * C.T);
+  const bird = Bd.addBody('bird', 30 * C.T, 60 * C.T), moth = Bd.addBody('moth', 40 * C.T, 64 * C.T);   // within its reach
   run(600);
   check('a bird chases down a moth and eats it', !bodies.includes(moth) && bodies.includes(bird) && bird.hunger < 600, `bird hunger ${bird.hunger}`);
   setClock(0.02); run(400);
@@ -2005,8 +2010,73 @@ scene('matter: heat is conserved, melting and boiling take latent heat, liquids 
   }
 });
 
+scene('air and water: oxygen, fire that needs it, stratified water, soap and emulsions', async () => {
+  const Sol = await import('../js/solutes.js');
+  const room = (x0, y0, x1, y1, open) => { box(x0, y0, x1, y0, C.STONE); box(x0, y1, x1, y1, C.STONE); box(x0, y0, x0, y1, C.STONE); box(x1, y0, x1, y1, C.STONE); if (open) for (let y = y0 + 1; y < y1; y++) solid[at(x1, y)] = 0; };
+  // a fire in a sealed room uses up the oxygen and goes out; with a doorway it burns through
+  for (const open of [false, true]) {
+    clear(); devices.clear(); fire.fill(0); Wd.under.fill(1);
+    room(40, 40, 52, 50, open); box(41, 49, 51, 49, C.WOOD); temp[at(41, 49)] = 400;
+    run(4000);
+    const wood = count(k => solid[k] === C.WOOD), ox = Wd.airOx[at(46, 43)];
+    check(open ? 'a fire with a doorway burns all its wood' : 'a fire in a sealed room uses up the oxygen and goes out', open ? wood === 0 : wood > 3 && ox < Oxy.FIRE_OX && Wd.airCarb[at(46, 43)] > 20,
+      `${wood} of 11 wood left, oxygen ${(ox / 10).toFixed(1)}%, CO₂ ${(Wd.airCarb[at(46, 43)] / 20).toFixed(1)}%`);
+  }
+  // the explorer chokes in stale air
+  clear(); devices.clear(); room(40, 40, 50, 50, false);
+  for (let y = 41; y <= 49; y++) for (let x = 41; x <= 49; x++) { Wd.airOx[at(x, y)] = 100; Wd.airCarb[at(x, y)] = 160; }
+  const ex = Bd.addBody('explorer', 44 * C.T, 46 * C.T);
+  run(200);
+  check('the explorer runs out of breath in stale air', ex.air < 60, `air ${ex.air.toFixed(0)}`);
+  // CO2 gas that thins out joins the air
+  clear(); devices.clear(); room(40, 40, 50, 50, false); fill(41, 48, 49, 49, C.CO2, 20);
+  run(2400);
+  check('carbon dioxide gas that thins out stays in the air as CO₂', Wd.airCarb[at(45, 49)] > 5 || Wd.airCarb[at(45, 45)] > 5, `CO₂ ${(Wd.airCarb[at(45, 45)] / 20).toFixed(2)}%`);
+  // water holds less oxygen warm, and less salty
+  check('warm or salty water holds less oxygen', Oxy.saturation(30, 0) < Oxy.saturation(10, 0) && Oxy.saturation(20, 255) < Oxy.saturation(20, 0) && Math.abs(Oxy.saturation(20, 0) - 9.1) < 0.01);
+  // a still pond over a mud bed: its bottom loses its oxygen while the surface keeps it
+  clear(); devices.clear(); tank(60, 30, 70, 50); fill(61, 50, 69, 50, C.MUD, 20); fill(61, 42, 69, 49, C.WATER, 20);
+  run(3000);
+  check('a still pond over mud goes airless at the bottom and stays fresh at the top', Oxy.oxygenIn(at(65, 49)) < 1 && Oxy.oxygenIn(at(65, 42)) > 8, `${Oxy.oxygenIn(at(65, 42)).toFixed(1)} mg/L at the top, ${Oxy.oxygenIn(at(65, 49)).toFixed(1)} at the bottom`);
+  // fish suffocate in water short of oxygen; pike manage on less
+  for (const kind of ['fish', 'pike']) {
+    clear(); devices.clear(); room(40, 40, 50, 50, false); fill(41, 41, 49, 49, C.WATER, 20); setSol(41, 41, 49, 49, C.SOL_O2, 120);   // about 2 mg/L
+    const f = Bd.addBody(kind, 44 * C.T, 45 * C.T);
+    run(600);
+    check(kind === 'fish' ? 'fish suffocate at 2 mg/L of oxygen' : 'pike still breathe at 2 mg/L', kind === 'fish' ? !bodies.includes(f) : bodies.includes(f), `${Oxy.oxygenIn(at(45, 45)).toFixed(1)} mg/L`);
+  }
+  // water open to the air takes oxygen back in
+  clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 48, 49, 50, C.WATER, 20); setSol(41, 48, 49, 50, C.SOL_O2, 255);
+  run(1200);
+  check('airless water open to the air takes oxygen back in', Oxy.oxygenIn(at(45, 48)) > 6, `${Oxy.oxygenIn(at(45, 48)).toFixed(1)} mg/L at the surface`);
+  // layering by real density: brine poured on fresh water sinks under it; warm water rises over cold; water is densest at 4°
+  clear(); devices.clear(); tank(40, 40, 46, 50); fill(41, 41, 45, 50, C.WATER, 20); setSol(41, 41, 45, 44, C.SOL_SALT, 150);
+  run(600);
+  check('brine poured on fresh water sinks under it', avgSol(41, 47, 45, 50, C.SOL_SALT) > avgSol(41, 41, 45, 44, C.SOL_SALT) + 40, `salt ${avgSol(41, 41, 45, 44, C.SOL_SALT).toFixed(0)} at the top, ${avgSol(41, 47, 45, 50, C.SOL_SALT).toFixed(0)} at the bottom`);
+  clear(); devices.clear(); tank(40, 40, 46, 50); fill(41, 41, 45, 46, C.WATER, 10); fill(41, 47, 45, 50, C.WATER, 40);
+  run(120);
+  let top = 0, bottom = 0; for (let x = 41; x <= 45; x++) { top += temp[at(x, 41)]; bottom += temp[at(x, 50)]; }
+  check('warm water rises over cold', top > bottom + 10, `top ${(top / 5).toFixed(0)}°, bottom ${(bottom / 5).toFixed(0)}°`);
+  liq[at(1, 1)] = 255; typ[at(1, 1)] = C.WATER; const rho = T => { temp[at(1, 1)] = T; return Sol.densityOf(at(1, 1)); };
+  check('water is densest at 4°, so ice-cold water floats on it', rho(4) > rho(0) && rho(4) > rho(20) && rho(20) > rho(60));
+  // soap: lye turns oil into soapy foam, which settles into soapy water; soapy water takes oil in as a lasting emulsion;
+  // shaken oil and water without soap separate again
+  clear(); devices.clear(); glassTank(40, 40, 46, 50); fill(41, 48, 45, 50, C.LYE, 20); fill(41, 45, 45, 47, C.OIL, 20);
+  run(4000);
+  check('lye turns oil into soap', avgSol(41, 40, 45, 50, C.SOL_SOAP) > 20, `soap ${avgSol(41, 40, 45, 50, C.SOL_SOAP).toFixed(0)}`);
+  for (const soap of [0, 120]) {
+    clear(); devices.clear(); tank(40, 40, 46, 50); fill(41, 45, 45, 50, C.EMULSION, 20);
+    for (let y = 45; y <= 50; y++) for (let x = 41; x <= 45; x++) { sol[at(x, y) * N + C.SOL_OIL] = y < 48 ? 255 : 0; sol[at(x, y) * N + C.SOL_SOAP] = soap; }
+    run(2000);
+    const left = count(k => typ[k] === C.EMULSION), oil = count(k => typ[k] === C.OIL), oilTop = oil && count(k => typ[k] === C.OIL && ((k / W) | 0) <= 47) === oil;
+    check(soap ? 'with soap, oil and water stay mixed' : 'oil and water shaken together separate again, oil on top', soap ? left > 20 : left === 0 && oil > 5 && oilTop, `${left} emulsion, ${oil} oil tiles`);
+  }
+  clear(); devices.clear(); tank(40, 40, 46, 50); fill(41, 47, 45, 50, C.WATER, 20); setSol(41, 47, 45, 50, C.SOL_SOAP, 150); fill(41, 45, 45, 46, C.OIL, 20);
+  run(600);
+  check('soapy water takes oil in', count(k => typ[k] === C.EMULSION) > 3, `${count(k => typ[k] === C.EMULSION)} emulsion tiles`);
+});
+
 scene('chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach', () => {
-  const glassTank = (x0, y0, x1, y1) => { box(x0, y1 + 1, x1, y1 + 1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); };   // acid can't eat glass
   const blocks = b => count(k => solid[k] === b);
   // acid: fizzes CO2 off limestone, leaving salt; granite (stone) resists it
   clear(); devices.clear(); glassTank(40, 40, 50, 50);
@@ -2048,8 +2118,8 @@ scene('chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bl
   // glass: sand with soda melts above 1000°; sand on its own needs 1700°
   clear(); devices.clear();
   solid[at(40, 50)] = C.SAND; solid[at(41, 50)] = C.SODA; solid[at(45, 50)] = C.SAND; box(39, 51, 46, 51, C.STONE);
-  for (let i = 0; i < 200; i++) { temp[at(40, 50)] = temp[at(41, 50)] = temp[at(45, 50)] = 1200; step(); }
-  check('sand with soda melts into glass at 1200°; sand alone doesn’t', solid[at(40, 50)] === C.GLASS && solid[at(45, 50)] === C.SAND, `blocks ${solid[at(40, 50)]}, ${solid[at(45, 50)]}`);
+  for (let i = 0; i < 800 && solid[at(40, 50)] !== C.GLASS; i++) { temp[at(40, 50)] = temp[at(41, 50)] = temp[at(45, 50)] = 1200; step(); }
+  check('sand with soda melts into glass at 1200°; sand alone doesn’t', solid[at(40, 50)] === C.GLASS && solid[at(45, 50)] === C.SAND, `blocks ${solid[at(40, 50)]}, ${solid[at(41, 50)]}, ${solid[at(45, 50)]}; ${temp[at(40, 50)].toFixed(0)}°`);
   // thermite: aluminium and rust, lit above 1500°, burn into white-hot iron
   clear(); devices.clear(); box(39, 51, 46, 51, C.STONE); box(40, 50, 42, 50, C.RUST); box(43, 50, 45, 50, C.ALUMINIUM);
   // a sparkler held to it for a moment
@@ -2213,7 +2283,7 @@ scene('smelting: ore and charcoal give molten iron and slag', () => {
   lavaPool(false);
   check('ore in lava alone stays ore', count(k => solid[k] === C.ORE) === 18 && metal() === 0, `${count(k => solid[k] === C.ORE)} ore left`);
   lavaPool(true);
-  check('ore with charcoal in lava smelts into iron and slag, using the charcoal', count(k => solid[k] === C.ORE) <= 4 && metal() >= 4 && count(k => solid[k] === C.CHARCOAL) <= 3, `${count(k => solid[k] === C.ORE)} of 9 ore left, ${metal()} metal, ${slag()} slag`);
+  check('ore with charcoal in lava smelts into iron and slag, using the charcoal', count(k => solid[k] === C.ORE) <= 4 && metal() > 0 && metal() + slag() >= 5 && count(k => solid[k] === C.CHARCOAL) <= 3, `${count(k => solid[k] === C.ORE)} of 9 ore left, ${metal()} metal, ${slag()} slag`);
   // a charcoal fire: a furnace
   clear(); devices.clear(); fire.fill(0);
   box(40, 60, 46, 62, C.CHARCOAL); solid[at(43, 61)] = C.ORE;

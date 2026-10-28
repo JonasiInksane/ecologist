@@ -12,6 +12,7 @@ import { charged } from './power.js';
 import { hex, pack } from './util.js';
 import { S, bodies, drop, held, liq, solid, temp, typ, under, vel } from './world.js';
 import { POWDER, THIN } from './powders.js';
+import { breatheAir, stifling } from './oxygen.js';
 
 
 
@@ -279,9 +280,11 @@ function hurt(b, n) {
 // Air: liquid over the explorer's face uses it up (about 6 s from full), open air refills it fast; smoke and
 // poison at the face use it up too, while oxygen can be breathed. Out of air, health drains. Health slowly comes back
 // after 3 s without harm.
+const BREATH = 1 / 30;   // a breath takes a little oxygen from the air at the face and gives back CO2
 function breathe(b) {
   const k = Math.min(H - 1, Math.max(0, ((b.y + 2) / T) | 0)) * W + Math.min(W - 1, Math.max(0, ((b.x + b.w / 2) / T) | 0));
-  const t = liq[k] ? typ[k] : 0, choking = liq[k] > 96 && t !== OXYGEN && (LIQ[t].grav > 0 || t === SMOKE || t === POISON || t === CHLORINE);
+  const t = liq[k] ? typ[k] : 0, choking = (liq[k] > 96 && t !== OXYGEN && (LIQ[t].grav > 0 || t === SMOKE || t === POISON || t === CHLORINE)) || stifling(k);   // and air with too little oxygen or too much CO2
+  if (Math.random() < BREATH) breatheAir(k);
   b.air = Math.max(0, Math.min(100, (b.air ?? 100) + (choking ? -0.28 : 1.5)));
   if (choking && liq[k] && !LIQ[t].gas && Math.random() < 0.03) bubbleAt(b.x + (b.face > 0 ? b.w : 0), b.y + 2);   // breathing out
   if (!b.air) hurt(b, 0.4);

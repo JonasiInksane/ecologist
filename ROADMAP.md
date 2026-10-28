@@ -687,6 +687,11 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Phase 21: Air and water
+
+Oxygen and CO₂ in every pocket of air and dissolved in water, fires that need oxygen, fish that need it, layering by
+real density, soap and emulsions. What was built: `CHEMISTRY.md` section 7.
+
 ### Phase 20: Reactions
 
 A reaction engine with real chemistry as rules (`js/chem.js`), new materials (lime, charcoal, ash, metals, chlorine,

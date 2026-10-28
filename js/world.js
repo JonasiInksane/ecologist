@@ -33,6 +33,10 @@ const heatAwake = new Uint8Array(CW * CHH);   // heat ticks left before each chu
 const temp = new Float32Array(W * H).fill(AMBIENT), temp2 = new Float32Array(W * H);   // tile temperatures
 // Heat a tile has taken in (+) or given out (−) part-way through melting, boiling, freezing or condensing (js/heat.js)
 const latent = new Float32Array(W * H);
+// The air in each empty tile: oxygen in tenths of a percent (210 is normal air) and carbon dioxide in twentieths of a
+// percent (1 is normal); js/oxygen.js keeps them
+const AIR_OX = 210, AIR_CARB = 1;
+const airOx = new Uint8Array(W * H).fill(AIR_OX), airCarb = new Uint8Array(W * H).fill(AIR_CARB);
 const drop = new Uint8Array(W * H);   // rows the liquid in each tile has fallen without stopping (nitro goes off on a hard landing)
 const vel = new Float32Array(W * H);   // sideways speed of each tile's liquid (js/momentum.js)
 const afloat = new Uint8Array(W * H);   // 1 on ice that froze on water: lake ice, which floats (js/materials.js)
@@ -77,4 +81,4 @@ function redraw(x, y) {
 // How much liquid a melting block turns into: what it froze from, or a full tile for placed and generated blocks.
 function meltAmount(k) { const a = held[k] || 255; held[k] = 0; return a; }
 
-export { solid, liq, typ, stamp, under, fall, salign, dirty, dirtyList, S, devices, fire, deco, VIEW, CW, CHH, AWAKE_TICKS, awake, HEAT_AWAKE, heatAwake, heatWake, temp, temp2, latent, drop, vel, flux, afloat, held, meltAmount, sol, pumps, bodies, reduceMotion, wake, wakeAll, markDirty, redraw };
+export { solid, liq, typ, stamp, under, fall, salign, dirty, dirtyList, S, devices, fire, deco, VIEW, CW, CHH, AWAKE_TICKS, awake, HEAT_AWAKE, heatAwake, heatWake, temp, temp2, latent, AIR_OX, AIR_CARB, airOx, airCarb, drop, vel, flux, afloat, held, meltAmount, sol, pumps, bodies, reduceMotion, wake, wakeAll, markDirty, redraw };

@@ -7,7 +7,7 @@ import { hex } from './util.js';
 import { CO2, LYE } from './config.js';
 import { NLIQ } from './config.js';
 import { COOLANT, FERRO, FERT, LIGHT, MIMIC, VOID } from './config.js';
-import { BLEACH, CHLORINE, HYDROGEN, MSLAG, OXYGEN } from './config.js';
+import { BLEACH, CHLORINE, EMULSION, HYDROGEN, MSLAG, OXYGEN } from './config.js';
 import { LRHO } from './matter.js';
 
 
@@ -60,6 +60,7 @@ const LIQ = [
   liquid({ name: 'molten slag', grav: 1,  visc: 5, minSpread: 24, minDiff: 4, dens: 3.5, surf: '#ffd890', body: '#e07a30', deep: '#8a3a1a', sa: 0.97, ba: 0.93, da: 0.97, flow: 0.3, emit: [0.9, 0.45, 0.15], ldecay: 0.7 }),
   liquid({ name: 'chlorine',    grav: 1,  visc: 1, minSpread: 3,  minDiff: 1, dens: 0, surf: '#f4ffb8', body: '#d4e85a', deep: '#a8b830', sa: 0.4,  ba: 0.25, da: 0.35, flow: 1,   emit: null,              ldecay: 0.9, gas: true }),
   liquid({ name: 'bleach',      grav: 1,  visc: 1, minSpread: 6,  minDiff: 2, dens: 0, surf: '#fbfff0', body: '#e4edd2', deep: '#b4c2a2', sa: 0.88, ba: 0.5,  da: 0.78, flow: 1,   emit: null,              ldecay: 0.88 }),
+  liquid({ name: 'oily water', grav: 1, visc: 2, minSpread: 8, minDiff: 2, dens: 0, surf: '#fbf6e6', body: '#d8cfb4', deep: '#a89c7c', sa: 0.92, ba: 0.8,  da: 0.88, flow: 0.8, emit: null, ldecay: 0.6 }),
 ];
 // Thickness that changes with temperature: below each limit (°) the liquid updates every Nth tick instead of its usual
 // visc. Honey runs when warm and stiffens in the cold, oil thickens in the cold, and lava, molten metal and slag slow
@@ -86,7 +87,7 @@ const HEAT = { [WATER]: [0.05, 20], [LAVA]: [0.004, 1150], [HONEY]: [0.03, 20], 
   [MUD]: [0.04, 20], [TONIC]: [0.05, 20], [FOAM]: [0.05, 20],
   [STORM]: [0.05, 20], [MOLTEN]: [0.006, 1600], [SMOKE]: [0.1, 120], [METHANE]: [0.12, 20], [POISON]: [0.08, 20], [NITRO]: [0.05, 20], [LYE]: [0.05, 20], [CO2]: [0.1, 20],
   [VOID]: [0.05, 20], [MIMIC]: [0.05, 20], [COOLANT]: [0.3, 5], [FERRO]: [0.05, 20], [LIGHT]: [0.05, 20], [FERT]: [0.05, 20],
-  [HYDROGEN]: [0.15, 20], [OXYGEN]: [0.1, 20], [MSLAG]: [0.006, 1450], [CHLORINE]: [0.1, 20], [BLEACH]: [0.05, 20] };
+  [HYDROGEN]: [0.15, 20], [OXYGEN]: [0.1, 20], [MSLAG]: [0.006, 1450], [CHLORINE]: [0.1, 20], [BLEACH]: [0.05, 20], [EMULSION]: [0.05, 20] };
 for (const t in HEAT) LIQ[t].paintT = HEAT[t][1];
 
 // Real densities (g/cm³, js/matter.js): one per liquid, for both which liquid sinks under which (dens) and how bodies

@@ -9,10 +9,10 @@ import { parts } from './particles.js';
 import { pipeShow, pipeTick } from './pipes.js';
 import { plants } from './plants.js';
 import { resetPressure } from './pressure.js';
-import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
+import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, AIR_OX, AIR_CARB, airOx, airCarb, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
 
 const ARRAYS = {
-  solid, liq, typ, under, fire, deco, temp, latent, drop, vel, held, afloat, flux, sol, pipeShow, pipeTick,
+  solid, liq, typ, under, fire, deco, temp, latent, airOx, airCarb, drop, vel, held, afloat, flux, sol, pipeShow, pipeTick,
   colTemp, colHum, colWind, colSwing, colBiome, surface, shade, drought, ambient, hum, cloud, u, v, open, cellT,
 };
 const LISTS = { pumps, bodies, plants, regions, rivers };   // arrays of plain objects, refilled in place
@@ -38,6 +38,7 @@ function restore(snap) {
   for (const [name, a] of Object.entries(ARRAYS)) if (snap.arrays[name]) a.set(snap.arrays[name]);
   if (!snap.arrays.afloat) afloat.fill(0);   // saved before lake ice floated
   if (!snap.arrays.latent) latent.fill(0);   // saved before latent heat
+  if (!snap.arrays.airOx) { airOx.fill(AIR_OX); airCarb.fill(AIR_CARB); }   // saved before the air had oxygen in it
   for (const [name, l] of Object.entries(LISTS)) l.splice(0, l.length, ...structuredClone(snap.lists[name] || []));
   devices.clear();
   for (const [k, d] of structuredClone(snap.devices)) devices.set(k, d);

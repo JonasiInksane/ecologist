@@ -11,7 +11,7 @@ import { CO2, LYE, SOL_ACID, SOL_BASE } from './config.js';
 import { SODA } from './config.js';
 import { COOLANT, FERRO, FERT, MIMIC, SOL_FERT, VOID } from './config.js';
 import { BLEACHED, CORAL, FUSE, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from './config.js';
-import { BLEACH, HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SOL_ALGAE, SUGAR } from './config.js';
+import { EMULSION, SOL_OIL, SOL_SOAP, BLEACH, HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SOL_ALGAE, SUGAR } from './config.js';
 
 
 
@@ -25,6 +25,7 @@ import { BLEACH, HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SOL_ALGAE, SUGAR } from '.
 
 
 const NITRO_DROP = 6;   // rows of free fall that set nitro off when it lands
+const SOAPY = 20;   // soap in water (or an emulsion) that lets oil mix in and stay mixed
 
 const SWAP = { swap: true };
 const REACT = new Array(NLIQ * NLIQ).fill(null);
@@ -57,7 +58,7 @@ setR(ACID, LYE, { fn(k, o) {
   for (const a of [k, o]) { typ[a] = WATER; temp[a] += 60; sol.fill(0, a * NSOL, a * NSOL + NSOL); sol[a * NSOL + SOL_SALT] = 60; }
   puff(o, 'steam'); return true;
 } });
-setR(LYE, OIL, { fn(k, o, t) { const f = t === OIL ? k : o; typ[f] = FOAM; puff(f, 'fizz'); return f === k; } });   // lye turns oil into soapy foam
+setR(LYE, OIL, { fn(k, o, t) { const f = t === OIL ? k : o; typ[f] = FOAM; clearSol(f); sol[f * NSOL + SOL_SOAP] = 200; puff(f, 'fizz'); return f === k; } });   // lye turns oil into soap: a soapy foam
 setR(LYE, SLIME, { fn(k, o, t) { const s = t === SLIME ? k : o; liq[s] = 0; typ[s] = 0; puff(s, 'fizz'); return s === k; } });
 // mimic becomes whatever liquid it touches first
 for (let t = 1; t < LIQ.length; t++) if (t !== MIMIC) setR(MIMIC, t, { fn(k, o, t2) { const m = t2 === MIMIC ? k : o, other = m === k ? o : k; typ[m] = typ[other]; wake(m); return false; } });
@@ -125,6 +126,7 @@ for (const w of [WATER, STORM]) setR(w, MSLAG, { fn(k, o, t) {
 // lava lights methane and hydrogen; nitro sinks under water, where it is safe from fire
 for (const fuel of [METHANE, HYDROGEN]) setR(fuel, LAVA, { fn(k, o, t) { temp[t === fuel ? k : o] = 1000; return false; } });
 setR(NITRO, WATER, SWAP);
+setR(EMULSION, WATER, SWAP); setR(EMULSION, OIL, SWAP);   // oily water floats on water and under oil
 // water washes smoke and poison gas out of the air: they dissolve into it
 for (const gas of [SMOKE, POISON]) setR(gas, WATER, { fn(k, o, t) {
   const g = t === gas ? k : o;
@@ -244,10 +246,14 @@ function blockEffects(x, y, k, t, a) {
     for (let i = 0; i < 4 && !zap; i++) { const o = nbr(x, y, i); zap = o >= 0 && charged(o); }
     if ((landed && drop[k] >= NITRO_DROP) || zap) { explode(k); return -1; }
   } else if (t === FOAM) {
-    // foam slowly separates back into oil and water, which then settle into layers
-    if (Math.random() < 0.002) { typ[k] = Math.random() < 0.5 ? OIL : WATER; clearSol(k); wake(k); return -1; }
+    // foam slowly separates: froth churned from oil and water back into oil and water, which settle into layers; foam
+    // from lye and oil (soap) into soapy water
+    if (Math.random() < 0.002) {
+      const soap = sol[k * NSOL + SOL_SOAP];
+      typ[k] = soap >= SOAPY ? WATER : Math.random() < 0.5 ? OIL : WATER; clearSol(k); if (typ[k] === WATER) sol[k * NSOL + SOL_SOAP] = soap; wake(k); return -1;
+    }
   }
   return a;
 }
 
-export { fizz, NITRO_DROP, SWAP, REACT, setR, solidify, react, reactAll, blockEffects };
+export { SOAPY, fizz, NITRO_DROP, SWAP, REACT, setR, solidify, react, reactAll, blockEffects };

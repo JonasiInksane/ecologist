@@ -25,7 +25,7 @@ import { S, held, liq, markDirty, sol, solid, temp, typ, wake } from './world.js
 const BASE_AT = 40;   // and CORRODE_AT (js/solutes.js) for acid
 // How fast metal under water rusts (per contact per chemistry tick), faster in brine or acid, and how much slower it is
 // with no air at the metal (only what's dissolved in the water reaches it).
-const RUST_RATE = 0.0003, SUBMERGED = 0.15, PATINA_RATE = 0.00004;
+const RUST_RATE = 0.0003, SUBMERGED = 0.15, PATINA_RATE = 0.0002;
 const LIQUID_KINDS = { acid: 0, base: 1, water: 2 };   // then 3 + liquid id
 const kindOf = w => typeof w === 'string' ? LIQUID_KINDS[w] : 3 + w;
 const contact = Array.from({ length: 3 + NLIQ }, () => new Array(NBLOCK).fill(null));   // [kind][block] → rules
@@ -71,11 +71,11 @@ rule({ name: 'patina', with: 'water', block: COPPER, rate: PATINA_RATE, wetAir: 
 rule({ name: 'mortar sets in CO2', with: CO2, block: LIME, rate: 0.03, to: LIMESTONE, uses: 40 });
 rule({ name: 'mortar sets in air', alone: true, block: LIME, air: true, rate: 0.0008, to: LIMESTONE });
 // Heat: limestone and coral burn to quicklime above 825°, giving off CO2 and taking in heat; slaked lime dries back to
-// quicklime above 550°; baking soda breaks down above 150°; rust dries to red iron oxide (ore) above 200°; wood shut
+// quicklime above 550°; baking soda breaks down into soda ash above 150°; rust dries to red iron oxide (ore) above 200°; wood shut
 // off from air chars into charcoal above 300°.
 rule({ name: 'lime kiln', alone: true, block: [LIMESTONE, CORAL, BLEACHED], above: 825, rate: 0.05, to: QUICKLIME, gas: [CO2, 160], heat: -300 });
 rule({ name: 'slaked lime dries', alone: true, block: LIME, above: 550, rate: 0.05, to: QUICKLIME, gas: [STEAM, 60], heat: -100 });
-rule({ name: 'baking soda breaks down', alone: true, block: SODA, above: 150, rate: 0.05, to: AIR, gas: [CO2, 120], heat: -50, fx: 'fizz' });
+rule({ name: 'baking soda breaks down', alone: true, block: SODA, above: 150, rate: 0.05, to: ASH, gas: [CO2, 120], heat: -50, fx: 'fizz' });   // into soda ash, the glassmaker's flux (ash stands for it, as for wood ash)
 rule({ name: 'rust dries', alone: true, block: RUST, above: 200, rate: 0.05, to: ORE, gas: [STEAM, 40] });
 rule({ name: 'charcoal burning', alone: true, block: WOOD, above: 300, sealed: true, rate: 0.03, to: CHARCOAL, gas: [SMOKE, 60] });
 // Glass: sand melts with soda or ash as a flux above 1000°, on its own only above 1700°.

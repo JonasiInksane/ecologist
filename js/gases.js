@@ -5,7 +5,8 @@
 // so where a rising and a sinking gas meet there's a mixed band rather than a clean line (and hydrogen or methane
 // mixed with oxygen is what explodes, js/fire.js).
 import { H, METHANE, CHLORINE, POISON, SMOKE, W } from './config.js';
-import { liq, temp, typ, under, wake } from './world.js';
+import { airCarb, airOx, liq, temp, typ, under, wake } from './world.js';
+import { stir } from './oxygen.js';
 import { LIQ } from './liquids.js';
 import { CO2, HYDROGEN, OXYGEN } from './config.js';
 
@@ -25,6 +26,8 @@ function gasTick() {
     const n = Math.floor(f) + (Math.random() < f % 1 ? 1 : 0);
     if (!n) continue;
     liq[k] = Math.max(0, liq[k] - n);
+    if (t === CO2) { airCarb[k] = Math.min(255, airCarb[k] + n * 8); stir(k); }   // thinning out into the air: a unit of gas is 0.4% of a tile
+    else if (t === OXYGEN) { airOx[k] = Math.min(255, airOx[k] + n * 4); stir(k); }
     if (!liq[k]) typ[k] = 0;
   }
 }

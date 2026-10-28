@@ -10,6 +10,7 @@ import { clearSol } from './solutes.js';
 import { fire, held, liq, markDirty, solid, temp, typ, wake } from './world.js';
 import { COOLANT, FUSE, WOOL } from './config.js';
 import { ASH, CHARCOAL, CHLORINE, HYDROGEN, OXYGEN, STEAM } from './config.js';
+import { breatheAir, burnable } from './oxygen.js';
 
 
 
@@ -25,16 +26,19 @@ IGNITE_BLOCK[WOOL] = 570; BURN_TIME[WOOL] = 120;
 IGNITE_BLOCK[FUSE] = 120; BURN_TIME[FUSE] = 10;   // a fuse burns fast and lights the next fuse tile in any direction
 IGNITE_BLOCK[LEAF] = 230;
 IGNITE_BLOCK[CHARCOAL] = 350; BURN_TIME[CHARCOAL] = 255;   // charcoal glows a long time, hotter and with little smoke
+const BURN_DRAW = 2;   // oxygen (tenths of a percent) a flame takes from each tile of air beside it per tick
 const CHARCOAL_FLAME = 1300, ASH_LEFT = 0.4, ASH_PINCH = 48;   // burnt wood leaves a pinch of ash, sometimes BURN_TIME[LEAF] = 30;
 const OIL_IGNITE = 250, OIL_SMOKE = 200, METHANE_IGNITE = 537, HYDROGEN_IGNITE = 500, FLAME_TEMP = 1000, RADIANT = 0.04, FLASH = 0.6;   // a flash heats the gas beside it past its ignition point, so the flame runs on
 const FED = 4;   // oxygen a fire uses up per tick from each oxygen tile it touches, burning hotter for it
 const DOUSERS = new Set([WATER, FROST, BLOOM, COOLANT]);
 
-// Open air next to the tile.
+// Air with enough oxygen to burn in next to the tile (15% or more), or oxygen gas.
 function exposed(x, y) {
-  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && !solid[n] && (!liq[n] || typ[n] === OXYGEN)) return true; }
+  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && (burnable(n) || (liq[n] && typ[n] === OXYGEN))) return true; }
   return false;
 }
+// Burning takes oxygen from the air round the flame and gives back carbon dioxide (and the water in the smoke).
+function draw(x, y, n) { for (let d = 0; d < 4; d++) { const o = nbr(x, y, d); if (o >= 0) breatheAir(o, n); } }
 // The first neighbouring tile holding oxygen (or, for hydrogen, chlorine, which it explodes with just the same), or -1.
 function oxygenBeside(x, y, h) {
   for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] >= 16 && (typ[n] === OXYGEN || (h && typ[n] === CHLORINE))) return n; }
@@ -46,6 +50,7 @@ function doused(x, y) {
   return false;
 }
 function burn(k, x, y) {
+  draw(x, y, BURN_DRAW);
   temp[k] = Math.max(temp[k], solid[k] === CHARCOAL ? CHARCOAL_FLAME : FLAME_TEMP);
   wake(k);
   for (let d = 0; d < 3; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * RADIANT; }   // flames heat up and sideways
@@ -85,7 +90,7 @@ function fireTick() {
       if (h) {
         // pure hydrogen burns in a flash into hot steam (the water it was split from), heating its neighbours hard
         if (temp[k] > HYDROGEN_IGNITE && !doused(x, y)) {
-          fire[k] = 1; typ[k] = STEAM; temp[k] = 400; wake(k);
+          fire[k] = 1; typ[k] = STEAM; temp[k] = 400; wake(k); draw(x, y, BURN_DRAW);
           for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * FLASH; }
           if (Math.random() < 0.5) puff(k, 'flame');
         } else fire[k] = 0;
@@ -93,7 +98,7 @@ function fireTick() {
       }
       // burning methane flashes through the cloud: each burning tile heats its neighbours hard and is gone in a few ticks
       if (temp[k] > METHANE_IGNITE && !doused(x, y)) {
-        fire[k] = 1; temp[k] = FLAME_TEMP; wake(k);
+        fire[k] = 1; temp[k] = FLAME_TEMP; wake(k); draw(x, y, BURN_DRAW);
         for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * FLASH; }
         if (Math.random() < 0.5) puff(k, 'flame');
         liq[k] = Math.max(0, liq[k] - 64);

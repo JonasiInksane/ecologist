@@ -11,6 +11,7 @@ import { heatTick } from './heat.js';
 import { LIQ, VISC_TEMP, viscAt } from './liquids.js';
 import { AIR_CAP, LCAP } from './matter.js';
 import { chemTick } from './chem.js';
+import { airTickOx } from './oxygen.js';
 import { momentumTick } from './momentum.js';
 import { puff, splash } from './particles.js';
 import { pipesTick } from './pipes.js';
@@ -19,7 +20,7 @@ import { powderTick } from './powders.js';
 import { pressureOff, pressureTick } from './pressure.js';
 import { pumpTick } from './pumps.js';
 import { REACT, SWAP, blockEffects, reactAll } from './reactions.js';
-import { carrySol, heavy, soluteTick, swapSol } from './solutes.js';
+import { carrySol, densityOf, soluteTick, swapSol } from './solutes.js';
 import { weatherTick } from './weather.js';
 import { CW, S, awake, drop, flux, liq, solid, stamp, temp, typ, vel, wake } from './world.js';
 import { materialsTick } from './materials.js';
@@ -36,6 +37,7 @@ import { materialsTick } from './materials.js';
 
 
 const CONVECT = 8;   // how much warmer liquid must be than the liquid above it to rise through it
+const LAYER = 0.0004;   // g/cm³ of difference that makes a layer turn over (about 2° near room temperature)
 // Moving liquid carries its temperature, what's dissolved in it and its momentum; for heat, an empty tile counts as a
 // little air.
 // Liquid moving into a tile mixes its heat with what's there: liquid by amount, an empty tile's air by its (small)
@@ -80,8 +82,9 @@ function step() {
               drop[b] = Math.max(ba ? drop[b] : 0, Math.min(255, drop[k] + 1)); fell = true;
               if (g < 0) stamp[b] = S.tick;   // rows above run later this tick; don't move it twice
               else if (ba > 0 && mv > 24 && (y + 2 >= H || solid[b + W] || liq[b + W] >= 250) && Math.random() < 0.04) splash(x, y + 1, t, ba + mv);
-            } else if (g > 0 && stamp[b] !== S.tick && Math.random() < 0.5 && (heavy(k) > heavy(b) + 16 || temp[b] > temp[k] + CONVECT)) {
-              // saltier or sweeter liquid sinks through the fresher liquid under it, and warmer liquid rises (convection)
+            } else if (g > 0 && stamp[b] !== S.tick && Math.random() < 0.5 && densityOf(k) > densityOf(b) + LAYER) {
+              // denser liquid sinks through lighter liquid of the same kind under it: saltier or sweeter water, and
+              // water nearer 4° (convection; a cooling lake turns over)
               swapSol(k, b);
               const tk = temp[k]; temp[k] = temp[b]; temp[b] = tk;
               const vk = vel[k]; vel[k] = vel[b]; vel[b] = vk;
@@ -147,6 +150,7 @@ function step() {
   if ((S.tick & 15) === 5) plantTick();
   if ((S.tick & 3) === 2) materialsTick();
   if ((S.tick & 3) === 3) chemTick();
+  if ((S.tick & 3) === 1) airTickOx();
   for (let i = 0; i < awake.length; i++) if (awake[i]) awake[i]--;
 }
 

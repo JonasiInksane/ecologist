@@ -3,18 +3,23 @@
 import { CRISP, FROST, H, NSOL, SALT, SOL_BLUE, SOL_ESSENCE, SOL_RED, SOL_SALT, SOL_SILT, SOL_SUGAR, SOL_YELLOW, TONIC, W, WATER } from './config.js';
 import { puff } from './particles.js';
 import { liq, markDirty, sol, solid, temp, typ, wake } from './world.js';
+import { vel } from './world.js';
 import { GEM, SODA, SOL_ACID, SOL_BASE, CO2 } from './config.js';
 import { ACIDITY } from './liquids.js';
 import { S, flux, held, meltAmount } from './world.js';
 import { MOSS, SOL_FERT, STONE } from './config.js';
 import { nbr } from './pumps.js';
-import { CHLORINE, LIGHT, METAL, RUST, SOL_ALGAE, SOL_METAL, SUGAR } from './config.js';
+import { CHLORINE, LIGHT, METAL, RUST, SOL_ALGAE, SOL_METAL, SOL_O2, SUGAR } from './config.js';
+import { surfaceOx } from './oxygen.js';
+import { LRHO } from './matter.js';
+import { EMULSION, OIL, SOL_OIL, SOL_SOAP, STORM } from './config.js';
+import { SOAPY } from './reactions.js';
 const DISSOLVE = 24;   // powder grains water dissolves at a time
 import { sunHeight } from './daynight.js';
 import { under } from './world.js';
 
-const SOL_NAMES = ['salt', 'sugar', 'essence', 'red ink', 'yellow ink', 'blue ink', 'silt', 'acid', 'alkali', 'fertiliser', 'algae', 'metal salts'];
-const DIFFUSE = [0.01, 0.01, 0.1, 0.12, 0.12, 0.12, 0.01, 0.08, 0.08, 0.05, 0.03, 0.01];   // share of a concentration difference that evens out per solute tick
+const SOL_NAMES = ['salt', 'sugar', 'essence', 'red ink', 'yellow ink', 'blue ink', 'silt', 'acid', 'alkali', 'fertiliser', 'algae', 'metal salts', 'oxygen missing', 'soap', 'oil'];
+const DIFFUSE = [0.01, 0.01, 0.1, 0.12, 0.12, 0.12, 0.01, 0.08, 0.08, 0.05, 0.03, 0.01, 0.005, 0.05, 0.05];   // share of a concentration difference that evens out per solute tick
 // Brewing: a water tile holding at least `need` of each solute, inside the temperature range, slowly turns into `makes`.
 const RECIPES = [
   { name: 'tonic', need: { [SOL_SUGAR]: 40, [SOL_ESSENCE]: 40 }, minT: 80, maxT: Infinity, makes: TONIC, fx: 'spark' },
@@ -35,6 +40,27 @@ function swapSol(a, b) {
 }
 // Salt, sugar and silt make a liquid heavier, so brine, syrup and muddy water sink under fresher water.
 function heavy(k) { return sol[k * NSOL + SOL_SALT] + sol[k * NSOL + SOL_SUGAR] + sol[k * NSOL + SOL_SILT]; }
+// A tile's real density (g/cm³): its liquid's, plus what's dissolved in it (saturated brine is 1.2, thick syrup 1.33),
+// and changed by temperature: water is densest at 4°, so both warmer and colder water floats on it; other liquids
+// expand as they warm. Same liquid over same liquid, the denser sinks (js/sim.js): brine under fresh water, warm water
+// over cold, and in autumn the cooling surface turns a lake over.
+// Oil beside water mixes into it as an emulsion (both tiles become oily water, each remembering how much of it was oil)
+// where the water is soapy, or where they're churned together fast. Without soap it separates again (js/reactions.js).
+function emulsify(k, x, p) {
+  const soapy = sol[p + SOL_SOAP] >= SOAPY;
+  if (!soapy && Math.abs(vel[k]) < 1.5) return;   // shaken hard
+  if (Math.random() > 0.05) return;
+  const o = nbr(x, (k / W) | 0, (Math.random() * 4) | 0);
+  if (o < 0 || !liq[o] || typ[o] !== OIL) return;
+  typ[k] = EMULSION; sol[p + SOL_OIL] = 0;
+  typ[o] = EMULSION; clearSol(o); sol[o * NSOL + SOL_SOAP] = sol[p + SOL_SOAP]; sol[o * NSOL + SOL_OIL] = 255;
+  wake(k); wake(o);
+}
+function densityOf(k) {
+  const t = typ[k], T = temp[k], p = k * NSOL;
+  const base = t === WATER || t === STORM ? LRHO[t] * (1 - 6.8e-6 * (T - 4) * (T - 4)) : LRHO[t] * (1 - 0.0005 * (T - 20));
+  return base + (sol[p + SOL_SALT] * 0.2 + sol[p + SOL_SUGAR] * 0.33 + sol[p + SOL_SILT] * 0.3 + sol[p + SOL_METAL] * 0.1) / 255;
+}
 function addSol(k, i, n) { const p = k * NSOL + i; sol[p] = Math.min(255, sol[p] + n); }
 
 function soluteTick() {
@@ -42,6 +68,15 @@ function soluteTick() {
   for (let k = 0; k < W * H; k++) {
     if (!liq[k]) continue;
     const t = typ[k], x = k % W, p = k * NSOL;
+    if (t === EMULSION) {
+      // oil and water shaken together separate again within a minute or so, each drop back into whichever it mostly
+      // was; soap holds them together
+      if (sol[p + SOL_SOAP] < SOAPY && Math.random() < 0.016) {
+        const oily = sol[p + SOL_OIL] >= 128, soap = sol[p + SOL_SOAP];
+        typ[k] = oily ? OIL : WATER; clearSol(k); if (!oily) sol[p + SOL_SOAP] = soap; wake(k);
+      }
+      continue;
+    }
     if (t === WATER) {
       // water dissolves the salt, sugar and crisp honey (caramel) it touches, a little at a time: a powder's grains
       // go into the water as so much more salt or sugar (more concentrated in less water); caramel by whole blocks
@@ -58,7 +93,7 @@ function soluteTick() {
         markDirty(o % W, (o / W) | 0);
       }
       for (const r of RECIPES) if (brews(k, r) && Math.random() < 0.05) { typ[k] = r.makes; clearSol(k); wake(k); puff(k, r.fx); break; }
-      if (typ[k] === WATER) chemistry(k, x, p);
+      if (typ[k] === WATER) { surfaceOx(k, p); chemistry(k, x, p); emulsify(k, x, p); }
     }
     // spread into the tile to the right and the one below when they hold the same liquid
     if (x < W - 1 && liq[k + 1] && typ[k + 1] === t) diffuse(p, p + NSOL);
@@ -114,6 +149,8 @@ function lit(k, x) {
 // in four when no chance below comes up (one roll serves them all).
 function algae(k, x, p) {
   const a = sol[p + SOL_ALGAE], fert = sol[p + SOL_FERT];
+  // algae make oxygen in the light and use it in the dark, so a thick bloom crashes the water's oxygen at night
+  if (a) { const lightNow = lit(k, x) && temp[k] >= ALGAE_COLD; if (Math.random() < a / (lightNow ? 250 : 500)) sol[p + SOL_O2] = lightNow ? Math.max(0, sol[p + SOL_O2] - 1) : Math.min(255, sol[p + SOL_O2] + 1); }
   if (!a && fert < FED_AT) { if (!under[k] && daylight && Math.random() < SPORE) sol[p + SOL_ALGAE] = 2; return; }
   const r = Math.random();
   if (r >= 0.25) return;
@@ -173,4 +210,4 @@ function solTint(k) {
   return [cr / wsum, cg / wsum, cb / wsum, Math.min(0.85, wsum)];
 }
 
-export { ALGAE_COLD, ALGAE_COOL, daylight, ALGAE_WILD, ALGAE_CROWDED, SPORE, FED_AT, lit, algae, CORRODE_AT, FIZZ_AT, SATURATED, STILL, chemistry, phOf, SOL_NAMES, DIFFUSE, RECIPES, mixSol, carrySol, clearSol, copySol, swapSol, heavy, addSol, soluteTick, diffuse, brews, RYB, inkColor, TINTS, solTint };
+export { ALGAE_COLD, ALGAE_COOL, daylight, ALGAE_WILD, ALGAE_CROWDED, SPORE, FED_AT, lit, algae, CORRODE_AT, FIZZ_AT, SATURATED, STILL, chemistry, phOf, SOL_NAMES, DIFFUSE, RECIPES, mixSol, carrySol, clearSol, copySol, swapSol, heavy, densityOf, addSol, soluteTick, diffuse, brews, RYB, inkColor, TINTS, solTint };

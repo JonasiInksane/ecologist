@@ -17,14 +17,22 @@ import { addSol } from './solutes.js';
 import { sunHeight } from './daynight.js';
 import { LIQ } from './liquids.js';
 import { AIR, LEAF } from './config.js';
+import { FISH_GASPS, PIKE_GASPS, breatheAir, breatheWater, oxygenIn, stifling } from './oxygen.js';
 import { S, markDirty } from './world.js';
 
 const MAX_OF_KIND = 30, STRANDED = 400, COLD = 900, SPLIT_MASS = 255;
-const WELL_FED = 1200, BITE = 2, SMOTHER = 120, ROT = 60;
+const WELL_FED = 1200, BITE = 2, ROT = 60;
+const FISH_BREATH = 0.001, SUFFOCATE = 300, AIR_GONE = 300;   // mg/L of oxygen a fish uses a tick; ticks it lasts without enough
 const PIKE_MAX = 6, PIKE_STARVE = 7200, PIKE_DIGEST = 1200, HUNT_RANGE = 48, FLEE_RANGE = 32;   // ticks; pixels
 const BIRD_MAX = 8, BIRD_STARVE = 14400, BIRD_SEEK = 120, BIRD_COLD = -25, BIRD_FROZEN = 1800;   // BIRD_SEEK in pixels
 const MOTH_MAX = 20, MOTH_STARVE = 10800, MOTH_REST = 5, MOTH_COLD = -20, MOTH_FROZEN = 1200, MOTH_HOT = 60, MOTH_SEEK = 16, MOTH_EAT = 0.03, MOTH_GIVE_UP = 300;   // MOTH_SEEK in tiles
 
+// Moths and birds breathe the air they're in: false once they've choked on stale air too long.
+function airless(b, k) {
+  if (Math.random() < 0.02) breatheAir(k);
+  b.choke = stifling(k) ? (b.choke || 0) + 1 : 0;
+  return b.choke <= AIR_GONE;
+}
 function centre(b) { return Math.min(H - 1, Math.max(0, ((b.y + b.h / 2) / T) | 0)) * W + Math.min(W - 1, Math.max(0, ((b.x + b.w / 2) / T) | 0)); }
 function howMany(kind) { let n = 0; for (const b of bodies) if (b.kind === kind) n++; return n; }
 // Swims about in its liquid: keeps a heading, turns at walls and now and then, and stays under the surface.
@@ -50,9 +58,13 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
   if (b.kind === 'fish' || b.kind === 'pike') {
     if (s.lava || (liq[k] && Tk > 45)) return die(b, k, 'steam');   // hot water (not hot air: a fish mid-leap is fine)
     const algae = liq[k] && typ[k] === WATER ? sol[k * NSOL + SOL_ALGAE] : 0;
-    if (algae >= SMOTHER) return die(b, k, 'fizz');   // an algae bloom starves the water of oxygen
     b.hunger = (b.hunger || 0) + 1;
     const pike = b.kind === 'pike';
+    if (liq[k] && typ[k] === WATER) {   // breathing: it uses the water's oxygen, and suffocates where there's too little
+      breatheWater(k, pike ? FISH_BREATH * 2 : FISH_BREATH);
+      b.gasp = oxygenIn(k) < (pike ? PIKE_GASPS : FISH_GASPS) ? (b.gasp || 0) + 1 : 0;
+      if (b.gasp > SUFFOCATE) return die(b, k, 'fizz');
+    }
     if (pike) { if (b.hunger > PIKE_STARVE) return die(b, k, 'fizz'); }
     else if (algae >= BITE && Math.random() < 0.02) { sol[k * NSOL + SOL_ALGAE] -= BITE; b.hunger = 0; b.grazed = true; }   // grazes
     const chasing = !pike && snapMoth(b, k, s.water / A > 0.6);   // small fish eat moths; pike eat fish
@@ -139,6 +151,7 @@ function snapMoth(b, k, inWater) {
 function driveMoth(b, s, k, Tk, A, addBody) {
   const drowned = liq[k] >= 128 && LIQ_SINKS(typ[k]);   // under water; rain and splashes don't count
   if (drowned || s.lava || s.acid || Tk > MOTH_HOT || solid[k]) { puff(k, 'fizz'); return false; }
+  if (!airless(b, k)) { puff(k, 'fizz'); return false; }
   b.chill = Tk < MOTH_COLD ? (b.chill || 0) + 1 : 0;
   b.hunger = (b.hunger || 0) + 1;
   if (b.hunger > MOTH_STARVE || b.chill > MOTH_FROZEN) { puff(k, 'fizz'); return false; }
@@ -172,7 +185,7 @@ function driveBird(b, s, k, Tk, grounded, addBody) {
   const drowned = liq[k] >= 128 && !LIQ[typ[k]].gas;
   b.chill = Tk < BIRD_COLD ? (b.chill || 0) + 1 : 0;
   b.hunger = (b.hunger || 0) + 1;
-  if (drowned || s.lava || s.acid || Tk > 70 || solid[k] || b.hunger > BIRD_STARVE || b.chill > BIRD_FROZEN) { puff(k, 'smoke'); return false; }
+  if (drowned || s.lava || s.acid || Tk > 70 || solid[k] || b.hunger > BIRD_STARVE || b.chill > BIRD_FROZEN || !airless(b, k)) { puff(k, 'smoke'); return false; }
   b.resting = sunHeight() < -0.1;
   if (b.resting) { b.vx *= 0.8; if (!grounded) b.vy = Math.min(b.vy, 0.6); return true; }   // drifts down and roosts
   let wx, wy;
@@ -241,4 +254,4 @@ function absorb(b) {
   }
 }
 
-export { BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, SMOTHER, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
+export { BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };

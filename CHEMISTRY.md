@@ -247,7 +247,7 @@ fantasy in the notes and tool palette.
 | --- | --- | --- |
 | 19. Matter (built) | The material table; one density everywhere; conserved heat with latent heat; real thresholds | Tests: ice holds a drink at 0°, hot iron in water warms it by the right amount, boiling holds at 100°; every existing scene passes or is re-tuned with a note |
 | 20. Reactions (built) | The reaction engine; existing reactions moved into it; the inorganic set (acid + metals/carbonates, lime cycle, chlorine and bleach, rust with oxygen, patina, charcoal, glass, smelting with carbon, thermite) and new materials | Every reaction in section 3's inorganic list has a test and conserves mass |
-| 21. Air and water | Oxygen and CO₂ in the air grid; dissolved oxygen and CO₂ in water; combustion that needs oxygen; layering by concentration and temperature; emulsions and soap | A sealed fire goes out; a stratified pond's bottom goes anoxic; brine stays under fresh water |
+| 21. Air and water (built) | Oxygen and CO₂ in the air grid; dissolved oxygen and CO₂ in water; combustion that needs oxygen; layering by concentration and temperature; emulsions and soap | A sealed fire goes out; a stratified pond's bottom goes anoxic; brine stays under fresh water |
 | 22. Life cycles | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey | A sealed jar with water, plants, algae and fish stays alive for days; overfeeding it causes a bloom and a fish kill at night |
 | 23. Showcase | The fantasy pass; a sealed-jar "terrarium" mode; puzzles about the new chemistry | |
 
@@ -341,6 +341,42 @@ Each phase is about the size of Phase 17. Phase 19 changes how everything feels,
 - Cost: none measurable (a tick about 3.8 ms).
 - Left for Phase 21–22, where they fit: ethanol, vinegar, soap, liquid nitrogen and dry ice, sulfur; molten aluminium,
   zinc, copper and gold; bleach mixing into water as a solution.
+
+### Phase 21: Air and water (built)
+
+- **Air** (`js/oxygen.js`): every empty tile holds oxygen (tenths of a percent, 210 normal) and CO₂ (twentieths of a
+  percent, 1 normal), saved with the world. Each pass (every 4 ticks) the air open to the sky (nothing solid or
+  liquid above it in its column; gas lets it through) is reset to fresh; elsewhere neighbouring air evens out 45% of
+  its difference, in chunks that changed lately, and fully where the lower tile is 20° hotter (hot air rising draws
+  fresh air in: a crude stand-in for convection). Flames take 0.2% oxygen from each tile of air beside them per tick
+  and give back as much CO₂; nothing catches or keeps burning beside air under 15% oxygen. The explorer chokes below
+  12% oxygen or above 5% CO₂, and breathes a little; moths and birds choke too. Oxygen and CO₂ gas thinning out join
+  the tile's air.
+- **Dissolved oxygen** (`SOL_O2`): stored as how far below saturation the water is, so water is saturated unless
+  something uses it (old saves, poured water and generated lakes are all full of oxygen). Saturation follows the real
+  curve (14.6 mg/L at 0°, 9.1 at 20°, 7.6 at 30°, none at 100°) and is a fifth lower in strong brine. Water with air
+  above it takes oxygen back in (5% of the shortfall per solute tick, 15% when moving) up to what that air allows;
+  oxygen diffuses slowly (as slowly as salt). Fish use 0.001 mg/L a tick (pike twice that) and suffocate after 5 s
+  below 3 mg/L (pike 1.5); the old fixed rule that a bloom kills fish is gone, because algae now make oxygen in the
+  light and use it in the dark (in proportion to how thick they are), so a bloom kills at night. Mud uses the oxygen
+  in the water over it and gives methane only once that water is airless.
+- **Layering by real density** (`densityOf` in `js/solutes.js`): the liquid's density, plus salt (+0.2 g/cm³ at
+  saturation), sugar (+0.33), silt and metal salts, and temperature (water by 1 − 6.8·10⁻⁶ (T − 4)², densest at 4°;
+  other liquids expand 0.05% per degree). Same liquid over same liquid swaps when the upper is denser by 0.0004
+  g/cm³ (about 2° near room temperature), replacing the old fixed thresholds (16 units of salt, 8°).
+- **Soap and emulsions**: lye on oil makes foam carrying soap (`SOL_SOAP`), which settles into soapy water (foam
+  churned from plain oil and water still separates into them). Water beside oil becomes oily water (an emulsion, a new
+  liquid at 0.95 g/cm³, layering between oil and water) where the water is soapy or churned hard (speed over 1.5);
+  each tile remembers its oil share (`SOL_OIL`), and without soap a tile turns back into oil or water at 1.6% a solute
+  tick.
+- **Elsewhere**: heated baking soda breaks down into soda ash (shown as ash) rather than vanishing, so it still fluxes
+  glass. Hover shows the air's oxygen and CO₂ when it isn't fresh, and water's dissolved oxygen.
+- Tests: `air and water: oxygen, fire that needs it, stratified water, soap and emulsions` (16 checks); the algae
+  bloom test now grows a bloom by day and watches it kill the fish at night; the bird test puts its moth within reach
+  (it had passed by luck); the glass test heats until the glass forms. All 74 scenes pass.
+- Cost: the air pass is about 1% of the time, the tick about 3.9 ms.
+- Left for later: oxygen and CO₂ don't drift with the weather's wind; plants and the explorer's respiration are
+  token; insects standing on clean water (surface tension) aren't modelled.
 
 ## Sources
 
