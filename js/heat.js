@@ -7,7 +7,7 @@ import { puff } from './particles.js';
 import { solidify } from './reactions.js';
 import { clearSol } from './solutes.js';
 import { CHH, CW, HEAT_AWAKE, S, afloat, deco, drop, heatAwake, held, latent, liq, markDirty, meltAmount, sol, solid, temp, temp2, typ, under, wake } from './world.js';
-import { COPPER, POROUS, SAND, STONE, WETDIRT, WOOL } from './config.js';
+import { COPPER, LIMESTONE, POROUS, SAND, STONE, WETDIRT, WOOL } from './config.js';
 import { FNITRO, MSLAG, ORE, RUST, SLAG, SUGAR, THERMO } from './config.js';
 import { vapour } from './air.js';
 import { AIR_CAP, AIR_COND, BCAP, BCOND, HEAT_SPEED, LATENT, LCAP, LCOND, L_BOIL_WATER, L_FUSION_IRON, L_FUSION_ROCK, L_FUSION_WATER } from './matter.js';
@@ -24,11 +24,10 @@ import { AIR_CAP, AIR_COND, BCAP, BCOND, HEAT_SPEED, LATENT, LCAP, LCOND, L_BOIL
 
 // Real temperatures (°C) at which things change; latent heat (js/matter.js) holds a tile at the first five while it
 // melts, boils, freezes, condenses or sets.
-const MELT_ICE = 0, BOIL_WATER = 100, LAVA_SETS = 1000, IRON_MELTS = 1538, SLAG_SETS = 1300;
+const MELT_ICE = 0, BOIL_WATER = 100, LAVA_SETS = 1000, IRON_MELTS = 1538, CAST_IRON_SETS = 1150, SLAG_SETS = 1300;   // molten iron is carbon-rich (cast) iron, liquid down to 1150°
 const LAVA_HEAT = 1150, LAVA_KEEP = 0.08;   // deep lava is kept hot by the melt around it (a pool's own reservoir)
 const NITRO_FREEZE = 12, NITRO_THAW = 14;   // nitroglycerin melts at 13°; it freezes into a block that's safe to drop and dig
 const NITRO_HEAT = 218, QUICK_BOIL = 357, WAX_MELT = 64, METAL_MELT = IRON_MELTS, SNOW_MELT = MELT_ICE, SNOW_WATER = 64, CLAY_BAKE = 900;
-const ORE_MELT = 850, SMELT_T = 1900;   // for now: real hematite needs carbon and a blast to smelt (Phase 20); the iron comes out white-hot enough to pour
 const ACID_BOIL = 300, SUGAR_BURNS = 170, HONEY_BURNS = 160, MUD_DRIES = 100;
 const SALT_FREEZE = 0.085, SOLUTE_BOIL = 0.035;   // degrees lower freezing, higher boiling, per unit of dissolved salt (and sugar)
 const ALIVE = new Uint8Array(NLIQ);
@@ -36,7 +35,7 @@ const ALIVE = new Uint8Array(NLIQ);
 // Natural ground: it rests at the climate's temperature for its depth (js/climate.js), standing in for the earth
 // around it. Everything else, liquids and placed blocks included, only trades heat with its neighbours.
 const GROUND = new Uint8Array(NBLOCK);
-[STONE, DIRT, WETDIRT, SAND, CLAY, BASALT, OBSIDIAN, PERMAFROST, ORE, POROUS, BRICK].forEach(b => { GROUND[b] = 1; });
+[STONE, DIRT, WETDIRT, SAND, CLAY, BASALT, OBSIDIAN, PERMAFROST, ORE, POROUS, BRICK, LIMESTONE].forEach(b => { GROUND[b] = 1; });
 // Each tile's heat capacity (J/K) and conductance this heat tick, from what's in it.
 const cap = new Float32Array(W * H), cond = new Float32Array(W * H);
 
@@ -188,7 +187,7 @@ function phaseChanges(c, m) {
         else if (Tk < NITRO_FREEZE && (k >= W * H - W || solid[k + W] || liq[k + W])) { drop[k] = 0; solidify(k, FNITRO); }   // falling nitro doesn't freeze
       }
       else if (t === MOLTEN) {
-        if (balance(k, restsOn(k) ? IRON_MELTS : -Infinity, Infinity, needOf(L_FUSION_IRON, 7, a), 0) < 0) { solidify(k, METAL); afterChange(k, IRON_MELTS, spare, BCAP[METAL], false); puff(k, 'smoke'); }
+        if (balance(k, restsOn(k) ? CAST_IRON_SETS : -Infinity, Infinity, needOf(L_FUSION_IRON, 7, a), 0) < 0) { solidify(k, METAL); afterChange(k, CAST_IRON_SETS, spare, BCAP[METAL], false); puff(k, 'smoke'); }
       }
       else if (t === MSLAG) {
         if (balance(k, restsOn(k) ? SLAG_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, SLAG); afterChange(k, SLAG_SETS, spare, BCAP[SLAG], false); puff(k, 'smoke'); }
@@ -206,8 +205,6 @@ function phaseChanges(c, m) {
     } else if (solid[k] === FNITRO) {   // heat (a blast's, say) still sets frozen nitro off
       heatAwake[c] = HEAT_AWAKE;
       if (Tk > NITRO_THAW) { solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = NITRO; clearSol(k); markDirty(x, y); wake(k); if (Tk > NITRO_HEAT) explode(k); }
-    } else if (solid[k] === RUST && Tk > ORE_MELT) {   // rust smelts back into metal, like ore
-      solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = MOLTEN; temp[k] = 1600; clearSol(k); markDirty(x, y);
     } else if (solid[k] === PERMAFROST && Tk > MELT_ICE && Math.random() < 0.01 * m) {   // frozen ground thaws into mud
       solid[k] = AIR; liq[k] = 200; typ[k] = MUD; clearSol(k); markDirty(x, y);
     } else if (solid[k] === SUGAR && Tk > SUGAR_BURNS) {   // sugar caramelises into crisp honey
@@ -216,8 +213,6 @@ function phaseChanges(c, m) {
       solid[k] = BRICK; markDirty(x, y);
     } else if (solid[k] === COMB && Tk > WAX_MELT) {   // the wax melts and the honey runs out
       solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = HONEY; clearSol(k); markDirty(x, y);
-    } else if (solid[k] === ORE && Tk > ORE_MELT) {   // smelting: two ore tiles in three melt into molten metal, the rest into slag
-      solid[k] = AIR; liq[k] = 255; typ[k] = (x + y) % 3 ? MOLTEN : MSLAG; temp[k] = typ[k] === MOLTEN ? SMELT_T : 1600; clearSol(k); markDirty(x, y);
     } else if (solid[k] === METAL) {
       if (balance(k, -Infinity, METAL_MELT, 0, needOf(L_FUSION_IRON, 7.85, held[k])) > 0) { solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = MOLTEN; clearSol(k); afterChange(k, METAL_MELT, spare, LCAP[MOLTEN], true); markDirty(x, y); }
     } else if (solid[k] === ICE && Math.random() < 0.01 * m && touches(k, SALT)) {   // salt melts ice into brine, and the salt block dissolves into it
@@ -279,4 +274,4 @@ function leaveResidue(k) {
   return true;
 }
 
-export { GROUND, MELT_ICE, BOIL_WATER, LAVA_SETS, IRON_MELTS, SLAG_SETS, LAVA_HEAT, LAVA_KEEP, ACID_BOIL, SUGAR_BURNS, HONEY_BURNS, MUD_DRIES, SALT_FREEZE, SOLUTE_BOIL, cap, cond, fillMatter, balance, NITRO_FREEZE, NITRO_THAW, ORE_MELT, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, ALIVE, heatTick, warmWater, leaveResidue };
+export { GROUND, MELT_ICE, BOIL_WATER, LAVA_SETS, IRON_MELTS, SLAG_SETS, LAVA_HEAT, LAVA_KEEP, ACID_BOIL, SUGAR_BURNS, HONEY_BURNS, MUD_DRIES, SALT_FREEZE, SOLUTE_BOIL, cap, cond, fillMatter, balance, NITRO_FREEZE, NITRO_THAW, CAST_IRON_SETS, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, ALIVE, heatTick, warmWater, leaveResidue };

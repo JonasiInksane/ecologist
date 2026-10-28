@@ -1,7 +1,7 @@
 // Floating bodies: buoyancy, collision, stacking and the explorer.
 import { windAt } from './air.js';
 import { explorerTools } from './explorer.js';
-import { ACID, H, LAVA, PH, POISON, PW, SLIME, SMOKE, STEAM, T, TONIC, W, WATER } from './config.js';
+import { ACID, H, LAVA, PH, CHLORINE, POISON, PW, SLIME, SMOKE, STEAM, T, TONIC, W, WATER } from './config.js';
 import { OXYGEN } from './config.js';
 import { driveCreature } from './creatures.js';
 import { toggleLeversNear } from './devices.js';
@@ -177,10 +177,10 @@ function sampleLiquid(b) {
     const oy = Math.min(b.y + b.h, ly1) - Math.max(b.y, ly0);
     if (ox <= 0 || oy <= 0) continue;
     const ar = ox * oy;
-    if (LIQ[t].gas) { if (t === POISON) poison += ar; else if (t === STEAM && temp[k] > 90) scald += ar; continue; }
+    if (LIQ[t].gas) { if (t === POISON || t === CHLORINE) poison += ar; else if (t === STEAM && temp[k] > 90) scald += ar; continue; }
     area += ar; buoy += ar * RHO[t]; drag += ar * DRAG[t];
     if (t === LAVA) lava += ar; else if (t === ACID) acid += ar; else if (t === TONIC) tonic += ar;
-    else if (t === POISON) poison += ar;
+    else if (t === POISON || t === CHLORINE) poison += ar;
     else if (t === WATER) water += ar;
     else if (t === SLIME) slime += ar;
     else if (t === STEAM && temp[k] > 90) scald += ar;
@@ -281,7 +281,7 @@ function hurt(b, n) {
 // after 3 s without harm.
 function breathe(b) {
   const k = Math.min(H - 1, Math.max(0, ((b.y + 2) / T) | 0)) * W + Math.min(W - 1, Math.max(0, ((b.x + b.w / 2) / T) | 0));
-  const t = liq[k] ? typ[k] : 0, choking = liq[k] > 96 && t !== OXYGEN && (LIQ[t].grav > 0 || t === SMOKE || t === POISON);
+  const t = liq[k] ? typ[k] : 0, choking = liq[k] > 96 && t !== OXYGEN && (LIQ[t].grav > 0 || t === SMOKE || t === POISON || t === CHLORINE);
   b.air = Math.max(0, Math.min(100, (b.air ?? 100) + (choking ? -0.28 : 1.5)));
   if (choking && liq[k] && !LIQ[t].gas && Math.random() < 0.03) bubbleAt(b.x + (b.face > 0 ? b.w : 0), b.y + 2);   // breathing out
   if (!b.air) hurt(b, 0.4);

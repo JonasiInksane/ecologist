@@ -687,6 +687,11 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
+### Phase 20: Reactions
+
+A reaction engine with real chemistry as rules (`js/chem.js`), new materials (lime, charcoal, ash, metals, chlorine,
+bleach) and smelting with charcoal. What was built: `CHEMISTRY.md` section 7.
+
 ### Phase 19: Matter (after the deep caverns)
 
 Real physical properties for every material, conserved heat with latent heat, and real temperatures and densities.

@@ -7,7 +7,7 @@
 // theirs away. Water moves between the ground and the air, and around the world, without being made or lost.
 import { sfx } from './audio.js';
 import { colHum, colWind, drought, shade, skyTempAt } from './climate.js';
-import { H, METHANE, NSOL, POISON, SALT, SMOKE, SNOW, STEAM, T, W, WATER } from './config.js';
+import { H, METHANE, NSOL, CHLORINE, POISON, SALT, SMOKE, SNOW, STEAM, T, W, WATER } from './config.js';
 import { HYDROGEN, LEAF, OXYGEN, SOL_SALT, SOL_SUGAR, SUGAR } from './config.js';
 import { hurt } from './bodies.js';
 import { sunHeight } from './daynight.js';
@@ -271,7 +271,7 @@ const drifted = new Uint32Array(W * H);
 function drift() {
   for (let k = 0; k < W * H; k++) {
     const t = typ[k];
-    if (!liq[k] || drifted[k] === S.tick || (t !== SMOKE && t !== METHANE && t !== POISON && t !== HYDROGEN && t !== OXYGEN) || under[k]) continue;
+    if (!liq[k] || drifted[k] === S.tick || (t !== SMOKE && t !== METHANE && t !== POISON && t !== CHLORINE && t !== HYDROGEN && t !== OXYGEN) || under[k]) continue;
     const x = k % W, w = u[cellOf(x, (k / W) | 0)], nx = x + (w > 0 ? 1 : -1);
     if (Math.abs(w) < 0.05 || nx < 0 || nx >= W) continue;
     const n = k + (w > 0 ? 1 : -1);

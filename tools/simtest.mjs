@@ -567,7 +567,7 @@ scene('gases rise, layer, pool and fade', () => {
   run(1500);
   check('and the water soaks it up', count(k => typ[k] === C.POISON) === 0, `${count(k => typ[k] === C.POISON)} poison tiles left`);
 });
-scene('gas sources: fire smokes, slime makes methane, acid on metal makes poison', () => {
+scene('gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen', () => {
   clear(); devices.clear(); fire.fill(0);
   box(20, 50, 40, 50, C.STONE);
   fill(21, 49, 30, 49, C.OIL, 400);
@@ -582,9 +582,9 @@ scene('gas sources: fire smokes, slime makes methane, acid on metal makes poison
   clear();
   tank(80, 40, 90, 50); box(81, 50, 89, 50, C.METAL);
   fill(81, 46, 89, 49, C.ACID, 20);
-  let poison = 0;
-  for (let i = 0; i < 30; i++) { run(30); poison = Math.max(poison, count(k => typ[k] === C.POISON)); }
-  check('acid eating metal gives off poison gas', poison > 0, `${poison} poison tiles at peak`);
+  let hydrogen = 0;
+  for (let i = 0; i < 30; i++) { run(30); hydrogen = Math.max(hydrogen, count(k => typ[k] === C.HYDROGEN)); }
+  check('acid eating iron gives off hydrogen', hydrogen > 0, `${hydrogen} hydrogen tiles at peak`);
 });
 scene('methane burns in a flash', () => {
   clear(); devices.clear(); fire.fill(0);
@@ -2005,20 +2005,111 @@ scene('matter: heat is conserved, melting and boiling take latent heat, liquids 
   }
 });
 
+scene('chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach', () => {
+  const glassTank = (x0, y0, x1, y1) => { box(x0, y1 + 1, x1, y1 + 1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); };   // acid can't eat glass
+  const blocks = b => count(k => solid[k] === b);
+  // acid: fizzes CO2 off limestone, leaving salt; granite (stone) resists it
+  clear(); devices.clear(); glassTank(40, 40, 50, 50);
+  box(41, 50, 45, 50, C.LIMESTONE); box(46, 50, 49, 50, C.STONE); fill(41, 46, 49, 49, C.ACID, 20);
+  run(600);
+  check('acid fizzes carbon dioxide off limestone and leaves salt; stone resists it', blocks(C.LIMESTONE) < 3 && blocks(C.STONE) >= 4 + 22 && gasVol(C.CO2) + count(k => typ[k] === C.CO2) > 0, `${blocks(C.LIMESTONE)} of 5 limestone left, CO2 ${gasVol(C.CO2)}`);
+  // acid on metals: zinc and iron give hydrogen; copper and gold don't react
+  clear(); devices.clear(); glassTank(40, 40, 52, 50);
+  solid[at(41, 50)] = solid[at(42, 50)] = C.ZINC; solid[at(44, 50)] = solid[at(45, 50)] = C.METAL; solid[at(47, 50)] = solid[at(48, 50)] = C.COPPER; solid[at(50, 50)] = solid[at(51, 50)] = C.GOLD;
+  fill(41, 44, 51, 49, C.WATER, 20); setSol(41, 44, 51, 50, C.SOL_ACID, 220);
+  for (let x = 41; x <= 51; x++) if (!solid[at(x, 50)]) { liq[at(x, 50)] = 255; typ[at(x, 50)] = C.WATER; sol[at(x, 50) * N + C.SOL_ACID] = 220; }
+  let h2 = 0; for (let i = 0; i < 40; i++) { run(30); h2 = Math.max(h2, gasVol(C.HYDROGEN)); }
+  check('acid dissolves zinc and iron, giving hydrogen and metal salts; copper and gold resist', blocks(C.ZINC) < 2 && h2 > 0 && blocks(C.COPPER) === 2 && blocks(C.GOLD) === 2 && avgSol(41, 44, 51, 50, C.SOL_METAL) > 0,
+    `${blocks(C.ZINC)} zinc, ${blocks(C.METAL) - 0} iron left; ${h2} hydrogen at most`);
+  // lye on aluminium gives hydrogen too
+  clear(); devices.clear(); glassTank(40, 40, 46, 50); box(41, 50, 45, 50, C.ALUMINIUM); fill(41, 46, 45, 49, C.LYE, 20);
+  h2 = 0; for (let i = 0; i < 40; i++) { run(30); h2 = Math.max(h2, gasVol(C.HYDROGEN)); }
+  check('lye eats aluminium, giving hydrogen', blocks(C.ALUMINIUM) < 5 && h2 > 0, `${blocks(C.ALUMINIUM)} of 5 aluminium left`);
+  // the lime cycle: limestone burns to quicklime above 825°, which slakes hot in water and hardens again in CO2
+  clear(); devices.clear(); box(40, 50, 44, 50, C.LIMESTONE);
+  for (let i = 0; i < 200; i++) { for (let x = 40; x <= 44; x++) temp[at(x, 50)] = 900; step(); }
+  check('limestone burns into quicklime above 825°, giving off CO2', blocks(C.QUICKLIME) >= 4 && gasVol(C.CO2) > 0, `${blocks(C.QUICKLIME)} quicklime`);
+  clear(); devices.clear(); tank(40, 40, 46, 50); box(41, 50, 45, 50, C.QUICKLIME); fill(41, 47, 45, 49, C.WATER, 20);
+  let hottest = 0; for (let i = 0; i < 300; i++) { step(); for (let x = 41; x <= 45; x++) hottest = Math.max(hottest, temp[at(x, 50)]); }
+  check('water slakes quicklime into lime, hot enough to boil', blocks(C.LIME) >= 3 && hottest > 100, `${blocks(C.LIME)} lime, hottest ${hottest.toFixed(0)}°`);
+  clear(); devices.clear(); tank(40, 40, 46, 50); box(41, 50, 45, 50, C.LIME); fill(41, 48, 45, 49, C.CO2, 20);
+  run(600);
+  check('lime mortar takes up CO2 and hardens back into limestone', blocks(C.LIMESTONE) >= 3, `${blocks(C.LIMESTONE)} limestone`);
+  // baking soda breaks down when heated; wood shut off from air chars into charcoal; burnt wood leaves ash
+  clear(); devices.clear(); box(40, 50, 44, 50, C.SODA); box(39, 51, 45, 51, C.STONE);
+  for (let i = 0; i < 200; i++) { for (let x = 40; x <= 44; x++) temp[at(x, 50)] = 200; step(); }
+  check('heated baking soda breaks down into carbon dioxide', blocks(C.SODA) === 0 && gasVol(C.CO2) > 0);
+  clear(); devices.clear(); fire.fill(0); box(39, 49, 45, 53, C.STONE); box(40, 50, 44, 52, C.WOOD);   // sealed in stone
+  for (let i = 0; i < 300; i++) { for (let x = 39; x <= 45; x++) { temp[at(x, 53)] = 500; } for (let y = 50; y <= 52; y++) for (let x = 40; x <= 44; x++) temp[at(x, y)] = Math.max(temp[at(x, y)], 400); step(); }
+  check('wood heated without air chars into charcoal', blocks(C.CHARCOAL) >= 8 && count(k => fire[k]) === 0, `${blocks(C.CHARCOAL)} of 15 charcoal`);
+  clear(); devices.clear(); fire.fill(0); box(40, 50, 60, 50, C.STONE); box(40, 49, 60, 49, C.WOOD); temp[at(40, 49)] = 400;
+  run(3000);
+  check('wood burnt in the open leaves ash', blocks(C.WOOD) === 0 && blocks(C.ASH) > 0, `${blocks(C.ASH)} ash, ${blocks(C.WOOD)} wood left`);
+  // glass: sand with soda melts above 1000°; sand on its own needs 1700°
+  clear(); devices.clear();
+  solid[at(40, 50)] = C.SAND; solid[at(41, 50)] = C.SODA; solid[at(45, 50)] = C.SAND; box(39, 51, 46, 51, C.STONE);
+  for (let i = 0; i < 200; i++) { temp[at(40, 50)] = temp[at(41, 50)] = temp[at(45, 50)] = 1200; step(); }
+  check('sand with soda melts into glass at 1200°; sand alone doesn’t', solid[at(40, 50)] === C.GLASS && solid[at(45, 50)] === C.SAND, `blocks ${solid[at(40, 50)]}, ${solid[at(45, 50)]}`);
+  // thermite: aluminium and rust, lit above 1500°, burn into white-hot iron
+  clear(); devices.clear(); box(39, 51, 46, 51, C.STONE); box(40, 50, 42, 50, C.RUST); box(43, 50, 45, 50, C.ALUMINIUM);
+  // a sparkler held to it for a moment
+  let molten = 0, hot = 0; for (let i = 0; i < 60; i++) { if (i < 12) temp[at(43, 50)] = 1600; step(); molten = Math.max(molten, count(k => typ[k] === C.MOLTEN)); for (let k = 0; k < W * H; k++) if (typ[k] === C.MOLTEN) hot = Math.max(hot, temp[k]); }
+  check('thermite: lit aluminium and rust burn into white-hot iron', molten > 0 && hot > 2000, `${molten} molten iron tiles, ${hot.toFixed(0)}°`);
+  // strong acid chars sugar into carbon
+  clear(); devices.clear(); glassTank(40, 40, 44, 50); box(41, 50, 43, 50, C.SUGAR); fill(41, 48, 43, 49, C.ACID, 20);
+  run(400);
+  check('strong acid chars sugar into black carbon', blocks(C.CHARCOAL) > 0, `${blocks(C.CHARCOAL)} carbon`);
+  // electrolysis: strong brine gives chlorine (and turns to lye); weak brine gives oxygen
+  for (const [salt, want] of [[60, C.OXYGEN], [255, C.CHLORINE]]) {
+    clear(); devices.clear(); tank(40, 40, 60, 50);
+    fill(41, 44, 59, 50, C.WATER, 20); setSol(41, 44, 59, 50, C.SOL_SALT, salt);
+    box(50, 34, 50, 47, C.METAL); for (let y = 44; y <= 47; y++) { liq[at(50, y)] = 0; typ[at(50, y)] = 0; }
+    place(C.LEVER, 49, 34).on = true;
+    run(900);
+    const other = want === C.OXYGEN ? C.CHLORINE : C.OXYGEN;
+    check(`electrolysis of ${salt === 255 ? 'strong brine gives chlorine and leaves lye' : 'weak brine gives oxygen'}`, gasVol(want) > gasVol(other) && gasVol(C.HYDROGEN) > 0 && (want === C.OXYGEN || avgSol(41, 44, 59, 50, C.SOL_BASE) > 0),
+      `${gasVol(C.CHLORINE)} chlorine, ${gasVol(C.OXYGEN)} oxygen, ${gasVol(C.HYDROGEN)} hydrogen`);
+  }
+  // chlorine and lye make bleach; bleach and acid give chlorine back; chlorine dissolves into water as acid
+  clear(); devices.clear(); glassTank(40, 40, 44, 50); fill(41, 48, 43, 50, C.LYE, 20); fill(41, 44, 43, 46, C.CHLORINE, 20);
+  run(300);
+  check('chlorine bubbled through lye makes bleach', count(k => typ[k] === C.BLEACH) > 0);
+  clear(); devices.clear(); glassTank(40, 40, 44, 50); fill(41, 49, 43, 50, C.ACID, 20); fill(41, 46, 43, 48, C.BLEACH, 20);
+  run(200);
+  check('bleach and acid give off chlorine', gasVol(C.CHLORINE) > 0);
+  clear(); devices.clear(); tank(40, 40, 44, 50); fill(41, 48, 43, 50, C.WATER, 20); fill(41, 45, 43, 46, C.CHLORINE, 20);
+  run(400);
+  check('chlorine dissolves into water as acid', avgSol(41, 48, 43, 50, C.SOL_ACID) > 0);
+  // hydrogen and chlorine explode when lit, as hydrogen and oxygen do
+  clear(); devices.clear(); fire.fill(0); box(30, 20, 60, 20, C.STONE); box(30, 20, 30, 30, C.STONE); box(60, 20, 60, 30, C.STONE); box(30, 30, 60, 30, C.STONE);
+  for (let y = 21; y <= 29; y++) for (let x = 31; x <= 59; x++) { liq[at(x, y)] = 255; typ[at(x, y)] = (x + y) % 3 ? C.HYDROGEN : C.CHLORINE; } Wd.wakeAll();
+  const stone = blocks(C.STONE); temp[at(45, 25)] = 1000;
+  run(60);
+  check('hydrogen and chlorine explode when lit', blocks(C.STONE) < stone, `${stone - blocks(C.STONE)} blocks broken`);
+  // copper goes green in wet air
+  clear(); devices.clear(); box(40, 50, 50, 50, C.COPPER); box(40, 51, 50, 51, C.STONE);
+  for (let x = 40; x <= 50; x += 2) { liq[at(x, 49)] = 40; typ[at(x, 49)] = C.WATER; }
+  for (let i = 0; i < 30; i++) { for (let x = 40; x <= 50; x += 2) { liq[at(x, 49)] = 40; typ[at(x, 49)] = C.WATER; } run(200); }
+  check('copper goes green in wet air', blocks(C.PATINA) > 0, `${blocks(C.PATINA)} green copper`);
+});
+
 scene('the deep caverns, rust, and frozen nitro', () => {
-  // metal under water rusts, faster in brine; rust doesn't carry power, acid eats it and heat smelts it back into metal
-  const rusted = salt => {
-    clear(); devices.clear(); tank(40, 40, 60, 50); box(41, 50, 59, 50, C.METAL);
-    fill(41, 44, 59, 49, C.WATER, 20); setSol(41, 44, 59, 49, C.SOL_SALT, salt);
-    run(3600);
+  // iron rusts where water and air both reach it, several times faster in brine; deep under water, much more slowly.
+  // Metal studs in a shallow pool reach the air above it; the same studs under a deep pool don't.
+  const rusted = (salt, deep) => {
+    clear(); devices.clear(); tank(40, 40, 60, 50);
+    for (let x = 41; x <= 59; x += 2) solid[at(x, 50)] = C.METAL;   // on the tank's floor
+    for (let y = deep ? 44 : 50; y <= 50; y++) for (let x = 41; x <= 59; x++) if (!solid[at(x, y)]) { liq[at(x, y)] = 255; typ[at(x, y)] = C.WATER; }
+    setSol(41, 44, 59, 50, C.SOL_SALT, salt); Wd.wakeAll();
+    run(1200);
     return count(k => solid[k] === C.RUST);
   };
-  const fresh = rusted(0), brine = rusted(150);   // under saturation, so no salt crystals grow over the metal
-  check('metal under water rusts, several times faster in brine', fresh >= 0 && brine > fresh + 4, `${fresh} of 19 tiles rusted in fresh water, ${brine} in brine`);
+  const fresh = rusted(0, false), brine = rusted(150, false), sunk = rusted(150, true);   // under saturation, so no salt crystals grow over the metal
+  check('iron rusts where water and air meet, several times faster in brine', brine > fresh + 2 && brine >= 4, `${fresh} of 10 studs rusted in fresh water, ${brine} in brine`);
+  check('iron deep under water, out of the air, rusts much more slowly', sunk < brine, `${sunk} of 10 rusted deep under brine`);
   clear(); devices.clear();
-  box(40, 50, 60, 50, C.RUST); for (let x = 40; x <= 60; x++) temp[at(x, 50)] = 1000; run(10);
-  const metal = count(k => (liq[k] && typ[k] === C.MOLTEN) || solid[k] === C.METAL);
-  check('rust smelts back into molten metal', metal === 21 && count(k => solid[k] === C.RUST) === 0, `${metal} tiles of metal`);
+  box(40, 50, 60, 50, C.RUST); for (let i = 0; i < 200; i++) { for (let x = 40; x <= 60; x++) temp[at(x, 50)] = 300; step(); }
+  check('heated rust dries into red iron oxide (ore)', count(k => solid[k] === C.ORE) > 15 && count(k => solid[k] === C.RUST) < 6, `${count(k => solid[k] === C.ORE)} ore`);
   clear(); devices.clear(); box(40, 50, 60, 50, C.RUST); box(39, 45, 39, 50, C.STONE); box(61, 45, 61, 50, C.STONE);
   fill(40, 47, 60, 49, C.ACID, 20); run(300);
   check('acid eats rust', count(k => solid[k] === C.RUST) < 21, `${count(k => solid[k] === C.RUST)} of 21 rust tiles left`);
@@ -2108,22 +2199,27 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
   for (let i = 0; i < 120; i++) { step(); burning = Math.max(burning, count(k => fire[k] > 0)); }
   check('wood burns in oxygen and uses it up', burning > 2 && gasVol(C.OXYGEN) < o - 255, `${burning} tiles burning, ${((o - gasVol(C.OXYGEN)) / 255).toFixed(1)} tiles of oxygen used`);
 });
-scene('smelting: ore melts into molten metal and slag', () => {
+scene('smelting: ore and charcoal give molten iron and slag', () => {
   const metal = () => count(k => solid[k] === C.METAL || typ[k] === C.MOLTEN), slag = () => count(k => solid[k] === C.SLAG || typ[k] === C.MSLAG);
-  // in a lava pool
-  clear(); devices.clear();
-  tank(20, 60, 40, 70);
-  fill(21, 62, 39, 70, C.LAVA, 1000);
-  for (let y = 66; y <= 68; y++) for (let x = 28; x <= 32; x++) { liq[at(x, y)] = 0; typ[at(x, y)] = 0; solid[at(x, y)] = C.ORE; }
-  Wd.wakeAll();
-  run(600);
-  check('ore in lava melts into metal and slag', count(k => solid[k] === C.ORE) === 0 && metal() > slag() && slag() > 0, `${metal()} metal, ${slag()} slag`);
-  // in a wood fire: a furnace
+  const lavaPool = withCharcoal => {
+    clear(); devices.clear();
+    tank(20, 60, 40, 70);
+    fill(21, 62, 39, 70, C.LAVA, 1150);
+    for (let y = 66; y <= 68; y++) for (let x = 28; x <= 33; x++) { liq[at(x, y)] = 0; typ[at(x, y)] = 0; solid[at(x, y)] = withCharcoal && x % 2 ? C.CHARCOAL : C.ORE; }
+    Wd.wakeAll();
+    run(600);
+  };
+  // lava (1150°) can't melt ore on its own (1565°): it takes carbon to get the iron out
+  lavaPool(false);
+  check('ore in lava alone stays ore', count(k => solid[k] === C.ORE) === 18 && metal() === 0, `${count(k => solid[k] === C.ORE)} ore left`);
+  lavaPool(true);
+  check('ore with charcoal in lava smelts into iron and slag, using the charcoal', count(k => solid[k] === C.ORE) <= 4 && metal() >= 4 && count(k => solid[k] === C.CHARCOAL) <= 3, `${count(k => solid[k] === C.ORE)} of 9 ore left, ${metal()} metal, ${slag()} slag`);
+  // a charcoal fire: a furnace
   clear(); devices.clear(); fire.fill(0);
-  box(40, 60, 46, 62, C.WOOD); solid[at(43, 60)] = C.ORE; box(43, 59, 43, 59, C.WOOD);
-  temp[at(41, 60)] = 400; temp[at(45, 60)] = 400; temp[at(43, 59)] = 400;
-  run(400);
-  check('ore in a wood fire melts', solid[at(43, 60)] !== C.ORE, `ore at ${Math.round(temp[at(43, 60)])}°`);
+  box(40, 60, 46, 62, C.CHARCOAL); solid[at(43, 61)] = C.ORE;
+  for (let x = 40; x <= 46; x++) temp[at(x, 60)] = 400;   // lit along the top
+  for (let i = 0; i < 2400 && solid[at(43, 61)] === C.ORE; i++) step();
+  check('ore packed in burning charcoal smelts', solid[at(43, 61)] !== C.ORE && metal() > 0, `ore at ${Math.round(temp[at(43, 61)])}°, ${metal()} metal`);
   // a boiler is far too cool
   clear(); devices.clear();
   place(C.BOILER, 60, 60); solid[at(61, 60)] = C.ORE; Wd.wakeAll();

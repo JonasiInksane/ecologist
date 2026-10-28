@@ -9,13 +9,14 @@ import { RHO } from './liquids.js';
 import { puff } from './particles.js';
 import { clearSol, copySol } from './solutes.js';
 import { S, bodies, held, liq, markDirty, solid, temp, typ, wake } from './world.js';
-import { SODA, SUGAR } from './config.js';
+import { ASH, QUICKLIME, SODA, SUGAR } from './config.js';
 
 const POWDER = new Uint8Array(NBLOCK), POWDER_RHO = new Float32Array(NBLOCK);
 POWDER[SAND] = 1; POWDER_RHO[SAND] = 2.5;
 POWDER[SALT] = 1; POWDER_RHO[SALT] = 2.2;
 POWDER[SODA] = 1; POWDER_RHO[SODA] = 2.2;
 POWDER[SUGAR] = 1; POWDER_RHO[SUGAR] = 1.6;
+POWDER[ASH] = 1; POWDER_RHO[ASH] = 0.7; POWDER[QUICKLIME] = 1; POWDER_RHO[QUICKLIME] = 1.5;
 POWDER[SNOW] = 1; POWDER_RHO[SNOW] = 0.3;   // light enough to float on water, where it melts
 const SLIDE_AT = 128, THIN = 96;   // amounts: heaped enough to slide; too thin for a body to stand on
 

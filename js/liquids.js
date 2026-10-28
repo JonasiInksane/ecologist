@@ -7,7 +7,7 @@ import { hex } from './util.js';
 import { CO2, LYE } from './config.js';
 import { NLIQ } from './config.js';
 import { COOLANT, FERRO, FERT, LIGHT, MIMIC, VOID } from './config.js';
-import { HYDROGEN, MSLAG, OXYGEN } from './config.js';
+import { BLEACH, CHLORINE, HYDROGEN, MSLAG, OXYGEN } from './config.js';
 import { LRHO } from './matter.js';
 
 
@@ -45,7 +45,7 @@ const LIQ = [
   liquid({ name: 'molten metal', grav: 1, visc: 3, minSpread: 20, minDiff: 4, dens: 8, surf: '#fff3c0', body: '#ffb040', deep: '#d0581a', sa: 1,    ba: 0.97, da: 1,    flow: 0.5,  emit: [1, 0.62, 0.28], ldecay: 0.6 }),
   liquid({ name: 'smoke',       grav: -1, visc: 1, minSpread: 3,  minDiff: 1, dens: -1.5, surf: '#c8c4cc', body: '#8d8792', deep: '#5a5560', sa: 0.55, ba: 0.4, da: 0.5, flow: 1, emit: null,            ldecay: 0.78, gas: true }),
   liquid({ name: 'methane',     grav: -1, visc: 1, minSpread: 3,  minDiff: 1, dens: -2, surf: '#f0ffd8', body: '#c9e6a0', deep: '#98b870', sa: 0.35, ba: 0.2,  da: 0.3,  flow: 1.2,  emit: null,             ldecay: 0.93, gas: true }),
-  liquid({ name: 'poison gas',  grav: 1,  visc: 1, minSpread: 3,  minDiff: 1, dens: 0.5, surf: '#e9ffb0', body: '#9ccf3a', deep: '#5c8a20', sa: 0.55, ba: 0.38, da: 0.5, flow: 1,    emit: [0.2, 0.32, 0.05], ldecay: 0.85, gas: true }),
+  liquid({ name: 'toxic fumes',  grav: 1,  visc: 1, minSpread: 3,  minDiff: 1, dens: 0.5, surf: '#e9ffb0', body: '#9ccf3a', deep: '#5c8a20', sa: 0.55, ba: 0.38, da: 0.5, flow: 1,    emit: [0.2, 0.32, 0.05], ldecay: 0.85, gas: true }),
   liquid({ name: 'nitro',       grav: 1,  visc: 2, minSpread: 8,  minDiff: 2, dens: 2.5, surf: '#fff6c8', body: '#e8d070', deep: '#a88a30', sa: 0.9,  ba: 0.72, da: 0.86, flow: 0.7, emit: null,             ldecay: 0.8 }),
   liquid({ name: 'lye',         grav: 1,  visc: 1, minSpread: 8,  minDiff: 2, dens: 2.2, surf: '#f2f6ff', body: '#b4c4e6', deep: '#6c80ae', sa: 0.88, ba: 0.55, da: 0.8, flow: 0.9, emit: null,             ldecay: 0.88 }),
   liquid({ name: 'carbon dioxide', grav: 1, visc: 1, minSpread: 2, minDiff: 1, dens: 0.4, surf: '#eef2f4', body: '#c8d2d8', deep: '#9aa8b0', sa: 0.35, ba: 0.22, da: 0.32, flow: 0.8, emit: null,           ldecay: 0.92, gas: true }),
@@ -58,6 +58,8 @@ const LIQ = [
   liquid({ name: 'hydrogen',    grav: -1, visc: 1, minSpread: 3,  minDiff: 1, dens: -3, surf: '#f6f9ff', body: '#e2eaff', deep: '#bccaf2', sa: 0.3,  ba: 0.14, da: 0.22, flow: 1.4, emit: null,              ldecay: 0.95, gas: true }),
   liquid({ name: 'oxygen',      grav: 1,  visc: 3, minSpread: 2,  minDiff: 1, dens: 0.3, surf: '#eef8ff', body: '#c4e2ff', deep: '#90bcec', sa: 0.32, ba: 0.18, da: 0.26, flow: 0.9, emit: null,              ldecay: 0.93, gas: true }),
   liquid({ name: 'molten slag', grav: 1,  visc: 5, minSpread: 24, minDiff: 4, dens: 3.5, surf: '#ffd890', body: '#e07a30', deep: '#8a3a1a', sa: 0.97, ba: 0.93, da: 0.97, flow: 0.3, emit: [0.9, 0.45, 0.15], ldecay: 0.7 }),
+  liquid({ name: 'chlorine',    grav: 1,  visc: 1, minSpread: 3,  minDiff: 1, dens: 0, surf: '#f4ffb8', body: '#d4e85a', deep: '#a8b830', sa: 0.4,  ba: 0.25, da: 0.35, flow: 1,   emit: null,              ldecay: 0.9, gas: true }),
+  liquid({ name: 'bleach',      grav: 1,  visc: 1, minSpread: 6,  minDiff: 2, dens: 0, surf: '#fbfff0', body: '#e4edd2', deep: '#b4c2a2', sa: 0.88, ba: 0.5,  da: 0.78, flow: 1,   emit: null,              ldecay: 0.88 }),
 ];
 // Thickness that changes with temperature: below each limit (°) the liquid updates every Nth tick instead of its usual
 // visc. Honey runs when warm and stiffens in the cold, oil thickens in the cold, and lava, molten metal and slag slow
@@ -77,20 +79,20 @@ function viscAt(t, T) {
 }
 // How acidic (low) or alkaline (high) each liquid is, 0-14; 7 is neutral.
 const ACIDITY = new Float32Array(NLIQ).fill(7);
-ACIDITY[ACID] = 1; ACIDITY[LYE] = 13; ACIDITY[HONEY] = 4; ACIDITY[SLIME] = 9; ACIDITY[BLOOM] = 6; ACIDITY[TONIC] = 6; ACIDITY[CO2] = 5;
+ACIDITY[ACID] = 1; ACIDITY[LYE] = 13; ACIDITY[HONEY] = 4; ACIDITY[SLIME] = 9; ACIDITY[BLOOM] = 6; ACIDITY[TONIC] = 6; ACIDITY[CO2] = 5; ACIDITY[BLEACH] = 12;
 
 // paintT: temperature when poured. (How fast each liquid takes and gives heat comes from js/matter.js.)
 const HEAT = { [WATER]: [0.05, 20], [LAVA]: [0.004, 1150], [HONEY]: [0.03, 20], [AETHER]: [0.05, 20], [QUICK]: [0.15, 20], [ACID]: [0.05, 20], [FROST]: [0.03, -40], [STEAM]: [0.02, 110], [OIL]: [0.05, 20], [SLIME]: [0.04, 20], [BLOOM]: [0.05, 20],
   [MUD]: [0.04, 20], [TONIC]: [0.05, 20], [FOAM]: [0.05, 20],
   [STORM]: [0.05, 20], [MOLTEN]: [0.006, 1600], [SMOKE]: [0.1, 120], [METHANE]: [0.12, 20], [POISON]: [0.08, 20], [NITRO]: [0.05, 20], [LYE]: [0.05, 20], [CO2]: [0.1, 20],
   [VOID]: [0.05, 20], [MIMIC]: [0.05, 20], [COOLANT]: [0.3, 5], [FERRO]: [0.05, 20], [LIGHT]: [0.05, 20], [FERT]: [0.05, 20],
-  [HYDROGEN]: [0.15, 20], [OXYGEN]: [0.1, 20], [MSLAG]: [0.006, 1450] };
+  [HYDROGEN]: [0.15, 20], [OXYGEN]: [0.1, 20], [MSLAG]: [0.006, 1450], [CHLORINE]: [0.1, 20], [BLEACH]: [0.05, 20] };
 for (const t in HEAT) LIQ[t].paintT = HEAT[t][1];
 
 // Real densities (g/cm³, js/matter.js): one per liquid, for both which liquid sinks under which (dens) and how bodies
 // float in them (RHO). Drag on bodies stays per liquid.
 const RHO = Array.from(LRHO);
 for (let t = 1; t < LIQ.length; t++) LIQ[t].dens = LRHO[t];
-const DRAG = [0, 0.06, 0.2, 0.3, 0.02, 0.12, 0.06, 0.15, 0.01, 0.1, 0.35, 0.06, 0.4, 0.06, 0.2, 0.06, 0.25, 0.01, 0.01, 0.02, 0.1, 0.06, 0.01, 0.1, 0.06, 0.05, 0.3, 0.05, 0.1, 0.01, 0.01, 0.3];
+const DRAG = [0, 0.06, 0.2, 0.3, 0.02, 0.12, 0.06, 0.15, 0.01, 0.1, 0.35, 0.06, 0.4, 0.06, 0.2, 0.06, 0.25, 0.01, 0.01, 0.02, 0.1, 0.06, 0.01, 0.1, 0.06, 0.05, 0.3, 0.05, 0.1, 0.01, 0.01, 0.3, 0.01, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06];
 
 export { VISC_TEMP, viscAt, ACIDITY, liquid, LIQ, HEAT, RHO, DRAG };

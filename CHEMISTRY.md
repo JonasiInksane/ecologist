@@ -246,7 +246,7 @@ fantasy in the notes and tool palette.
 | Phase | Builds | Done when |
 | --- | --- | --- |
 | 19. Matter (built) | The material table; one density everywhere; conserved heat with latent heat; real thresholds | Tests: ice holds a drink at 0°, hot iron in water warms it by the right amount, boiling holds at 100°; every existing scene passes or is re-tuned with a note |
-| 20. Reactions | The reaction engine; existing reactions moved into it; the inorganic set (acid + metals/carbonates, lime cycle, chlorine and bleach, rust with oxygen, patina, charcoal, glass, smelting with carbon, thermite) and new materials | Every reaction in section 3's inorganic list has a test and conserves mass |
+| 20. Reactions (built) | The reaction engine; existing reactions moved into it; the inorganic set (acid + metals/carbonates, lime cycle, chlorine and bleach, rust with oxygen, patina, charcoal, glass, smelting with carbon, thermite) and new materials | Every reaction in section 3's inorganic list has a test and conserves mass |
 | 21. Air and water | Oxygen and CO₂ in the air grid; dissolved oxygen and CO₂ in water; combustion that needs oxygen; layering by concentration and temperature; emulsions and soap | A sealed fire goes out; a stratified pond's bottom goes anoxic; brine stays under fresh water |
 | 22. Life cycles | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey | A sealed jar with water, plants, algae and fish stays alive for days; overfeeding it causes a bloom and a fish kill at night |
 | 23. Showcase | The fantasy pass; a sealed-jar "terrarium" mode; puzzles about the new chemistry | |
@@ -306,6 +306,41 @@ Each phase is about the size of Phase 17. Phase 19 changes how everything feels,
   and oil, floats on honey, lye and acid). All 72 scenes pass.
 - Cost: a tick went from about 3.2 to 3.8 ms on a quiet machine (4.1 → 4.7 with the machine busy), within the 5 ms
   budget.
+
+### Phase 20: Reactions (built)
+
+- **The engine** (`js/chem.js`, `chemTick` every 4 ticks): each reaction is a rule object: what kind of liquid
+  (`'acid'`, `'base'`, `'water'`, or one liquid or gas) acts on which block, or which block reacts alone when hot
+  (`alone`, `above`, optionally `touching` another block, in open `air` or `sealed` from it), at what rate (scaled by
+  the acid's or alkali's strength), and what happens: the block becomes another block, nothing, or a melt; a gas comes
+  off into the nearest room; solutes go into the liquid; the liquid's strength or amount is used up; heat in joules is
+  shared between the two tiles. Liquid–liquid reactions stay pairs in `js/reactions.js`. The old hand-written acid,
+  fizz and rust code (in `js/reactions.js` and `js/solutes.js`) and ore and rust melting (in `js/heat.js`) are now
+  rules. The fantasy liquids keep their code until Phase 23.
+- **New materials**: limestone (natural ground), quicklime and ash (powders), lime mortar, charcoal, aluminium, zinc,
+  gold, green copper (patina); chlorine (a heavy gas) and bleach; dissolved metal salts (`SOL_METAL`). "Poison gas" is
+  now "toxic fumes" (sulfur dioxide from vents, mercury vapour); acid on metal no longer makes it.
+- **Rules** (section 3): acid on carbonates (CO₂ + salt), on lime (neutralised, hot), on zinc / iron / aluminium
+  (hydrogen + metal salts, fastest to slowest), on rust and ore (dissolved), on soft and living things; strong acid
+  chars sugar; lye on aluminium and zinc (hydrogen) and wool; water slakes quicklime (hot enough to boil); iron rusts
+  and copper goes green where water and air meet (submerged: ×0.15); lime mortar hardens in CO₂ or slowly in open air;
+  limestone and coral → quicklime above 825°; mortar → quicklime above 550°; baking soda → CO₂ above 150°; rust →
+  ore above 200°; wood sealed from air → charcoal above 300°; sand + soda or ash → glass above 1000°, sand alone above
+  1700°; ore + charcoal → molten cast iron above 900° (a third slag); ore alone → slag above 1565°; aluminium + rust
+  or ore above 1500° → thermite (2500° iron and slag).
+- **Elsewhere**: strong brine (salt over 120) gives chlorine instead of oxygen when split, and lye builds up in it;
+  chlorine dissolves into fresh water as acid but hardly into brine, makes bleach with lye, comes back from bleach and
+  acid, and explodes with hydrogen like oxygen does; bleach kills algae. Charcoal lights at 350° and burns at 1300°
+  for longer; burnt wood, leaves and charcoal leave ash. Molten iron is carbon-rich cast iron and sets at 1150°
+  (steel still melts at 1538°). Aluminium, zinc, gold, green copper and quicksilver conduct power.
+- **The Furnace puzzle** packs the ore in charcoal now: lit, it smelts the ore for real, and the iron runs into the
+  mould. The interim "ore melts on its own at 850°" is gone.
+- Tests: `chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach` (19 checks, one per reaction
+  or two), smelting rewritten (ore alone in lava stays ore; with charcoal it smelts; a charcoal fire smelts it), rust
+  rewritten (needs air; brine faster; dries to ore), acid on iron gives hydrogen. All 73 scenes pass.
+- Cost: none measurable (a tick about 3.8 ms).
+- Left for Phase 21–22, where they fit: ethanol, vinegar, soap, liquid nitrogen and dry ice, sulfur; molten aluminium,
+  zinc, copper and gold; bleach mixing into water as a solution.
 
 ## Sources
 

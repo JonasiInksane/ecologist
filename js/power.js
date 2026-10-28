@@ -8,7 +8,7 @@ import { LIQ } from './liquids.js';
 import { puff } from './particles.js';
 import { nbr } from './pumps.js';
 import { liq, sol, solid, temp, typ, wake } from './world.js';
-import { COPPER, HYDROGEN, OXYGEN } from './config.js';
+import { ALUMINIUM, CHLORINE, COPPER, GOLD, HYDROGEN, OXYGEN, PATINA, QUICK, SOL_BASE, ZINC } from './config.js';
 
 const BRINE_SALT = 60, NET_LIMIT = 8000;
 const netOf = new Int32Array(W * H), netStamp = new Uint32Array(netOf.length), netQueue = new Int32Array(netOf.length);
@@ -21,7 +21,8 @@ let reachGen = 0;
 
 function conductive(k) {
   const b = solid[k];
-  if (b) return b === METAL || b === COPPER;
+  if (b) return b === METAL || b === COPPER || b === ALUMINIUM || b === ZINC || b === GOLD || b === PATINA;   // patina is skin-deep: the copper under it still conducts
+  if (liq[k] >= 32 && typ[k] === QUICK) return true;   // mercury is a metal
   if (liq[k] < 32) return false;
   return typ[k] === STORM || (typ[k] === WATER && sol[k * NSOL + SOL_SALT] >= BRINE_SALT);
 }
@@ -54,7 +55,7 @@ function feed(k, on) {
     if (on) { nets[id].live = true; seeds.push(n); }
   }
 }
-function cost(k) { const b = solid[k]; return b === COPPER ? 1 : b === METAL ? 2 : 3; }
+function cost(k) { const b = solid[k]; return b === COPPER || b === PATINA || b === GOLD || b === ALUMINIUM ? 1 : b === METAL || b === ZINC ? 2 : 3; }   // copper, gold and aluminium conduct best
 function relax(k, left) {
   if (left < 0 || (reachStamp[k] === reachGen && strengthAt[k] >= left)) return;
   reachStamp[k] = reachGen; strengthAt[k] = left; buckets[left].push(k);
@@ -118,6 +119,7 @@ function shockTick() {
 // over it to the first tile that's empty or holds the same gas. What's dissolved stays
 // behind, so brine gets saltier as it's split.
 const SPLIT = 8, SPLIT_TRIES = 2;
+const CHLORINE_SALT = 120;   // brine saltier than this gives chlorine, more the saltier
 function electrolysis() {
   for (const net of nets) {
     if (!net.live) continue;
@@ -133,7 +135,10 @@ function electrolysis() {
 }
 // Splits SPLIT units of the water in tile w into a bubble above it, if the bubble finds room.
 function split(w) {
-  const gas = Math.random() < 2 / 3 ? HYDROGEN : OXYGEN, m = Math.min(SPLIT, liq[w]);
+  // two parts hydrogen to one of oxygen; strong brine gives chlorine instead of oxygen, and the water turns to lye
+  // (the chlor-alkali process). Weak brine still gives mostly oxygen.
+  const salt = sol[w * NSOL + SOL_SALT], cl = Math.max(0, Math.min(1, (salt - CHLORINE_SALT) / (255 - CHLORINE_SALT)));
+  const gas = Math.random() < 2 / 3 ? HYDROGEN : Math.random() < cl ? CHLORINE : OXYGEN, m = Math.min(SPLIT, liq[w]);
   let u = w - W;
   while (u >= 0 && !solid[u] && liq[u] && (typ[u] === WATER || (LIQ[typ[u]].gas && (typ[u] !== gas || liq[u] > 255 - m)))) u -= W;
   if (u < 0 || solid[u] || (liq[u] && typ[u] !== gas)) return;
@@ -142,6 +147,7 @@ function split(w) {
   liq[w] = a - m; if (!liq[w]) typ[w] = 0;
   if (!liq[u]) { temp[u] = temp[w]; sol.fill(0, u * NSOL, u * NSOL + NSOL); }
   liq[u] += m; typ[u] = gas;
+  if (gas === CHLORINE) { const p = w * NSOL; sol[p + SOL_SALT] = Math.max(0, sol[p + SOL_SALT] - 2); sol[p + SOL_BASE] = Math.min(255, sol[p + SOL_BASE] + 2); }
   wake(w); wake(u);
   if (Math.random() < 0.3) puff(w, 'bubble');
 }

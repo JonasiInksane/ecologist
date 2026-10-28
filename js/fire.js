@@ -7,9 +7,9 @@ import { AIR, BLOOM, COMB, CRISP, FROST, H, LEAF, METHANE, NBLOCK, OIL, PLANT, S
 import { puff } from './particles.js';
 import { nbr } from './pumps.js';
 import { clearSol } from './solutes.js';
-import { fire, liq, markDirty, solid, temp, typ, wake } from './world.js';
+import { fire, held, liq, markDirty, solid, temp, typ, wake } from './world.js';
 import { COOLANT, FUSE, WOOL } from './config.js';
-import { HYDROGEN, OXYGEN, STEAM } from './config.js';
+import { ASH, CHARCOAL, CHLORINE, HYDROGEN, OXYGEN, STEAM } from './config.js';
 
 
 
@@ -23,7 +23,9 @@ IGNITE_BLOCK[CRISP] = 200; BURN_TIME[CRISP] = 180;
 IGNITE_BLOCK[PLANT] = 250; BURN_TIME[PLANT] = 60;
 IGNITE_BLOCK[WOOL] = 570; BURN_TIME[WOOL] = 120;
 IGNITE_BLOCK[FUSE] = 120; BURN_TIME[FUSE] = 10;   // a fuse burns fast and lights the next fuse tile in any direction
-IGNITE_BLOCK[LEAF] = 230; BURN_TIME[LEAF] = 30;
+IGNITE_BLOCK[LEAF] = 230;
+IGNITE_BLOCK[CHARCOAL] = 350; BURN_TIME[CHARCOAL] = 255;   // charcoal glows a long time, hotter and with little smoke
+const CHARCOAL_FLAME = 1300, ASH_LEFT = 0.4, ASH_PINCH = 48;   // burnt wood leaves a pinch of ash, sometimes BURN_TIME[LEAF] = 30;
 const OIL_IGNITE = 250, OIL_SMOKE = 200, METHANE_IGNITE = 537, HYDROGEN_IGNITE = 500, FLAME_TEMP = 1000, RADIANT = 0.04, FLASH = 0.6;   // a flash heats the gas beside it past its ignition point, so the flame runs on
 const FED = 4;   // oxygen a fire uses up per tick from each oxygen tile it touches, burning hotter for it
 const DOUSERS = new Set([WATER, FROST, BLOOM, COOLANT]);
@@ -33,9 +35,9 @@ function exposed(x, y) {
   for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && !solid[n] && (!liq[n] || typ[n] === OXYGEN)) return true; }
   return false;
 }
-// The first neighbouring tile holding oxygen, or -1.
-function oxygenBeside(x, y) {
-  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] >= 16 && typ[n] === OXYGEN) return n; }
+// The first neighbouring tile holding oxygen (or, for hydrogen, chlorine, which it explodes with just the same), or -1.
+function oxygenBeside(x, y, h) {
+  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] >= 16 && (typ[n] === OXYGEN || (h && typ[n] === CHLORINE))) return n; }
   return -1;
 }
 // Water above or beside the tile. Water below doesn't count, so oil keeps burning on top of a lake.
@@ -44,7 +46,7 @@ function doused(x, y) {
   return false;
 }
 function burn(k, x, y) {
-  temp[k] = Math.max(temp[k], FLAME_TEMP);
+  temp[k] = Math.max(temp[k], solid[k] === CHARCOAL ? CHARCOAL_FLAME : FLAME_TEMP);
   wake(k);
   for (let d = 0; d < 3; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * RADIANT; }   // flames heat up and sideways
   if (solid[k] === FUSE) for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] = Math.max(temp[n], 300); }   // a burning fuse lights what it touches, even below it
@@ -74,9 +76,9 @@ function fireTick() {
     const b = solid[k];
     if (!b && liq[k] && (typ[k] === METHANE || typ[k] === HYDROGEN)) {
       const h = typ[k] === HYDROGEN;
-      if (temp[k] > (h ? HYDROGEN_IGNITE : METHANE_IGNITE) && !doused(x, y) && oxygenBeside(x, y) >= 0) {
+      if (temp[k] > (h ? HYDROGEN_IGNITE : METHANE_IGNITE) && !doused(x, y) && oxygenBeside(x, y, h) >= 0) {
         // mixed with oxygen it explodes; the oxygen it touches goes with it
-        for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && typ[n] === OXYGEN) { liq[n] = 0; typ[n] = 0; } }
+        for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && (typ[n] === OXYGEN || (h && typ[n] === CHLORINE))) { liq[n] = 0; typ[n] = 0; } }
         fire[k] = 0; explode(k);
         continue;
       }
@@ -116,7 +118,10 @@ function fireTick() {
     if (doused(x, y)) { fire[k] = 0; temp[k] = Math.min(temp[k], 90); puff(k, 'steam'); continue; }
     if (!exposed(x, y)) { fire[k] = 0; continue; }   // smothered
     burn(k, x, y);
-    if (--fire[k] === 0) { solid[k] = AIR; markDirty(x, y); puff(k, 'smoke'); }
+    if (--fire[k] === 0) {
+      const ash = (b === WOOD || b === CHARCOAL || b === LEAF) && Math.random() < ASH_LEFT;
+      solid[k] = ash ? ASH : AIR; held[k] = ash ? ASH_PINCH : 0; markDirty(x, y); puff(k, 'smoke');
+    }
   }
 }
 

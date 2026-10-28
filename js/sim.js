@@ -10,6 +10,7 @@ import { gasTick } from './gases.js';
 import { heatTick } from './heat.js';
 import { LIQ, VISC_TEMP, viscAt } from './liquids.js';
 import { AIR_CAP, LCAP } from './matter.js';
+import { chemTick } from './chem.js';
 import { momentumTick } from './momentum.js';
 import { puff, splash } from './particles.js';
 import { pipesTick } from './pipes.js';
@@ -145,6 +146,7 @@ function step() {
   weatherTick();
   if ((S.tick & 15) === 5) plantTick();
   if ((S.tick & 3) === 2) materialsTick();
+  if ((S.tick & 3) === 3) chemTick();
   for (let i = 0; i < awake.length; i++) if (awake[i]) awake[i]--;
 }
 

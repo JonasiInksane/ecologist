@@ -25,6 +25,7 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `tidepool.html`, `css/tidepool.css` | Page, toolbar and notes |
 | `js/config.js` | World size, tile size, block and liquid ids |
 | `js/world.js` | Tile arrays (`solid`, `liq`, `typ`, `temp`, `fire`, `sol`, `vel`, …), shared state `S`, the camera `VIEW`, chunk sleep (`wake` for liquids, `heatWake` for heat) |
+| `js/chem.js` | Chemistry as data: one rule per real reaction of a liquid (or what's dissolved in it) with a block, or of a hot block on its own, with what it makes, uses and gives off as heat; the engine that applies them |
 | `js/matter.js` | Real physical properties of every block, liquid and gas: density, heat capacity, conductivity, latent heats, and how they're compressed for play (see `CHEMISTRY.md`) |
 | `js/liquids.js` | The liquid property table: one row per liquid (gravity, viscosity, colours, glow, pouring temperature; densities from `js/matter.js`) |
 | `js/reactions.js` | What happens when two liquids touch, and what liquids do to touching blocks |

@@ -9,7 +9,7 @@ import { placeDevice } from './devices.js';
 import { resetWorld } from './generate.js';
 import { LIQ } from './liquids.js';
 import { S, bodies, devices, liq, sol, solid, temp, typ, under, wakeAll } from './world.js';
-import { BRICK, DEPTH, FUSE, LAMP, NSOL, ORE, PIXEL, SOL_SALT, WOOD } from './config.js';
+import { CHARCOAL, BRICK, DEPTH, FUSE, LAMP, NSOL, ORE, PIXEL, SOL_SALT, WOOD } from './config.js';
 
 const at = (x, y) => y * W + x;
 function rect(x0, y0, x1, y1, f) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) f(at(x, y), x, y); }
@@ -177,11 +177,11 @@ const LEVELS = [
     failed() { return countAll(k => liq[k] && typ[k] === WATER && (k / W | 0) >= 59 && ((k % W) < 60 || (k % W) > 70)) ? 'The tank overflowed.' : null; },
   },
   {
-    name: 'Furnace', goal: 'Cast 3 metal blocks in the mould: set the wood around the ore alight, and the molten metal drops through the opening into the mould.',
+    name: 'Furnace', goal: 'Cast 3 metal blocks in the mould: light the charcoal packed round the ore. It burns hot enough to smelt the ore, and the iron runs down through the opening into the mould.',
     tools: ['heat'],
     build() {
       blocks(55, 65, 67, 65, STONE); blocks(60, 65, 61, 65, 0);   // the mould's lid, open in the middle
-      blocks(58, 60, 63, 64, WOOD); blocks(60, 61, 61, 63, ORE); blocks(60, 64, 61, 64, 0);   // ore in a stack of wood, right over the opening
+      blocks(58, 60, 63, 64, CHARCOAL); blocks(60, 61, 61, 63, ORE); blocks(60, 64, 61, 64, 0);   // ore packed in charcoal, right over the opening
       blocks(55, 66, 55, 73, STONE); blocks(67, 66, 67, 73, STONE); blocks(55, 73, 67, 73, STONE);   // the mould
       return { x0: 56, y0: 66, x1: 66, y1: 72 };
     },

@@ -154,8 +154,18 @@
         <li><b>Strength matters.</b> Strong acid in water still eats dirt, stone and other blocks it touches, more slowly the weaker it is, and is used up doing it. Weak acid is harmless. Lye turns oil into soapy foam and kills slime.</li>
         <li><b>Fizz.</b> Acid on baking soda fizzes into carbon dioxide. It's heavier than air, so it sinks and pools in low places, puts out fires, and the explorer can't breathe in it. A little dissolves into water, making it faintly acidic.</li>
         <li><b>Crystals.</b> Still, saturated brine slowly grows glowing salt crystals on any surface, and fresh water dissolves them again.</li>
-        <li><b>Electrolysis.</b> Power through brine, or a live metal or copper rod dipped in fresh water, splits the water into <b>hydrogen</b> and <b>oxygen</b>, two bubbles of hydrogen to one of oxygen. No water is made or lost, and the salt stays behind, so split brine gets saltier.</li>
-        <li><b>Smelting.</b> <b>Ore</b>, found in veins deep underground, melts above 850° in lava, in molten metal or in a wood fire built around it (a boiler is far too cool), and comes out white-hot so it runs before it sets. (Real iron ore needs charcoal to smelt: that comes with the chemistry update.) Two tiles in three become <b>molten metal</b> and the rest <b>molten slag</b>, which floats on the metal and sets into <b>slag</b>; water quenches it at once.</li>
+        <li><b>Electrolysis.</b> Power through brine, or a live metal or copper rod dipped in fresh water, splits the water into <b>hydrogen</b> and <b>oxygen</b>, two bubbles of hydrogen to one of oxygen. No water is made or lost, and the salt stays behind, so split brine gets saltier. Strong brine gives <b>chlorine</b> instead of oxygen and turns to lye as it goes (the chlor-alkali process).</li>
+        <li><b>Smelting.</b> <b>Ore</b> (red iron oxide, found in veins deep underground) gives up its iron only to carbon: ore touching <b>charcoal</b> above 900° becomes molten, carbon-rich iron (it stays runny down to 1150°) and the charcoal goes off as carbon dioxide; a third comes out as <b>molten slag</b>, which floats on the iron and sets into <b>slag</b>. Burning charcoal (1300°) does it, as does charcoal in lava. Ore on its own only melts into slag above 1565°.</li>
+        <li><b>Real chemistry.</b> Reactions follow real chemistry, each written as one rule (js/chem.js): what reacts, how fast, what it makes and the heat it gives or takes.
+          <ul>
+            <li><b>Acid</b> fizzes carbon dioxide off <b>limestone</b>, coral, baking soda and ash, leaving salt; dissolves <b>zinc</b> briskly, iron steadily and <b>aluminium</b> slowly, giving <b>hydrogen</b> and metal salts; dissolves rust and ore; eats soil, wood, plants, wax and wool; and chars sugar into black carbon. <b>Copper</b>, <b>gold</b>, glass, sand and stone resist it. Lye eats aluminium and zinc too.</li>
+            <li><b>The lime cycle.</b> Limestone or coral above 825° burns into <b>quicklime</b>, giving off CO₂. Water on quicklime slakes it into <b>lime mortar</b>, hot enough to boil the water. Mortar hardens back into limestone in CO₂, quickly, or slowly in open air: build with it.</li>
+            <li><b>Charcoal and ash.</b> Wood heated shut off from air chars into charcoal, which lights at 350° and burns hotter and longer. Burnt wood leaves <b>ash</b>, which fizzes in acid and melts sand into glass.</li>
+            <li><b>Glass.</b> Sand with baking soda or ash melts into glass above 1000°; on its own it needs 1700°.</li>
+            <li><b>Thermite.</b> Aluminium touching rust or ore, held above 1500°, burns into 2500° molten iron and slag, with no air needed.</li>
+            <li><b>Chlorine</b> is a heavy, choking gas that pools low. It dissolves into fresh water as acid, makes <b>bleach</b> with lye, and explodes with hydrogen when lit. Bleach and acid give chlorine back; bleach kills algae.</li>
+            <li><b>Iron rusts</b> where water and air both reach it (deep under water, much more slowly), several times faster in brine; heated, rust dries into ore. <b>Copper</b> slowly goes green in wet air and still conducts. Gold never changes. Aluminium, zinc and gold carry power; so does quicksilver.</li>
+          </ul></li>
       </ul>
     </div>
     <div>
@@ -163,7 +173,7 @@
       <ul class="liquids">
         <li><span class="sw" style="background:#b98cf5"></span><div><b>Aether.</b> Falls upward and pools on ceilings. It is lighter than every other liquid, so it bubbles up through them. It glows violet, sheds drifting motes, and crystallises lava into glowing crystal.</div></li>
         <li><span class="sw" style="background:#c4ccd8"></span><div><b>Quicksilver.</b> Heavy, fast and opaque. It sinks through any other liquid and pushes it up instead of reacting, and it beads up rather than spreading thin. Pour it into a lake to watch the water lift.</div></li>
-        <li><span class="sw" style="background:#7dec4a"></span><div><b>Acid.</b> Eats through dirt, stone, ice and honey blocks it touches, using itself up as it goes. Water dilutes it back to water. It fizzes and gives off a green glow.</div></li>
+        <li><span class="sw" style="background:#7dec4a"></span><div><b>Acid.</b> Eats through dirt, wood, ice and honey blocks it touches, fizzes limestone and dissolves most metals, using itself up as it goes (stone, glass, sand, copper and gold resist it). Water dilutes it back to water. It fizzes and gives off a green glow.</div></li>
         <li><span class="sw" style="background:#a8e4ff"></span><div><b>Frost.</b> A slow, glittering liquid that freezes any water it touches into ice. Thin puddles of it freeze solid on their own. Lava melts ice back into water.</div></li>
       </ul>
       <p>Underground is dark. Sky light seeps in through openings, and lava, aether, acid, frost and crystal light the caves around them. Toggle it with <kbd>L</kbd>.</p>
@@ -249,7 +259,7 @@
     <div>
       <h2>Creatures, plants and puzzles</h2>
       <ul>
-        <li><b>Fish</b> swim in water and breed in a pool together. Stranded, they flop towards water they can see and soon die; acid, poison, power, lava and hot water kill them. A new world has some in the cave lake.</li>
+        <li><b>Fish</b> swim in water and breed in a pool together. Stranded, they flop towards water they can see and soon die; acid, toxic gases, power, lava and hot water kill them. A new world has some in the cave lake.</li>
         <li><b>Salamanders</b> live in lava and glow. Out of it they wander, setting what they walk on alight, but water kills them and they can't stay cool for long.</li>
         <li><b>Pike</b> are big fish that hunt the small ones, which flee them. A pike breeds only after a good meal and starves without prey, then rots and feeds the algae the small fish eat, so a lake swings between them instead of filling up.</li>
         <li><b>Moths</b> flutter low over the ground and eat leaves. They breed while fed and die of hunger, frost, fire or a soaking, so winter thins them out. Fish leap out of the water to snap up moths flying low over it.</li>
@@ -264,7 +274,7 @@
     <div>
       <h2>Gases and nitro</h2>
       <ul>
-        <li><b>Gases</b> flow like thin liquids. <b>Smoke</b> rises from fires and thins out. <b>Methane</b> bubbles up from slime and collects under ceilings; it drifts away in open sky. <b>Poison gas</b>, from acid eating metal, is heavier than air and pools in hollows and on water. It hurts the explorer and withers moss.</li>
+        <li><b>Gases</b> flow like thin liquids. <b>Smoke</b> rises from fires and thins out. <b>Methane</b> bubbles up from slime and collects under ceilings; it drifts away in open sky. <b>Toxic fumes</b> (sulfur dioxide from gas vents, mercury vapour from boiling quicksilver) and <b>chlorine</b> are heavier than air and pool in hollows and on water. They hurt the explorer; fumes wither moss.</li>
         <li>Methane catches fire above 120° or against lava and burns in a flash that runs through the whole cloud.</li>
         <li><b>Hydrogen</b> is the lightest gas: it rises and escapes from the open sky. It catches above 100° and burns in a flash into hot steam, the water it was split from. <b>Oxygen</b> is a little heavier than air: it pools in hollows and slowly mixes away in the open. The explorer can breathe it, and fires burn hotter in it and use it up.</li>
         <li>Gases don't carry, lift or shove the explorer or other bodies; they only matter where they hurt (poison gas, scalding steam). Oxygen sinks slowly, like the heavier gases.</li>
@@ -273,7 +283,7 @@
         <li><b>Mixtures explode.</b> Hydrogen or methane touching oxygen doesn't just burn when lit: it explodes like nitro, and the blast sets off the rest of the mixture.</li>
         <li><b>Nitro</b> (<kbd>U</kbd>) explodes above 150°, after a fall of six rows or more, or when live power touches it, so a lever and a metal line make a detonator. It sinks through water, where it's safe. A blast breaks blocks (not obsidian, metal or machines), throws liquid and objects outward, leaves smoke, and heats everything nearby, so one charge sets off the next.</li>
         <li><b>Frozen nitro.</b> Below 12° nitro freezes into a pale block that's safe: it can't fall, and the pickaxe can dig it and carry it in the bag. Above 14° it thaws back into nitro, and heat or a nearby blast still sets it off.</li>
-        <li><b>Rust.</b> Metal under water slowly rusts, several times faster in brine or acid. Rust is crumbly, doesn't carry power, and acid eats it; heated past 850° it smelts back into metal. Metal in the built-in puzzles doesn't rust.</li>
+        <li><b>Rust.</b> Iron rusts where water and air both reach it, several times faster in brine or acid, and only slowly deep under water. Rust is crumbly, doesn't carry power, and acid eats it; heated above 200° it dries into ore, which charcoal smelts back into iron. Metal in the built-in puzzles doesn't rust.</li>
       </ul>
     </div>
     <div>
@@ -344,11 +354,14 @@
             <tr><td>molten metal + water</td><td>metal, steam</td></tr>
             <tr><td>stormwater + lava / frost</td><td>obsidian / ice</td></tr>
             <tr><td>methane + lava or heat</td><td>a flash fire</td></tr>
-            <tr><td>acid + metal</td><td>poison gas</td></tr>
+            <tr><td>acid + iron, zinc, aluminium</td><td>hydrogen</td></tr>
+            <tr><td>acid + limestone, coral, baking soda</td><td>carbon dioxide</td></tr>
+            <tr><td>chlorine + lye</td><td>bleach</td></tr>
+            <tr><td>bleach + acid</td><td>chlorine</td></tr>
             <tr><td>nitro + heat, a fall or power</td><td>explosion</td></tr>
             <tr><td>quicksilver above 357°</td><td>toxic vapour</td></tr>
             <tr><td>hot foam</td><td>oil (its water boils off)</td></tr>
-            <tr><td>water + smoke / poison gas</td><td>the water soaks it up</td></tr>
+            <tr><td>water + smoke / toxic fumes / chlorine</td><td>the water soaks it up (chlorine as acid)</td></tr>
             <tr><td>water + crisp honey</td><td>sugar dissolved in the water</td></tr>
             <tr><td>salt + ice</td><td>brine</td></tr>
             <tr><td>mud under still water</td><td>swamp gas (methane)</td></tr>
@@ -378,7 +391,7 @@
       <h2>Flow rules, in update order</h2>
       <ol>
         <li>Each tile stores one liquid and an amount from <code>0</code> to <code>255</code>. The grid updates bottom row first, alternating row direction each tick.</li>
-        <li><b>React</b> with touching liquids, then with touching blocks (acid eats, lava melts ice, thin frost freezes).</li>
+        <li><b>React</b> with touching liquids, then with touching blocks (lava melts ice, thin frost freezes); every 4 ticks the chemistry rules in js/chem.js run.</li>
         <li><b>Fall</b> one tile in the liquid's gravity direction: down for most, up for aether. A denser liquid falling onto a lighter one swaps with it.</li>
         <li><b>Spread</b> by averaging with lower side neighbours. Each liquid has its own minimum puddle size and its own tick rate, which sets how thick and slow it is.</li>
       </ol>

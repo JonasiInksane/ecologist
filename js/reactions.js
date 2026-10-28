@@ -1,6 +1,6 @@
 // What happens when two liquids touch, and what liquids do to touching blocks.
 import { explode } from './blast.js';
-import { ACID, AETHER, AIR, AMBIENT, BASALT, BLOOM, BRICK, COMB, CRISP, CRYSTAL, DIRT, FOAM, FROST, H, HONEY, ICE, LAVA, LEAF, METAL, METHANE, MOLTEN, MOSS, MUD, NBLOCK, NITRO, NLIQ, NSOL, OBSIDIAN, OIL, PLANT, POISON, QUICK, SALT, SLIME, SMOKE, SOL_ESSENCE, SOL_SALT, SOL_SUGAR, STEAM, STONE, STORM, TONIC, W, WATER, WOOD } from './config.js';
+import { ACID, AETHER, AIR, AMBIENT, BASALT, BLOOM, BRICK, COMB, CRISP, CRYSTAL, DIRT, FOAM, FROST, H, HONEY, ICE, LAVA, LEAF, METAL, METHANE, MOLTEN, MOSS, MUD, NBLOCK, NITRO, NLIQ, NSOL, OBSIDIAN, OIL, PLANT, CHLORINE, POISON, QUICK, SALT, SLIME, SMOKE, SOL_ESSENCE, SOL_SALT, SOL_SUGAR, STEAM, STONE, STORM, TONIC, W, WATER, WOOD } from './config.js';
 import { LIQ } from './liquids.js';
 import { puff } from './particles.js';
 import { charged } from './power.js';
@@ -11,7 +11,7 @@ import { CO2, LYE, SOL_ACID, SOL_BASE } from './config.js';
 import { SODA } from './config.js';
 import { COOLANT, FERRO, FERT, MIMIC, SOL_FERT, VOID } from './config.js';
 import { BLEACHED, CORAL, FUSE, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from './config.js';
-import { HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SUGAR } from './config.js';
+import { BLEACH, HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SOL_ALGAE, SUGAR } from './config.js';
 
 
 
@@ -25,13 +25,12 @@ import { HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SUGAR } from './config.js';
 
 
 const NITRO_DROP = 6;   // rows of free fall that set nitro off when it lands
-const DISSOLVES = new Uint8Array(NBLOCK);   // which blocks acid can eat (not sand or glass: silica resists it)
-[DIRT, STONE, COMB, CRISP, ICE, BASALT, WOOD, MOSS, SALT, SUGAR, PLANT, LEAF, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, CORAL, BLEACHED, FUSE, RUST].forEach(b => { DISSOLVES[b] = 1; });
+
 const SWAP = { swap: true };
 const REACT = new Array(NLIQ * NLIQ).fill(null);
 function setR(a, b, r) { REACT[a * NLIQ + b] = r; REACT[b * NLIQ + a] = r; }
 // gases trade places with everything; which way depends on density, so they layer
-for (let t = 1; t < LIQ.length; t++) for (const s of [AETHER, QUICK, STEAM, SMOKE, METHANE, POISON, CO2, HYDROGEN, OXYGEN]) setR(s, t, SWAP);
+for (let t = 1; t < LIQ.length; t++) for (const s of [AETHER, QUICK, STEAM, SMOKE, METHANE, POISON, CHLORINE, CO2, HYDROGEN, OXYGEN]) setR(s, t, SWAP);
 setR(AETHER, STEAM, null);   // both rise: let them sit side by side
 setR(WATER, LAVA, { block: OBSIDIAN, fx: 'steam' });
 // water dissolves honey into sugar; icy water (below 10°) sets it into honeycomb instead
@@ -132,6 +131,26 @@ for (const gas of [SMOKE, POISON]) setR(gas, WATER, { fn(k, o, t) {
   liq[g] = Math.max(0, liq[g] - (gas === SMOKE ? 24 : 8)); if (!liq[g]) typ[g] = 0;
   return g === k && !liq[g];
 } });
+// Chlorine rises through water like the other gases, dissolving into fresh water as it goes (js/solutes.js); with lye
+// it makes bleach. Bleach and acid
+// give the chlorine back, and bleach kills algae in the water it touches. Bleach is mostly water: it layers under
+// fresh water until Phase 21 mixes solutions.
+setR(CHLORINE, LYE, { fn(k, o, t) {
+  const g = t === CHLORINE ? k : o, l = g === k ? o : k;
+  typ[l] = BLEACH; liq[g] = Math.max(0, liq[g] - 96); if (!liq[g]) typ[g] = 0; wake(l);
+  return g === k && !liq[g];
+} });
+setR(BLEACH, ACID, { fn(k, o, t) {
+  const b = t === BLEACH ? k : o, a = b === k ? o : k;
+  typ[b] = CHLORINE; temp[b] = AMBIENT; clearSol(b); liq[a] = Math.max(0, liq[a] - 48); if (!liq[a]) typ[a] = 0; puff(b, 'fizz'); wake(b);
+  return b === k;
+} });
+setR(BLEACH, WATER, { fn(k, o, t) {
+  const w = t === WATER ? k : o;
+  if (sol[w * NSOL + SOL_ACID] >= 40) { const b = w === k ? o : k; typ[b] = CHLORINE; temp[b] = AMBIENT; clearSol(b); sol[w * NSOL + SOL_ACID] -= 40; puff(b, 'fizz'); return b === k; }
+  sol[w * NSOL + SOL_ALGAE] = 0;
+  return false;
+} });
 
 // Turns a liquid tile into a block. The block remembers how much liquid it was (meltAmount gives it back), and ice and metal
 // start below their melting points, so a warm tile that freezes doesn't melt straight back.
@@ -169,22 +188,8 @@ function fizz(o) {
 }
 // Effects on touching blocks. Returns the tile's new amount.
 function blockEffects(x, y, k, t, a) {
-  if (t === ACID) {
-    for (let i = 0; i < 4; i++) {
-      const nx = x + (i === 0 ? -1 : i === 1 ? 1 : 0), ny = y + (i === 2 ? -1 : i === 3 ? 1 : 0);
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-      const o = ny * W + nx;
-      if (solid[o] === SODA && Math.random() < 0.1) { fizz(o); a -= 48; if (a <= 0) return 0; continue; }
-      if (DISSOLVES[solid[o]] && Math.random() < 0.025) {
-        solid[o] = AIR; markDirty(nx, ny); puff(o, 'fizz');
-        a -= 32; if (a <= 0) return 0;
-      } else if (solid[o] === METAL && Math.random() < 0.008) {
-        // acid corrodes metal slowly and gives off poison gas where it was
-        solid[o] = AIR; liq[o] = 160; typ[o] = POISON; temp[o] = AMBIENT; clearSol(o); markDirty(nx, ny); puff(o, 'fizz');
-        a -= 24; if (a <= 0) return 0;
-      }
-    }
-  } else if (t === LAVA) {
+  // (acid acting on blocks: rules in js/chem.js)
+  if (t === LAVA) {
     for (let i = 0; i < 4; i++) {
       const nx = x + (i === 0 ? -1 : i === 1 ? 1 : 0), ny = y + (i === 2 ? -1 : i === 3 ? 1 : 0);
       if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
@@ -245,4 +250,4 @@ function blockEffects(x, y, k, t, a) {
   return a;
 }
 
-export { fizz, NITRO_DROP, DISSOLVES, SWAP, REACT, setR, solidify, react, reactAll, blockEffects };
+export { fizz, NITRO_DROP, SWAP, REACT, setR, solidify, react, reactAll, blockEffects };

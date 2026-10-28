@@ -4,12 +4,12 @@
 // Different gases also diffuse into each other: now and then two neighbouring tiles of different gases trade places,
 // so where a rising and a sinking gas meet there's a mixed band rather than a clean line (and hydrogen or methane
 // mixed with oxygen is what explodes, js/fire.js).
-import { H, METHANE, POISON, SMOKE, W } from './config.js';
+import { H, METHANE, CHLORINE, POISON, SMOKE, W } from './config.js';
 import { liq, temp, typ, under, wake } from './world.js';
 import { LIQ } from './liquids.js';
 import { CO2, HYDROGEN, OXYGEN } from './config.js';
 
-const FADE = { [SMOKE]: 3, [POISON]: 0.15, [CO2]: 0.1, [OXYGEN]: 0.05 };   // amount lost per gas tick; a fraction is a chance of losing one
+const FADE = { [SMOKE]: 3, [POISON]: 0.15, [CHLORINE]: 0.1, [CO2]: 0.1, [OXYGEN]: 0.05 };   // amount lost per gas tick; a fraction is a chance of losing one
 const ESCAPES = new Set([SMOKE, METHANE, HYDROGEN]);   // gases that rise out of the top of the open sky
 const MIX = 0.3;   // chance per gas tick that a gas tile trades places with a different gas beside it
 
@@ -17,7 +17,7 @@ function gasTick() {
   for (let k = 0; k < W * H; k++) {
     if (!liq[k]) continue;
     const t = typ[k];
-    if (t !== SMOKE && t !== METHANE && t !== POISON && t !== CO2 && t !== HYDROGEN && t !== OXYGEN) continue;
+    if (t !== SMOKE && t !== METHANE && t !== POISON && t !== CHLORINE && t !== CO2 && t !== HYDROGEN && t !== OXYGEN) continue;
     if (ESCAPES.has(t) && k < W && !under[k]) { liq[k] = 0; typ[k] = 0; continue; }
     if (Math.random() < MIX) mix(k, t);
     const f = FADE[t];

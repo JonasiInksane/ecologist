@@ -28,6 +28,7 @@ import { S, VIEW, awake, bodies, deco, devices, drop, fall, fire, heatWake, held
 import { CO2, LYE, SODA } from './config.js';
 import { HYDROGEN, MSLAG, ORE, OXYGEN, SLAG } from './config.js';
 import { DEPTH, FNITRO, PIXEL, RUST, SUGAR, THERMO } from './config.js';
+import { ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, QUICKLIME, ZINC } from './config.js';
 import { phOf } from './solutes.js';
 import { BATTERY, EMAGNET, LAMP, MOTOR, SOLAR } from './config.js';
 import { COOLANT, COPPER, CORAL, FERRO, FERT, FUSE, LIGHT, MAGNET, MEMBRANE, MIMIC, POROUS, SPONGE, VOID, WOOL } from './config.js';
@@ -60,7 +61,9 @@ const TOOLS = [
   { id: 'molten', name: 'Molten metal', liquid: MOLTEN, color: '#ffb040' },
   { id: 'nitro',  name: 'Nitro',       liquid: NITRO,  color: '#e8d070', key: 'u' },
   { id: 'methane', name: 'Methane',    liquid: METHANE, color: '#c9e6a0' },
-  { id: 'poison', name: 'Poison gas',  liquid: POISON, color: '#9ccf3a' },
+  { id: 'poison', name: 'Toxic fumes', liquid: POISON, color: '#9ccf3a' },
+  { id: 'chlorine', name: 'Chlorine', liquid: CHLORINE, color: '#d4e85a' },
+  { id: 'bleach', name: 'Bleach',     liquid: BLEACH, color: '#e4edd2' },
   { id: 'lye',    name: 'Lye',         liquid: LYE,    color: '#b4c4e6' },
   { id: 'co2',    name: 'Carbon dioxide', liquid: CO2, color: '#c8d2d8' },
   { id: 'void',   name: 'Void ink',    liquid: VOID,   color: '#140c1e' },
@@ -103,6 +106,14 @@ const TOOLS = [
   { id: 'slag',   name: 'Slag',   block: SLAG,  color: '#4a4240' },
   { id: 'rust',   name: 'Rust',   block: RUST,  color: '#a0502a' },
   { id: 'fnitro', name: 'Frozen nitro', block: FNITRO, color: '#f0e4b0' },
+  { id: 'limestone', name: 'Limestone', block: LIMESTONE, color: '#cfc6ae' },
+  { id: 'quicklime', name: 'Quicklime', block: QUICKLIME, color: '#f4f2ea' },
+  { id: 'lime',   name: 'Lime mortar', block: LIME, color: '#e2ded2' },
+  { id: 'charcoal', name: 'Charcoal', block: CHARCOAL, color: '#2a2624' },
+  { id: 'ash',    name: 'Ash',    block: ASH,   color: '#b4b0aa' },
+  { id: 'aluminium', name: 'Aluminium', block: ALUMINIUM, color: '#c8ccd2' },
+  { id: 'zinc',   name: 'Zinc',   block: ZINC,  color: '#a4aab0' },
+  { id: 'gold',   name: 'Gold',   block: GOLD,  color: '#e8b830' },
   { id: 'heat',   name: 'Heat',   heat: true,   color: '#ff5a36', key: 'f' },
   { id: 'chill',  name: 'Chill',  chill: true,  color: '#8fd8ff', key: 'g' },
   { id: 'pump',     name: 'Pump',     pump: true,         color: '#5f6a80', key: 'p' },
@@ -369,7 +380,7 @@ const BLOCKS = ['', 'dirt', 'stone', 'obsidian', 'honeycomb', 'crisp honey', 'ic
   'metal', 'pipe', 'valve', 'pipe filter', 'steam turbine', 'water wheel', 'boiler', 'separator', 'AND gate', 'OR gate', 'NOT gate', 'counter', 'plant', 'leaf',
   'snow', 'permafrost', 'clay', 'windmill', 'geyser', 'gas vent', 'baking soda', 'salt crystal',
   'sponge', 'wet sponge', 'wet soil', 'porous rock', 'wool', 'copper', 'membrane', 'coral', 'bleached coral', 'fuse cord', 'magnet',
-  'battery', 'lamp', 'motor', 'electromagnet', 'solar panel', 'ore', 'slag', 'temperature sensor', 'depth sensor', 'pixel', 'sugar', 'rust', 'frozen nitro'];
+  'battery', 'lamp', 'motor', 'electromagnet', 'solar panel', 'ore', 'slag', 'temperature sensor', 'depth sensor', 'pixel', 'sugar', 'rust', 'frozen nitro', 'limestone', 'quicklime', 'lime mortar', 'charcoal', 'ash', 'aluminium', 'zinc', 'gold', 'green copper'];
 setupEditor({ tools: TOOLS, blocks: BLOCKS, enterMode });
 // Text from a level code (its name, goal and labels) is shown as text, never as markup.
 function escapeHtml(text) { return String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }
