@@ -1,5 +1,5 @@
 // Shared headless fixture for focused simulation checks. Imports happen after browser stubs.
-const fakeContext = { createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData() {} };
+const fakeContext = { createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData() {}, drawImage() {} };
 function pageStub() {
   return new Proxy(function () {}, {
     get: (f, k) => k === 'getContext' ? () => fakeContext : k === Symbol.toPrimitive ? () => 0 : k === Symbol.iterator ? undefined : pageStub(),

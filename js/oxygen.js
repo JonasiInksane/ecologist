@@ -87,7 +87,10 @@ function fixCarbon(k, n) {
   const got = Math.min(n, airCarb[k], Math.max(0, MAX_AIR_OX - airOx[k]) * CARB_PER_OX);
   airCarb[k] -= got;
   airOx[k] += got / CARB_PER_OX;
-  if (got) stir(k);
+  if (got) {
+    stir(k);
+    S.accounting.photosynthesisAirC = (S.accounting.photosynthesisAirC || 0) + got;
+  }
   return got;
 }
 // Signed exchange with the external atmosphere, in mg of O2 or the equal-molecule CO2 equivalent. These counters

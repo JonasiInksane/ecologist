@@ -60,8 +60,10 @@ function step() {
     const crow = ((y / CHUNK) | 0) * CW;
     for (let i = 0; i < W; i++) {
       const x = ltr ? i : W - 1 - i;
+      // Test the live counter at this segment: earlier liquid movement can wake later chunks.
+      if (i % CHUNK === 0 && !awake[crow + ((x / CHUNK) | 0)]) { i += CHUNK - 1; continue; }
       const k = y * W + x;
-      if (!liq[k] || stamp[k] === S.tick || !awake[crow + ((x / CHUNK) | 0)]) continue;
+      if (!liq[k] || stamp[k] === S.tick) continue;
       const t = typ[k], L = LIQ[t];
       if (S.tick % (VISC_TEMP[t] ? viscAt(t, temp[k]) : L.visc)) continue;
       if (reactAll(x, y, k, t)) continue;

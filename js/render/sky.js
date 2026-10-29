@@ -1,7 +1,7 @@
 // Stars, the sun and moon, clouds and fog, rain and snow, and lightning, drawn after lighting into open sky only
 // (never over terrain or liquid).
 import { AH, AW, CELL, bolts, cellT, cloud, open, rainAt, u } from '../air.js';
-import { blend } from '../canvas.js';
+import { blend, frame } from '../canvas.js';
 import { PH, PW, T, W } from '../config.js';
 import { dayPhase, sunHeight } from '../daynight.js';
 import { hash, vnoise } from '../util.js';
@@ -69,11 +69,15 @@ function drawPrecipitation(time) {
   }
 }
 // Cloud density at pixel (px, py), smoothly interpolated between air cells, with a slow wobble at the edges.
-function cloudAt(px, py, time) {
+function cloudCellAt(cx, cy) { return cy < 0 || cy >= AH ? 0 : cloud[cy * AW + ((cx % AW) + AW) % AW]; }
+function cloudBaseAt(px, py) {
   const gx = px / (CELL * T) - 0.5, gy = py / (CELL * T) - 0.5, ix = Math.floor(gx), iy = Math.floor(gy), fx = gx - ix, fy = gy - iy;
-  const at = (cx, cy) => (cy < 0 || cy >= AH) ? 0 : cloud[cy * AW + ((cx % AW) + AW) % AW];
-  const d = at(ix, iy) * (1 - fx) * (1 - fy) + at(ix + 1, iy) * fx * (1 - fy) + at(ix, iy + 1) * (1 - fx) * fy + at(ix + 1, iy + 1) * fx * fy;
-  return d / 255 + (vnoise(px / 22 + time * 0.03, py / 14, 7) - 0.5) * 0.3;
+  const d = cloudCellAt(ix, iy) * (1 - fx) * (1 - fy) + cloudCellAt(ix + 1, iy) * fx * (1 - fy) + cloudCellAt(ix, iy + 1) * (1 - fx) * fy + cloudCellAt(ix + 1, iy + 1) * fx * fy;
+  return d / 255;
+}
+const CLOUD_WOBBLE = 0.3, CLOUD_EDGE = CLOUD_WOBBLE / 2 + 1e-12;
+function cloudAt(px, py, time) {
+  return cloudBaseAt(px, py) + (vnoise(px / 22 + time * 0.03, py / 14, 7) - 0.5) * CLOUD_WOBBLE;
 }
 // Clouds as flat shapes in three tones: a pale fringe, a white body and a dark grey storm core, dimmed at night. Low
 // cloud lying on the ground is drawn as thin fog.
@@ -93,7 +97,10 @@ function drawClouds(time) {
       if (py < VIEW.y || py >= VIEW.y + VIEW.h) continue;
       for (let px = cx * cs; px < cx * cs + cs; px++) {
         if (px < VIEW.x || px >= VIEW.x + VIEW.w || !openSky(px, py)) continue;
-        const d = cloudAt(px, py, time);
+        const base = cloudBaseAt(px, py);
+        // Noise only matters near a palette boundary. Else its bounded wobble cannot change the pixel's tone.
+        const edge = Math.abs(base - 0.25) <= CLOUD_EDGE || Math.abs(base - 0.6) <= CLOUD_EDGE || (!fog && Math.abs(base - 1.6) <= CLOUD_EDGE);
+        const d = edge ? base + (vnoise(px / 22 + time * 0.03, py / 14, 7) - 0.5) * CLOUD_WOBBLE : base;
         if (d < 0.25) continue;
         if (fog) { blend(py * PW + px, 222 * day, 228 * day, 236 * day, d > 0.6 ? 0.5 : 0.3); continue; }
         if (d > 1.6) blend(py * PW + px, 118 * day, 124 * day, 138 * day, 0.93);
@@ -104,6 +111,7 @@ function drawClouds(time) {
   }
 }
 // Lightning: a jagged white bolt for a few frames, and a flash over the view when it strikes.
+const LIGHTNING_BLEND = new Uint32Array(256);
 function drawLightning() {
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i];
@@ -119,7 +127,11 @@ function drawLightning() {
   }
   if (S.flash > 0) {
     const a = 0.05 * S.flash--;
-    for (let y = VIEW.y; y < VIEW.y + VIEW.h; y++) for (let x = VIEW.x; x < VIEW.x + VIEW.w; x++) blend(y * PW + x, 255, 255, 255, a);
+    for (let c = 0; c < 256; c++) LIGHTNING_BLEND[c] = c + (255 - c) * a;
+    for (let y = VIEW.y; y < VIEW.y + VIEW.h; y++) for (let x = VIEW.x; x < VIEW.x + VIEW.w; x++) {
+      const p = y * PW + x, c = frame[p];
+      frame[p] = (0xff000000 | (LIGHTNING_BLEND[(c >>> 16) & 255] << 16) | (LIGHTNING_BLEND[(c >>> 8) & 255] << 8) | LIGHTNING_BLEND[c & 255]) >>> 0;
+    }
   }
 }
 

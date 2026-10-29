@@ -1,0 +1,15 @@
+node:internal/modules/run_main:129
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: negligible meals cannot repeatedly reset starvation while maintenance goes unpaid
+    at ok (file:///C:/Users/jonas/Documents/tidepool%202/tidepool/tools/check-ecology.mjs:21:38)
+    at file:///C:/Users/jonas/Documents/tidepool%202/tidepool/tools/check-ecology.mjs:74:3 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v20.15.1

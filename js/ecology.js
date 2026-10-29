@@ -137,7 +137,10 @@ function ecoRespire(k, carbon) {
 }
 function ecoFixWater(k, carbon) {
   const used = Math.min(carbon, soluteAmount(k, SOL_CO2) * ECO_DISSOLVED_C);
-  if (used > 0) breatheWater(k, -used * AIR_CO2_EQ_MG_PER_UNIT * 255 / liq[k]);
+  if (used > 0) {
+    breatheWater(k, -used * AIR_CO2_EQ_MG_PER_UNIT * 255 / liq[k]);
+    S.accounting.photosynthesisWaterC = (S.accounting.photosynthesisWaterC || 0) + used;
+  }
   return used;
 }
 function ecoMinerals(k, n, p) {
@@ -154,8 +157,17 @@ function ecoMaintain(b, k) {
     const sip = Math.min(b.load, a.reserve / ECO_C.honey); b.load -= sip; ecoFeed(b, ecoFood(sip), k);
   }
   const available = Math.max(0, pool.c - a.body);
-  pool.c -= ecoRespire(k, Math.min(a.burn, available));
-  b.starving = available <= ECO_RATE.epsilon ? (b.starving || 0) + 1 : 0;
+  // A trace meal cannot pay a whole tick of maintenance. Retain unpaid energy as stress, and
+  // require later food to pay it through actual respiration before recovery. Migrate old stress counts.
+  const debt = b.metabolicDebt ?? (b.starving || 0) * a.burn;
+  const foodBudget = Math.min(a.burn + debt, available);
+  const paid = ecoRespire(k, foodBudget);
+  pool.c -= paid;
+  // Oxygen shortages have their own hypoxia/choking checks. Only food that is missing adds
+  // starvation stress; old stress is repaid only by actual metabolism beyond current maintenance.
+  b.metabolicDebt = Math.max(0, debt + Math.max(0, a.burn - foodBudget) - Math.max(0, paid - a.burn));
+  if (b.metabolicDebt < ECO_RATE.epsilon) b.metabolicDebt = 0;
+  b.starving = b.metabolicDebt / a.burn;
   return b.starving <= ECO_RATE.starvingGrace;
 }
 function ecoFeed(b, meal, k) {
@@ -166,7 +178,7 @@ function ecoFeed(b, meal, k) {
   const a = ECO_ANIMALS[b.kind];
   const n = Math.max(0, b.bio.n - a.body * a.n * 2) * 0.1, p = Math.max(0, b.bio.p - a.body * a.p * 2) * 0.1;
   b.bio.n -= n; b.bio.p -= p; ecoMinerals(k, n, p);
-  if (fraction > 0 && meal.c > 0) { b.hunger = 0; b.starving = 0; }
+  if (fraction > 0 && meal.c > 0) b.hunger = 0;
 }
 function ecoAppetite(b) { const a = ECO_ANIMALS[b.kind]; ecoEnsureBody(b); return Math.max(0, a.body + a.reserve * 4 - b.bio.c); }
 function ecoGraze(b, k, requested) {
@@ -396,8 +408,11 @@ function ecoDenitrify(k, requested) {
   return n;
 }
 function ecoSpore(k, channel) {
-  if (!skyAbove(k)) return 0;
   if (channel === SOL_ALGAE && (temp[k] < ECO_RATE.algaeMinTemp || temp[k] > ECO_RATE.algaeMaxTemp || sol[k * NSOL + SOL_SALT] > ECO_RATE.algaeMaxSalt)) return 0;
+  // Avoid a sky ray when the existing bank cannot pay. Keep lazy initialization/migration and caller RNG order.
+  const existing = S.ecology?.version >= 2 ? S.ecology.inoculum[channel === SOL_ALGAE ? 'algae' : 'yeast'] : null;
+  if (existing && !(bioGrowth(existing, 2, ECO_QUOTA) > 0)) return 0;
+  if (!skyAbove(k)) return 0;
   const bank = ecoState().inoculum[channel === SOL_ALGAE ? 'algae' : 'yeast'], amount = Math.min(2 * liq[k] / 255, bioGrowth(bank, 2, ECO_QUOTA));
   if (!(amount > 0)) return 0;
   bioTransfer(bank, bioPool(), bioTissue(amount, ECO_QUOTA)); addSoluteAmount(k, channel, amount); return amount;

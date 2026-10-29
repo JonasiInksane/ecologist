@@ -5,3 +5,4 @@ dist/
 .claude/
 .DS_Store
 node_modules/
+.test-artifacts/

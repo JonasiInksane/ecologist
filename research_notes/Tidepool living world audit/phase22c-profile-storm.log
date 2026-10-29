@@ -1,0 +1,31 @@
+generate  2354 ms
+scenario  storm · seed 7 · 400 ticks
+step      mean 26.65 ms · median 24.30 · 95th 48.60 · worst 71.41
+render    mean 79.43 ms · median 73.83 · 95th 106.99 · worst 715.68  (every other tick)
+
+self time by function:
+   4928 ms  18.5%  drawClouds  render/sky.js:80
+   1917 ms   7.2%  applyLight  render/lighting.js:112
+   1808 ms   6.8%  drawBody  render/liquids.js:85
+   1709 ms   6.4%  drawLightning  render/sky.js:107
+   1380 ms   5.2%  step  js/sim.js:56
+   1295 ms   4.9%  drawTile  render/terrain.js:118
+   1276 ms   4.8%  vnoise  js/util.js:20
+    851 ms   3.2%  phaseChanges  js/heat.js:174
+    845 ms   3.2%  momentumTick  js/momentum.js:31
+    843 ms   3.2%  tileHeat  js/heat.js:93
+    599 ms   2.2%  fillMatter  js/heat.js:76
+    536 ms   2.0%  render  render/render.js:61
+    516 ms   1.9%  soluteTick  js/solutes.js:141
+    483 ms   1.8%  carryHeat  js/sim.js:46
+    437 ms   1.6%  chemTick  js/chem.js:147
+    415 ms   1.6%  computeLight  render/lighting.js:43
+    383 ms   1.4%  powderTick  js/powders.js:51
+    349 ms   1.3%  fireTick  js/fire.js:174
+    333 ms   1.3%  sweep  render/lighting.js:33
+    295 ms   1.1%  compose  render/backdrop.js:43
+    279 ms   1.0%  blend  js/canvas.js:20
+    276 ms   1.0%  airTickOx  js/oxygen.js:122
+    250 ms   0.9%  heatTick  js/heat.js:114
+    235 ms   0.9%  (garbage collector)  :0
+    213 ms   0.8%  wake  js/world.js:56

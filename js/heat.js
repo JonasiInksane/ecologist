@@ -48,6 +48,7 @@ const vaporDew = concentration => {
 // Dirt's held field stores pore water, so a partial silt residue cannot use that block inventory yet.
 const RESIDUE_BLOCK = { [SOL_SALT]: SALT, [SOL_SUGAR]: SUGAR };
 const VOLATILE_SOLUTES = new Set([SOL_ETHANOL, SOL_O2, SOL_CO2]);
+const NONVOLATILE_CHANNELS = Array.from({ length: NSOL }, (_, i) => i).filter(i => !VOLATILE_SOLUTES.has(i));
 const PARTIAL_HEAT = new Set([SALT, SUGAR, SAND, SNOW, SODA, ASH, QUICKLIME, ICE, CRISP, FNITRO, METAL, SLAG, BASALT]);
 const PORE_HEAT = new Set([DIRT, WETDIRT, SPONGE, WETSPONGE]);
 const ALIVE = new Uint8Array(NLIQ);
@@ -284,7 +285,7 @@ function warmWater(k) {
 }
 function hasNonvolatile(k) {
   const p = k * NSOL;
-  for (let i = 0; i < NSOL; i++) if (!VOLATILE_SOLUTES.has(i) && sol[p + i] > 0) return true;
+  for (const i of NONVOLATILE_CHANNELS) if (sol[p + i] > 0) return true;
   return false;
 }
 // Material enthalpy used by the incremental evaporator. Empty-cell air is excluded: this inventory follows the

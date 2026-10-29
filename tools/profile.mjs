@@ -14,6 +14,12 @@ globalThis.addEventListener = () => {};
 globalThis.Option = function () {};
 globalThis.matchMedia = () => ({ matches: false });
 
+const profileOption = (name, fallback) => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
+const profileScene = profileOption('scene', 'generated');
+if (!['generated', 'calm', 'storm', 'burning', 'crowded'].includes(profileScene)) throw new Error('Unknown profiling scene');
+const { S, solid, liq, typ, temp, markDirty } = await import('../js/world.js');
+const { W, H, T, WATER, WOOD } = await import('../js/config.js');
+const { seededRandom } = await import('../js/util.js');
 const { generate } = await import('../js/generate.js');
 const { step } = await import('../js/sim.js');
 const { render } = await import('../js/render/render.js');
@@ -21,8 +27,31 @@ const { setZoom, snapToExplorer } = await import('../js/render/camera.js');
 const ticks = +process.argv.find(a => /^\d+$/.test(a)) || 600, hot = process.argv.includes('--hot');
 
 let t0 = performance.now();
+S.seed = Number(profileOption('seed', String(S.seed)));
 generate(); setZoom(1); snapToExplorer();
 console.log(`generate  ${(performance.now() - t0).toFixed(0)} ms`);
+Math.random = seededRandom(S.seed);
+if (profileScene === 'calm') { S.weather = false; S.wind = S.windTarget = 0; }
+if (profileScene === 'storm') {
+  const air = await import('../js/air.js');
+  S.weather = true; S.wind = S.windTarget = 2; S.windTimer = 1e9;
+  air.cloud.fill(air.STORM_AT * 3); air.hum.fill(air.RAIN_AT);
+}
+if (profileScene === 'burning') {
+  const { surface } = await import('../js/climate.js');
+  for (let x = 20; x < 100; x += 3) {
+    const y = surface[x] - 1, k = y * W + x;
+    if (y < 0 || solid[k] || liq[k]) continue;
+    solid[k] = WOOD; temp[k] = 450; markDirty(x, y);
+  }
+}
+if (profileScene === 'crowded') {
+  const { addBody } = await import('../js/bodies.js'); let added = 0;
+  for (let k = 0; k < W * H && added < 24; k++) if (typ[k] === WATER && liq[k] > 200 && !solid[k]) {
+    if (addBody('fish', (k % W) * T, Math.floor(k / W) * T)) added++;
+  }
+}
+console.log(`scenario  ${profileScene} · seed ${S.seed} · ${ticks} ticks`);
 const session = new Session();
 if (hot) { session.connect(); await session.post('Profiler.enable'); await session.post('Profiler.start'); }
 const sim = [], draw = [];

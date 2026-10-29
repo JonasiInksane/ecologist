@@ -64,6 +64,27 @@ function set(k, channel, value) { Wd.sol[k * C.NSOL + channel] = value; }
   poor.bio.p = 0; ok(!Eco.ecoBirth(poor, addBody), 'no offspring without phosphorus');
 }
 {
+  const k = wet(), fish = addBody('fish', 40 * C.T, 50 * C.T);
+  fish.bio.c = ECO_ANIMALS.fish.body; set(k, C.SOL_ALGAE, 0.01);
+  const before = Eco.ecoInventory(plants); let alive = true;
+  for (let i = 0; i < 500 && alive; i++) {
+    if (i % 100 === 0) Eco.ecoGraze(fish, k, 1e-7);
+    alive = Eco.ecoMaintain(fish, k);
+  }
+  ok(!alive, 'negligible meals cannot repeatedly reset starvation while maintenance goes unpaid');
+  budget(before, 'partial maintenance');
+}
+{
+  const k = wet(), fish = addBody('fish', 40 * C.T, 50 * C.T);
+  fish.bio.c = ECO_ANIMALS.fish.body;
+  for (let i = 0; i < 100; i++) Eco.ecoMaintain(fish, k);
+  set(k, C.SOL_ALGAE, 0.2); const before = Eco.ecoInventory(plants);
+  Eco.ecoGraze(fish, k, 0.2); Eco.ecoMaintain(fish, k);
+  near(fish.starving, 0, 'adequate food clears accumulated starvation by paying its energy cost');
+  near(fish.bio.c, ECO_ANIMALS.fish.body + 0.099, 'recovery spends the prior 100 ticks plus current maintenance');
+  budget(before, 'metabolic recovery');
+}
+{
   const k = wet(), pike = addBody('pike', 40 * C.T, 50 * C.T), prey = addBody('fish', 40 * C.T, 50 * C.T);
   const before = Eco.ecoInventory(plants);
   ok(Eco.ecoEatPrey(pike, prey, k), 'prey transfers once'); budget(before, 'predation');
