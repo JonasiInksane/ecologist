@@ -1,0 +1,9 @@
+
+mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds  (109.9 s)
+  PASS  running water washes mud away as silt  (200 silty tiles at peak)
+  PASS  the sun dries mud into dirt  (46 dirt)
+  PASS  organic mud under anoxic water bubbles up finite swamp gas  (3 methane tiles)
+  PASS  oil hot enough to smoke but not burn gives off smoke  (18 smoke tiles)
+  PASS  steam scalds the explorer
+
+all checks passed · matching mud: washed run, 1 scenes, 110.3 s

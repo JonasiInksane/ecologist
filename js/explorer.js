@@ -5,12 +5,14 @@ import { sfx } from './audio.js';
 import { keys } from './bodies.js';
 import { AIR, BASALT, BRICK, CLAY, COMB, CRISP, CRYSTAL, DIRT, GLASS, H, ICE, MOSS, NBLOCK, NSOL, OBSIDIAN, PERMAFROST, SALT, SAND, SNOW, STONE, T, W, WATER, WOOD } from './config.js';
 import { LIQ } from './liquids.js';
+import { LCAP, dissolvedHeatCapacity } from './matter.js';
 import { puff } from './particles.js';
-import { S, bodies, devices, held, liq, markDirty, meltAmount, sol, solid, temp, typ, wake } from './world.js';
+import { S, bodies, devices, held, latent, liq, markDirty, meltAmount, sol, solid, temp, typ, wake } from './world.js';
 import { GEM, SODA } from './config.js';
 import { BLEACHED, COPPER, CORAL, FUSE, MAGNET, POROUS, SPONGE, WETDIRT, WOOL } from './config.js';
 import { ALUMINIUM, ASH, CHARCOAL, FNITRO, GOLD, LIME, LIMESTONE, ORE, PATINA, QUICKLIME, RUST, SLAG, SUGAR, ZINC } from './config.js';
 import { POWDER, SLIDE_AT } from './powders.js';
+import { ecoDetachTile, ecoEraseTile, ecoLegacyBag, ecoMigrateBag, ecoPackTile, ecoUnpackTile } from './ecology.js';
 
 const BAG_SLOTS = 8, STACK = 99;
 // Ticks of digging each block takes; 0 means the pickaxe can't break it (machines, plants, metal).
@@ -25,7 +27,7 @@ DIG_TICKS[LIMESTONE] = 30; DIG_TICKS[QUICKLIME] = 8; DIG_TICKS[LIME] = 12; DIG_T
 function findExplorer() { return bodies.find(b => b.kind === 'explorer'); }
 // Puzzles switch the tools off unless they list them.
 function toolAllowed(name) { return !S.level || S.level.tools.includes(name); }
-function bagOf(b) { return b.inv || (b.inv = { bucket: null, bag: [], pick: 0 }); }
+function bagOf(b) { const inv = b.inv || (b.inv = { bucket: null, bag: [], pick: 0 }); ecoMigrateBag(inv); return inv; }
 
 function tileAt(x, y) { return x < 0 || y < 0 || x >= W || y >= H ? -1 : y * W + x; }
 // Tiles the explorer can reach, in the order they're tried: in front (feet, then head, then the one below that),
@@ -48,20 +50,23 @@ const scoopable = k => !solid[k] && liq[k] > 0 && LIQ[typ[k]].grav > 0;   // not
 const openFor = t => k => !solid[k] && !devices.has(k) && (!liq[k] || (typ[k] === t && liq[k] < 255));
 const placeable = k => !solid[k] && !liq[k] && !devices.has(k) && !overlapsBody(k);
 
-function addToBag(inv, block) {
+function addToBag(inv, block, stock) {
+  ecoMigrateBag(inv);
   const slot = inv.bag.find(s => s.b === block);
-  if (slot) { if (slot.n >= STACK) return false; slot.n++; return true; }
+  if (slot) { if (slot.n >= STACK) return false; slot.n++; slot.stocks.push(stock); return true; }
   if (inv.bag.length >= BAG_SLOTS) return false;
-  inv.bag.push({ b: block, n: 1 });
+  inv.bag.push({ b: block, n: 1, stocks: [stock] });
   return true;
 }
 function breakBlock(inv, k) {
   const block = solid[k], x = k % W, y = (k / W) | 0;
   if (block === ICE) {   // ice shatters into the water it froze from
-    solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = WATER; sol.fill(0, k * NSOL, k * NSOL + NSOL);
+    solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = WATER;
   } else {
     const pinch = POWDER[block] && held[k] && held[k] < SLIDE_AT;   // a thin layer of powder is swept away, not bagged
-    if (!pinch && !addToBag(inv, block)) return false;
+    const stock = pinch ? null : ecoPackTile(k);
+    if (!pinch && !addToBag(inv, block, stock)) return false;
+    if (stock) ecoDetachTile(k, stock); else ecoEraseTile(k);
     solid[k] = AIR; held[k] = 0;
   }
   markDirty(x, y); wake(k);
@@ -69,17 +74,21 @@ function breakBlock(inv, k) {
   return true;
 }
 function scoopBucket(inv, k) {
-  inv.bucket = { t: typ[k], a: liq[k], temp: temp[k], sol: Array.from(sol.subarray(k * NSOL, k * NSOL + NSOL)) };
+  inv.bucket = { t: typ[k], a: liq[k], temp: temp[k], latent: latent[k], sol: Array.from(sol.subarray(k * NSOL, k * NSOL + NSOL)) };
+  latent[k] = 0;
   liq[k] = 0; typ[k] = 0; sol.fill(0, k * NSOL, k * NSOL + NSOL); wake(k);
   sfx('splash', (k % W) * T + 4, ((k / W) | 0) * T + 4);
 }
-// Pours what fits into tile k, mixing heat and dissolved contents by amount; the rest stays in the bucket.
+// Pours what fits, mixing heat by capacity and dissolved contents by carrier amount; the rest stays in the bucket.
 function pourBucket(inv, k) {
   const bk = inv.bucket, had = liq[k], put = Math.min(bk.a, 255 - had);
   if (put <= 0) return;
   const f = put / (had + put);
-  temp[k] = had ? temp[k] + (bk.temp - temp[k]) * f : bk.temp;
-  for (let i = 0; i < NSOL; i++) sol[k * NSOL + i] = had ? Math.round(sol[k * NSOL + i] + (bk.sol[i] - sol[k * NSOL + i]) * f) : bk.sol[i];
+  const receiverCap = (LCAP[typ[k]] || 0) * had / 255 + dissolvedHeatCapacity(had, sol, k * NSOL);
+  const putCap = LCAP[bk.t] * put / 255 + dissolvedHeatCapacity(put, bk.sol);
+  temp[k] = (temp[k] * receiverCap + bk.temp * putCap) / (receiverCap + putCap);
+  for (let i = 0; i < NSOL; i++) sol[k * NSOL + i] = had ? sol[k * NSOL + i] + (bk.sol[i] - sol[k * NSOL + i]) * f : bk.sol[i];
+  const energy = (bk.latent || 0) * put / bk.a; latent[k] += energy; bk.latent = (bk.latent || 0) - energy;
   liq[k] = had + put; typ[k] = bk.t; wake(k);
   bk.a -= put;
   if (!bk.a) inv.bucket = null;
@@ -108,7 +117,8 @@ function explorerTools(b) {
       if (!b.digHeld && slot) {
         const p = firstOf(reach(b), placeable);
         if (p >= 0) {
-          solid[p] = slot.b; held[p] = 0; markDirty(p % W, (p / W) | 0);
+          const stock = slot.stocks.pop() || ecoLegacyBag(slot.b);
+          solid[p] = slot.b; ecoUnpackTile(p, stock); markDirty(p % W, (p / W) | 0);
           if (--slot.n <= 0) { inv.bag.splice(inv.pick, 1); inv.pick = Math.min(inv.pick, Math.max(0, inv.bag.length - 1)); }
           sfx('click', (p % W) * T + 4, ((p / W) | 0) * T + 4);
         }

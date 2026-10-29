@@ -1,0 +1,34 @@
+
+sponges, soil, porous rock, wool and copper, membranes, coral, fuses  (54.9 s)
+  PASS  a sponge soaks up water  (holds 255)
+  PASS  the water it holds isn’t lost
+  PASS  heat releases sponge water as steam, which can condense without losing water  (steam peaked at 199; 0 held + 0 steam + 200 water; conserved every tick)
+  PASS  dirt soaks up water as wet soil  (21 wet soil tiles)
+  PASS  wet soil drips into the cave below  (167 dripped)
+  PASS  water seeps down through porous rock  (5400 seeped through)
+  PASS  copper carries heat fast; wool barely lets it through  (water behind copper 91°, behind wool 29°)
+  PASS  a membrane lets its liquid through and stops the rest  (4744 water through, 27 tiles below)
+  PASS  coral grows in warm salt water  (7 coral)
+  PASS  too hot, it bleaches
+  PASS  a fuse burns along its length, turning corners and climbing  (0 fuse tiles left)
+  PASS  and sets off nitro at its end
+
+solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers  (33.7 s)
+  PASS  a solar panel lights its lamp at noon, not at midnight
+  PASS  underground, a solar panel runs on liquid light beside it
+  PASS  a battery stores power from a line and keeps its lamp lit after the lever goes off  (charged to 300, lamp lit on the battery, then dark)
+  PASS  a running motor opens the gate it touches and pushes water past itself  (13 water tiles moved)
+  PASS  an electromagnet pulls ferrofluid only while powered  (0 tiles raised off, 9 on)
+  PASS  a boiler runs on hot coolant and stays off on cold  (102 steam tiles at peak, boiler on for 1200 of 1200 ticks, water over it up to 186°)
+
+matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density  (55.5 s)
+  PASS  hot iron in water warms it by the heat it brings: the water ends near the mixed temperature  (water 31.0°, iron 31.5°, expected 32.9°; heat in the box and its walls -1.6% changed)
+  PASS  ice holds the water round it near 0° while it melts  (the water at 0.78° on average, 7 of 8 ice tiles left)
+  PASS  boiling water stays at 100° while it turns to steam  (the pot at 100.0° at most, 102 steam tiles at most)
+  PASS  ferrofluid sinks through water  (6 ferrofluid tiles at the bottom)
+  PASS  ferrofluid sinks through oil  (6 ferrofluid tiles at the bottom)
+  PASS  ferrofluid floats on honey  (0 ferrofluid tiles at the bottom)
+  PASS  ferrofluid floats on lye  (0 ferrofluid tiles at the bottom)
+  PASS  ferrofluid floats on acid  (0 ferrofluid tiles at the bottom)
+
+all checks passed · matching matter: heat, sponges, soil, coolant-fed boilers run, 3 scenes, 56.1 s

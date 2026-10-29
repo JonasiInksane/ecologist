@@ -5,7 +5,8 @@
   "scripts": {
     "serve": "python3 -m http.server 8765",
     "test": "node tools/simtest.mjs",
-    "test:full": "node tools/simtest.mjs --full",
+    "test:full": "node tools/check-ecology.mjs && node tools/simtest.mjs --full",
+    "test:ecology": "node tools/check-ecology.mjs",
     "build": "node tools/build.mjs"
   }
 }

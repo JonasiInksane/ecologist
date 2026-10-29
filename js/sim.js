@@ -2,14 +2,14 @@
 import { airTick } from './air.js';
 import { biomeTick } from './biomes.js';
 import { updateBodies } from './bodies.js';
-import { CHUNK, FOAM, H, NLIQ, OIL, W, WATER } from './config.js';
+import { CHUNK, FOAM, H, NLIQ, NSOL, OIL, W, WATER } from './config.js';
 import { devicesTick } from './devices.js';
 import { erosionTick } from './erosion.js';
 import { fireTick } from './fire.js';
 import { gasTick } from './gases.js';
 import { heatTick } from './heat.js';
 import { LIQ, VISC_TEMP, viscAt } from './liquids.js';
-import { AIR_CAP, LCAP } from './matter.js';
+import { AIR_CAP, LCAP, dissolvedHeatCapacity } from './matter.js';
 import { chemTick } from './chem.js';
 import { airTickOx } from './oxygen.js';
 import { momentumTick } from './momentum.js';
@@ -22,8 +22,9 @@ import { pumpTick } from './pumps.js';
 import { REACT, SWAP, blockEffects, reactAll } from './reactions.js';
 import { carrySol, densityOf, soluteTick, swapSol } from './solutes.js';
 import { weatherTick } from './weather.js';
-import { CW, S, awake, drop, flux, liq, solid, stamp, temp, typ, vel, wake } from './world.js';
+import { CW, S, awake, drop, flux, latent, liq, sol, solid, stamp, temp, typ, vel, wake } from './world.js';
 import { materialsTick } from './materials.js';
+import { ecoTick } from './ecology.js';
 
 
 
@@ -40,14 +41,17 @@ const CONVECT = 8;   // how much warmer liquid must be than the liquid above it 
 const LAYER = 0.0004;   // g/cm³ of difference that makes a layer turn over (about 2° near room temperature)
 // Moving liquid carries its temperature, what's dissolved in it and its momentum; for heat, an empty tile counts as a
 // little air.
-// Liquid moving into a tile mixes its heat with what's there: liquid by amount, an empty tile's air by its (small)
-// heat capacity, counted as that many units of the incoming liquid.
-const AIR_UNITS = new Float32Array(NLIQ).map((_, t) => LCAP[t] ? Math.min(255, AIR_CAP / LCAP[t] * 255) : 16);
-function carryHeat(src, dst, mv, had) {
-  const w = had > 0 ? had : AIR_UNITS[typ[src]];
-  temp[dst] = (temp[dst] * w + temp[src] * mv) / (w + mv);
+// Mix material heat capacities before mixing concentrations; concentrated salt/sugar carries heat too.
+// Empty-tile air keeps the existing small heat charge. Displaced sub-tile air is still a coarse flow approximation.
+function carryHeat(src, dst, mv, had, available = liq[src]) {
+  if (!(mv > 0) || !(available > 0)) return;
+  const incomingCap = LCAP[typ[src]] * mv / 255 + dissolvedHeatCapacity(mv, sol, src * NSOL);
+  const receiverCap = had > 0 ? LCAP[typ[dst] || typ[src]] * had / 255 + dissolvedHeatCapacity(had, sol, dst * NSOL) : AIR_CAP;
+  temp[dst] = (temp[dst] * receiverCap + temp[src] * incomingCap) / (receiverCap + incomingCap);
   vel[dst] = had > 0 ? (vel[dst] * had + vel[src] * mv) / (had + mv) : vel[src];
   carrySol(src, dst, mv, had);
+  const energy = latent[src] * mv / available;
+  latent[src] -= energy; latent[dst] += energy;
 }
 function step() {
   S.tick++;
@@ -77,7 +81,7 @@ function step() {
             const room = 255 - ba;
             if (room > 0) {
               const mv = a < room ? a : room;
-              carryHeat(k, b, mv, ba); liq[b] = ba + mv; typ[b] = t; a -= mv; wake(k);
+              carryHeat(k, b, mv, ba, a); liq[b] = ba + mv; typ[b] = t; a -= mv; wake(k);
               if (mv >= 8) flux[b] = S.tick;
               drop[b] = Math.max(ba ? drop[b] : 0, Math.min(255, drop[k] + 1)); fell = true;
               if (g < 0) stamp[b] = S.tick;   // rows above run later this tick; don't move it twice
@@ -86,9 +90,12 @@ function step() {
               // denser liquid sinks through lighter liquid of the same kind under it: saltier or sweeter water, and
               // water nearer 4° (convection; a cooling lake turns over)
               swapSol(k, b);
+              liq[k] = ba; liq[b] = a;
+              const ek = latent[k]; latent[k] = latent[b]; latent[b] = ek;
               const tk = temp[k]; temp[k] = temp[b]; temp[b] = tk;
               const vk = vel[k]; vel[k] = vel[b]; vel[b] = vk;
               wake(k); stamp[k] = S.tick; stamp[b] = S.tick;
+              continue;
             }
           } else if (t === WATER && bt === OIL && Math.random() < 0.1) {
             // water crashing down onto oil churns both into foam
@@ -101,6 +108,7 @@ function step() {
             const tk = temp[k]; temp[k] = temp[b]; temp[b] = tk;
             const vk = vel[k]; vel[k] = vel[b]; vel[b] = vk;
             swapSol(k, b);
+            const ek = latent[k]; latent[k] = latent[b]; latent[b] = ek;
             wake(k);
             stamp[k] = S.tick; stamp[b] = S.tick;
             continue;
@@ -124,8 +132,12 @@ function step() {
         const n = 1 + useL + useR;
         const sum = a + (useL ? la : 0) + (useR ? ra : 0);
         const avg = (sum / n) | 0;
-        if (useL) { if (avg > la) carryHeat(k, k - 1, avg - la, la); if (avg - la >= 8) flux[k - 1] = S.tick; liq[k - 1] = avg; typ[k - 1] = t; stamp[k - 1] = S.tick; }
-        if (useR) { if (avg > ra) carryHeat(k, k + 1, avg - ra, ra); if (avg - ra >= 8) flux[k + 1] = S.tick; liq[k + 1] = avg; typ[k + 1] = t; stamp[k + 1] = S.tick; }
+        // A side can exceed the three-way average even though it started below the centre. Move its excess
+        // back first; assigning the final amounts directly used to discard its ingredients and energy.
+        if (useL && la > avg) { carryHeat(k - 1, k, la - avg, a); a += la - avg; liq[k - 1] = avg; }
+        if (useR && ra > avg) { carryHeat(k + 1, k, ra - avg, a); a += ra - avg; liq[k + 1] = avg; }
+        if (useL) { if (avg > la) { carryHeat(k, k - 1, avg - la, la, a); a -= avg - la; } if (avg - la >= 8) flux[k - 1] = S.tick; liq[k - 1] = avg; typ[k - 1] = t; stamp[k - 1] = S.tick; }
+        if (useR) { if (avg > ra) { carryHeat(k, k + 1, avg - ra, ra, a); a -= avg - ra; } if (avg - ra >= 8) flux[k + 1] = S.tick; liq[k + 1] = avg; typ[k + 1] = t; stamp[k + 1] = S.tick; }
         a = sum - avg * (n - 1);
         wake(k);
       }
@@ -148,6 +160,7 @@ function step() {
   biomeTick();
   weatherTick();
   if ((S.tick & 15) === 5) plantTick();
+  if ((S.tick & 15) === 7) ecoTick();
   if ((S.tick & 3) === 2) materialsTick();
   if ((S.tick & 3) === 3) chemTick();
   if ((S.tick & 3) === 1) airTickOx();

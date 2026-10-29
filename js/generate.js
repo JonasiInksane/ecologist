@@ -16,6 +16,7 @@ import { moved } from './momentum.js';
 import { restorePristine } from './snapshot.js';
 import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, AIR_OX, AIR_CARB, airOx, airCarb, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
 import { resetPressure } from './pressure.js';
+import { ecoInitializeWorld } from './ecology.js';
 
 
 
@@ -31,6 +32,9 @@ import { resetPressure } from './pressure.js';
 // Empties the world: no blocks, liquid, machines, bodies or plants, ambient temperature, plain grassland climate, still
 // air, and the clock at zero.
 function resetWorld() {
+  S.ecology = null;
+  S.nextPlantId = 0;
+  S.mossSugar = {}; S.accounting = {}; S.diagnostics = { deaths: [], deathCounts: {}, births: {} };
   solid.fill(0); liq.fill(0); typ.fill(0); drop.fill(0); vel.fill(0); stamp.fill(0); S.tick = 0; parts.length = 0;
   pumps.length = 0; bodies.length = 0; S.pendingIn = -1; temp.fill(AMBIENT); latent.fill(0); airOx.fill(AIR_OX); airCarb.fill(AIR_CARB); under.fill(0);
   devices.clear(); S.pendingLink = -1; fire.fill(0); deco.fill(0); sol.fill(0); held.fill(0); flux.fill(0); pipeTick.fill(0); pipeShow.fill(0); moved.fill(0); drifted.fill(0);   // tick stamps: the clock restarts
@@ -58,7 +62,7 @@ function generate() {
   const keep = { seed: S.seed, weather: S.weather, momentum: S.momentum, pressure: S.pressure, lastLiquid: S.lastLiquid, timeMode: S.timeMode, heldPhase: S.heldPhase };
   restorePristine();   // a blank slate: nothing from the previous world affects this one
   S.seed = keep.seed;
-  try { buildWorld(); } finally { Math.random = real; Object.assign(S, keep); }
+  try { buildWorld(); ecoInitializeWorld(); } finally { Math.random = real; Object.assign(S, keep); }
 }
 function buildWorld() {
   resetWorld();

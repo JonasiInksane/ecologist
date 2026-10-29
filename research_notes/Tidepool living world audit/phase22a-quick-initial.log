@@ -1,0 +1,154 @@
+
+a timer switches a spring on and off  (2.6 s)
+  PASS  spring pours while the timer is on  (7.8 tiles)
+  PASS  spring stops while the timer is off
+
+a sensor opens a floodgate when the water reaches it  (5.5 s)
+  PASS  gate stays shut below the sensor
+  PASS  gate opens once the water touches the sensor  (84.1 tiles drained below)
+
+a crate on a pressure plate holds a gate open; a drain empties a pool  (8.3 s)
+  PASS  gate shut with nothing on the plate
+  PASS  crate presses the plate and opens the gate
+  PASS  drain empties the pool  (0.2 tiles left)
+
+settled chunks sleep and wake when disturbed  (8.6 s)
+  PASS  a settled world falls asleep  (256 of 256 chunks asleep)
+  PASS  digging under the pool wakes it and it drains  (40.9 of 195.0 tiles left)
+
+brine freezes colder, and boiling it away leaves salt  (4.7 s)
+  PASS  fresh water freezes at -12°
+  PASS  brine stays liquid at -12°
+  PASS  boiling brine leaves salt behind  (10 salt blocks)
+
+inks swirl together  (3.8 s)
+  PASS  red and blue ink mix where they meet  (117 purple tiles)
+  PASS  they have not evened out completely
+
+stormwater, brine and metal carry a lever to a floodgate  (0.9 s)
+  PASS  stormwater conducts: the gate opens only with the lever on
+  PASS  brine conducts: the gate opens only with the lever on
+  PASS  fresh water does not conduct
+  PASS  a metal line carries power along its length
+
+logic gates and counters  (3.5 s)
+  PASS  AND opens only with both levers on
+  PASS  OR opens with either lever on
+  PASS  NOT opens while its lever is off
+  PASS  a counter turns on at every third pulse  (false,false,true,false)
+
+a sensor set to one liquid ignores the others  (0.3 s)
+  PASS  an oil-only sensor ignores water and senses oil
+
+a separator splits foam and takes the salt out of brine  (5.5 s)
+  PASS  a separator splits foam into oil and water
+  FAIL  a separator desalinates brine and drops the salt  (salt 43, 50 salt blocks)
+
+methane burns in a flash  (1.1 s)
+  FAIL  a spark sets the whole methane cloud alight  (29 burning at once, 117 of 116 left)
+
+nitro explodes from heat, hard landings and power, and sets off more nitro  (5.1 s)
+  PASS  resting nitro stays put
+  PASS  heat sets nitro off and the blast breaks stone  (128 blocks broken)
+  PASS  nitro dropped from a height explodes on landing
+  PASS  nitro poured from low down lands safely
+  PASS  one blast sets off the nitro next to it in a chain
+  PASS  live power touching nitro sets it off
+
+momentum: pump jets, waterfalls and whirlpools push things  (5.6 s)
+  PASS  a pump outlet shoots its water further with momentum  (25 tiles with momentum, 19 without)
+  PASS  a waterfall shoves a floating crate down  (crate at 391 px with momentum, 365 without)
+  PASS  a drain's whirlpool drags a crate round  (moved 53 px with momentum, 2 without)
+  PASS  a weight dropped into water throws up a wave  (fastest water 1.00)
+
+heat: quicksilver boils, foam breaks, wax and metal melt  (2.2 s)
+  PASS  quicksilver boils into toxic vapour above 357°  (18 vapour tiles)
+  PASS  heated foam breaks: its water boils off and the oil is left  (0 foam, 18 oil, 0 burning, 0 smoke)
+  PASS  honeycomb wax melts above 70° and the honey runs
+  PASS  iron melts above 1538°, once it has taken in its latent heat
+
+climate: height, depth and seasons  (2.5 s)
+  PASS  the air is colder higher up
+  PASS  the ground gets warmer with depth
+  PASS  summer is warmer than winter  (42° against 18°)
+
+generated worlds have their biomes and layers  (18.4 s)
+  PASS  every biome turns up across twelve worlds  (grassland, swamp, desert, badlands, coast, glacier, tundra, salt flats, jungle, volcanic, forest)
+  PASS  each biome has its ground and features
+  PASS  every world has aquifers, ore and a magma sea underground
+  PASS  every world starts in grassland with the explorer
+  PASS  rivers run through some worlds, with a pike in their ponds, and moths and birds live in the forests  (5 of 12 worlds have a river)
+
+freezing, melting and dissolving keep mass  (19.7 s)
+  PASS  a thin film freezes and thaws back to the same water  (28 ice tiles; water 1000 before, 1000 after)
+  PASS  quenched molten metal stays metal  (19 metal after the quench, 21 a second later)
+  PASS  water stops dissolving honey once it holds all the sugar it can  (honey lost 1024, sugar gained 4839.393452437431)
+  PASS  salt melts ice while preserving all dissolved and solid salt  (3.9944 grains remain, 251.0056 dissolved; initially255)
+  PASS  a capped geyser keeps its water  (7140 before, 7140 after)
+
+snapshots: exact restore, world codes, seeds and undo  (22.1 s)
+  PASS  restoring a snapshot puts every tile, column and air cell back
+  FAIL  a world code unpacks to the same world (temperatures to within 1/8°)  (code is 413 KB)
+  PASS  an older (version 1) world code still loads
+  PASS  text that is not a world code is refused with a reason  (That isn't a Tidepool world code; it should start with TIDEPOOL2:)
+  PASS  the same seed builds the same world
+  PASS  undo takes back the last edit  (stepped back 0.5 s)
+  PASS  undo with no history does nothing
+
+the explorer scoops, pours, digs and places  (2.1 s)
+  PASS  Enter scoops a tile of water into the bucket  (bucket 255)
+  PASS  Enter again pours it back without losing any  (water 14025 before, 14025 after)
+  PASS  holding D digs a dirt block into the bag
+  PASS  pressing D with nothing to dig places the chosen block
+  PASS  the pickaxe can’t break machines
+  PASS  in a puzzle that doesn’t allow them, the tools do nothing
+
+rafts, boats and balloons; air and health  (10.8 s)
+  PASS  a boat floats  (top at row 93.1)
+  PASS  the explorer can stand in the boat  (explorer bottom 747.3, boat top 747.3)
+  PASS  the arrows paddle the boat, carrying the explorer  (boat moved 171 px)
+  PASS  a raft floats
+  PASS  a balloon ties itself to the body below it
+  PASS  a balloon lifts a crate  (crate rose 150 px)
+  PASS  a balloon can’t lift a weight, which holds it down  (weight moved 0.0 px)
+  PASS  heat pops a balloon
+  PASS  under water the explorer runs out of air  (air 44)
+  PASS  out of air, health drains until the explorer faints and wakes at the spawn point  (hp 100, x 70.0)
+  PASS  in open air the explorer breathes again
+
+void ink, mimic, coolant, ferrofluid, fertiliser  (26.4 s)
+  PASS  void ink deletes the water it touches, using itself up  (19 of 95 water tiles deleted)
+  PASS  mimic turns into the first liquid it touches
+  PASS  coolant doesn’t freeze
+  PASS  coolant quenches lava into a basalt crust  (9 basalt, 9 lava, 18 coolant)
+  PASS  a magnet pulls ferrofluid up towards it  (19 tiles above the pool)
+  PASS  a plant on fertilised water grows faster  (fed 10 tiles tall, plain 8)
+  PASS  an algae bloom from too much fertiliser kills fish: it uses up the water’s oxygen at night  (alive by day true, oxygen 0.0 mg/L)
+  PASS  fertilised water greens the stone around it with moss  (17 moss)
+
+hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode  (3.4 s)
+  FAIL  a spark burns pure hydrogen into steam without a blast  (261.0 tiles of hydrogen left, 0.0 of steam, 0 blocks broken)
+  PASS  hydrogen mixed with oxygen explodes when lit  (78 blocks broken)
+  PASS  methane mixed with oxygen explodes when lit  (80 blocks broken)
+  PASS  wood burns in oxygen and uses it up  (5 tiles burning, 6.7 tiles of oxygen used)
+
+temperature and depth sensors, pixels, and power fading along long lines  (12.6 s)
+  PASS  a temperature sensor turns on above its setting  (sensor at 192°)
+  PASS  and stays off below it  (sensor at 192°)
+  PASS  a depth sensor under 2 rows of water is off
+  PASS  a depth sensor under 6 rows of water is on
+  PASS  a depth sensor under 6 rows of carbon dioxide is off
+  PASS  a powered pixel lights; the one beside it stays dark
+  PASS  40 tiles of metal carry power to the far end
+  PASS  80 tiles of metal don't carry power to the far end
+  PASS  80 tiles of copper carry power to the far end
+
+every kind of block draws without errors  (0.0 s)
+  PASS  every kind of block draws without errors
+
+life: local fish capacity and causal oxygen stress  (0.1 s)
+  PASS  fish reproduce up to the local capacity, including the parents  (4 fish from 3; capacity 4)
+  PASS  nighttime algae deplete healthy water before a tagged hypoxic death  ({"id":7,"kind":"fish","cause":"hypoxia","tick":902,"tile":22059,"night":true,"oxygen":1.6998831743530625,"ammonia":15.243543059375,"temperature":20})
+  PASS  the matched aerated control survives the same nighttime exposure
+
+4 check(s) failed · quick run, 25 scenes, 59.8 s

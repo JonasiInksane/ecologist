@@ -1,0 +1,7 @@
+
+nature keeps its water: humid biomes, wet spells, drying ground, plants  (27.9 s)
+  PASS  humid biomes gather the air’s moisture and dry ones lose it, and no water is made or lost  (902.3 → 901.7 tiles; humid half 399.0, dry half 93.2)
+  PASS  exposed mud loses water during the changing weather  (51 of 2400 mud left)
+  PASS  sun dries mud faster than full shade and transfers its water into the air  (sun 0, shade 2400; water difference 0.00e+0)
+
+all checks passed · matching nature keeps its water run, 1 scenes, 28.4 s

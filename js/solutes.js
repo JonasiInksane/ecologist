@@ -1,5 +1,6 @@
 // Dissolved contents: salt, sugar, essence and inks carried inside a liquid. Each tile has NSOL concentration channels
-// (0-255) that move with the flow, slowly spread into touching tiles of the same liquid, and drive brewing.
+// that move with the flow, slowly spread into touching tiles of the same liquid, and drive brewing. Fractional
+// concentrations can exceed the usual 0-255 range when solvent leaves; oxygen uses a signed reference deficit.
 import { CRISP, FROST, H, NSOL, SALT, SOL_BLUE, SOL_ESSENCE, SOL_RED, SOL_SALT, SOL_SILT, SOL_SUGAR, SOL_YELLOW, TONIC, W, WATER } from './config.js';
 import { puff } from './particles.js';
 import { liq, markDirty, sol, solid, temp, typ, wake } from './world.js';
@@ -10,7 +11,7 @@ import { S, flux, held, meltAmount } from './world.js';
 import { MOSS, SOL_FERT, STONE } from './config.js';
 import { nbr } from './pumps.js';
 import { CHLORINE, LIGHT, METAL, RUST, SOL_ALGAE, SOL_METAL, SOL_O2, SUGAR } from './config.js';
-import { MG_PER_UNIT, breatheWater, oxygenIn, surfaceOx } from './oxygen.js';
+import { MG_PER_UNIT, OXYGEN_REFERENCE, breatheWater, oxygenIn, skyAbove, surfaceOx } from './oxygen.js';
 import { emitGas } from './chem.js';
 import { DIRT, SOL_AMMONIA, SOL_CO2, SOL_ETHANOL, SOL_YEAST, WETDIRT } from './config.js';
 import { LRHO } from './matter.js';
@@ -19,9 +20,14 @@ import { SOAPY } from './reactions.js';
 const DISSOLVE = 24;   // powder grains water dissolves at a time
 import { sunHeight } from './daynight.js';
 import { under } from './world.js';
+import { ecoAcetify, ecoAlgae, ecoDenitrify, ecoDeposit, ecoFixWater, ecoInstallTissue, ecoSpore, ecoYeast } from './ecology.js';
+import { ECO_DISSOLVED_C } from './ecology.js';
+import { bioTissue } from './ecology-core.js';
+import { ECO_COST, ECO_QUOTA, ECO_RATE } from './ecology-data.js';
+import { SOL_PHOSPHATE } from './config.js';
 
-const SOL_NAMES = ['salt', 'sugar', 'essence', 'red ink', 'yellow ink', 'blue ink', 'silt', 'acid', 'alkali', 'fertiliser', 'algae', 'metal salts', 'oxygen missing', 'soap', 'oil', 'ammonium', 'yeast', 'alcohol', 'CO₂'];
-const DIFFUSE = [0.01, 0.01, 0.1, 0.12, 0.12, 0.12, 0.01, 0.08, 0.08, 0.05, 0.03, 0.01, 0.005, 0.05, 0.05, 0.05, 0.02, 0.08, 0.005];   // share of a concentration difference that evens out per solute tick
+const SOL_NAMES = ['salt', 'sugar', 'essence', 'red ink', 'yellow ink', 'blue ink', 'silt', 'acid', 'alkali', 'fertiliser', 'algae', 'metal salts', 'oxygen deficit', 'soap', 'oil', 'ammonium', 'yeast', 'alcohol', 'CO₂', 'phosphate', 'acetate'];
+const DIFFUSE = [0.01, 0.01, 0.1, 0.12, 0.12, 0.12, 0.01, 0.08, 0.08, 0.05, 0.03, 0.01, 0.005, 0.05, 0.05, 0.05, 0.02, 0.08, 0.005, 0.05, 0.08];
 // Brewing: a water tile holding at least `need` of each solute, inside the temperature range, slowly turns into `makes`.
 const RECIPES = [
   { name: 'tonic', need: { [SOL_SUGAR]: 40, [SOL_ESSENCE]: 40 }, minT: 80, maxT: Infinity, makes: TONIC, fx: 'spark' },
@@ -32,7 +38,40 @@ const RECIPES = [
 function mixSol(dst, d, had, src, s, mv) {
   if (!had) { for (let i = 0; i < NSOL; i++) dst[d + i] = src[s + i]; return; }
   const w = had + mv;
-  for (let i = 0; i < NSOL; i++) if (dst[d + i] !== src[s + i]) dst[d + i] = (dst[d + i] * had + src[s + i] * mv) / w + 0.5;
+  for (let i = 0; i < NSOL; i++) if (dst[d + i] !== src[s + i]) dst[d + i] = (dst[d + i] * had + src[s + i] * mv) / w;
+}
+// Conserved game-scale quantity: one unit is one concentration unit in a full (255-unit) carrier tile.
+// A signed oxygen deficit is allowed; all ordinary ingredient amounts are non-negative.
+function soluteAmount(k, i) {
+  const concentration = i === SOL_O2 ? Math.max(0, OXYGEN_REFERENCE / MG_PER_UNIT - sol[k * NSOL + i]) : sol[k * NSOL + i];
+  return concentration * liq[k] / 255;
+}
+function setSoluteAmount(k, i, amount) {
+  if (!liq[k]) return false;
+  const concentration = Math.max(0, amount) * 255 / liq[k];
+  sol[k * NSOL + i] = i === SOL_O2 ? OXYGEN_REFERENCE / MG_PER_UNIT - concentration : concentration;
+  return true;
+}
+function addSoluteAmount(k, i, amount, maximum = Infinity) {
+  if (!liq[k]) return 0;
+  const before = soluteAmount(k, i), added = Math.max(-before, Math.min(amount, Math.max(0, maximum - before)));
+  setSoluteAmount(k, i, before + added); return added;
+}
+function takeSoluteAmount(k, i, amount) {
+  const taken = Math.min(Math.max(0, amount), Math.max(0, soluteAmount(k, i)));
+  if (taken) setSoluteAmount(k, i, soluteAmount(k, i) - taken);
+  return taken;
+}
+// Pure solvent withdrawal: retain every ingredient. A final occupied unit waits for a process that can place residues.
+function removeCarrier(k, requested) {
+  const before = liq[k], take = Math.min(Math.max(0, Math.floor(requested)), Math.max(0, before - 1));
+  if (!take) return 0;
+  const ratio = before / (before - take), p = k * NSOL;
+  for (let i = 0; i < NSOL; i++) {
+    if (i === SOL_O2) sol[p + i] = OXYGEN_REFERENCE / MG_PER_UNIT - (OXYGEN_REFERENCE / MG_PER_UNIT - sol[p + i]) * ratio;
+    else sol[p + i] *= ratio;
+  }
+  liq[k] -= take; wake(k); return take;
 }
 function carrySol(src, dst, mv, had) { mixSol(sol, dst * NSOL, had, sol, src * NSOL, mv); }
 function clearSol(k) { sol.fill(0, k * NSOL, k * NSOL + NSOL); }
@@ -63,35 +102,41 @@ function emulsify(k, x, p) {
 // nitrogen gas, which leaves. Algae and plants take nitrate up.
 const NITRIFY = 0.05, NITRIFY_OX = 0.2, DENITRIFY = 0.02, ROT_OX = 0.05, SOIL_BREATH = 0.1;   // ROT_OX: mg/L of oxygen per unit rotted
 function nitrogen(k, p) {
-  if (k < W * H - W && (solid[k + W] === DIRT || solid[k + W] === WETDIRT) && Math.random() < SOIL_BREATH) breatheWater(k, MG_PER_UNIT);   // soil's rotting organic matter uses oxygen
-  if (sol[p + SOL_AMMONIA] && Math.random() < NITRIFY && oxygenIn(k) >= 2) { sol[p + SOL_AMMONIA]--; addSol(k, SOL_FERT, 1); breatheWater(k, NITRIFY_OX); }
-  else if (sol[p + SOL_FERT] && Math.random() < DENITRIFY && oxygenIn(k) < 0.5) sol[p + SOL_FERT]--;
+  if (sol[p + SOL_AMMONIA] > 0 && Math.random() < NITRIFY && oxygenIn(k) >= 2) {
+    const converted = Math.min(1, sol[p + SOL_AMMONIA], Math.max(0, 255 - sol[p + SOL_FERT]), oxygenIn(k) / NITRIFY_OX);
+    sol[p + SOL_AMMONIA] -= converted; addSol(k, SOL_FERT, converted); sol[p + SOL_O2] += NITRIFY_OX * converted / MG_PER_UNIT;
+  } else if (sol[p + SOL_FERT] > 0 && Math.random() < DENITRIFY && oxygenIn(k) < 0.5) {
+    const lost = ecoDenitrify(k, liq[k] / 255);
+    S.accounting.denitrifiedNitrogen = (S.accounting.denitrifiedNitrogen || 0) + lost;
+  }
 }
 // Yeast and the bacteria after it. Sugar water open to the air catches wild yeast now and then. With oxygen, yeast
 // burns sugar and multiplies; without it, it ferments sugar into alcohol and carbon dioxide (which bubbles out at the
-// surface), warming the brew a little, until there's about 14% alcohol. Yeast lives between 10° and 40° and dies past
-// 45°. With oxygen, alcohol slowly turns to vinegar (weak acid).
-const YEAST_SPORE = 0.002, YEAST_MAX = 200, STRONGEST = 150, VINEGAR = 0.004;
+// surface), warming slightly, up to the chosen yeast limit. SOL_ETHANOL is a game-scale concentration,
+// not a calibrated alcohol-by-volume percentage. Distillation enriches it; strong mixtures can burn. Yeast lives
+// between 10° and 40° and dies past 45°. With oxygen, alcohol slowly turns to vinegar (weak acid).
+const YEAST_SPORE = 0.002, YEAST_MAX = ECO_RATE.yeastMax, STRONGEST = ECO_RATE.yeastTolerance, VINEGAR = 0.004;
 function ferment(k, p) {
   const sugar = sol[p + SOL_SUGAR], y = sol[p + SOL_YEAST], T = temp[k];
-  if (!y) { if (sugar >= 20 && k >= W && !solid[k - W] && !liq[k - W] && Math.random() < YEAST_SPORE) sol[p + SOL_YEAST] = 2; }
-  else if (T > 45) sol[p + SOL_YEAST] = 0;
+  if (!y) { if (sugar >= 20 && k >= W && !solid[k - W] && !liq[k - W] && Math.random() < YEAST_SPORE) ecoSpore(k, SOL_YEAST); }
+  else if (T > 45) { const dead = takeSoluteAmount(k, SOL_YEAST, soluteAmount(k, SOL_YEAST)); ecoDeposit(k, bioTissue(dead, ECO_QUOTA)); }
   else if (sugar && T >= 10 && T <= 40 && Math.random() < y / 300) {
-    sol[p + SOL_SUGAR] = sugar - 1;
-    if (oxygenIn(k) >= 1) { breatheWater(k, 0.1); if (y < YEAST_MAX) sol[p + SOL_YEAST] = y + 1; }
-    else if (sol[p + SOL_ETHANOL] < STRONGEST) {
-      sol[p + SOL_ETHANOL]++; temp[k] += 0.05;
-      if (Math.random() < 0.25) { let s = k; while (s >= W && liq[s - W] && typ[s - W] === WATER) s -= W; if (s >= W) emitGas(s - W, CO2, 8); }
-    } else sol[p + SOL_SUGAR] = sugar;   // too strong: the yeast stops
+    ecoYeast(k);
   }
-  if (sol[p + SOL_ETHANOL] && Math.random() < VINEGAR && oxygenIn(k) >= 2) { sol[p + SOL_ETHANOL]--; addSol(k, SOL_ACID, 1); breatheWater(k, 0.3); }
+  if (sol[p + SOL_ETHANOL] > 0 && Math.random() < VINEGAR && oxygenIn(k) >= 2) {
+    ecoAcetify(k);
+  }
 }
 function densityOf(k) {
   const t = typ[k], T = temp[k], p = k * NSOL;
   const base = t === WATER || t === STORM ? LRHO[t] * (1 - 6.8e-6 * (T - 4) * (T - 4)) : LRHO[t] * (1 - 0.0005 * (T - 20));
   return base + (sol[p + SOL_SALT] * 0.2 + sol[p + SOL_SUGAR] * 0.33 + sol[p + SOL_SILT] * 0.3 + sol[p + SOL_METAL] * 0.1) / 255;
 }
-function addSol(k, i, n) { const p = k * NSOL + i; sol[p] = Math.min(255, sol[p] + n); }
+function addSol(k, i, n) {
+  const p = k * NSOL + i, before = sol[p], limit = i === SOL_CO2 ? Infinity : 255;
+  const added = n >= 0 ? Math.min(n, Math.max(0, limit - before)) : Math.max(n, -before);
+  sol[p] = before + added; return added;
+}
 
 function soluteTick() {
   daylight = sunHeight() > 0;
@@ -113,13 +158,17 @@ function soluteTick() {
       for (let d = 0; d < 4; d++) {
         const o = d === 0 ? (k >= W ? k - W : -1) : d === 1 ? (x > 0 ? k - 1 : -1) : d === 2 ? (x < W - 1 ? k + 1 : -1) : (k < W * H - W ? k + W : -1);
         if (o < 0) continue;
-        const b = solid[o], i = b === SALT ? SOL_SALT : b === SUGAR || b === CRISP ? SOL_SUGAR : -1;
-        if (i < 0 || sol[p + i] > 220 || Math.random() > (b === CRISP ? 0.05 : 0.15)) continue;
+        const b = solid[o], i = b === SALT || b === GEM ? SOL_SALT : b === SUGAR || b === CRISP ? SOL_SUGAR : -1;
+        // A salt crystal grows above saturation and only redissolves below it; using the powder's
+        // higher concentration ceiling here made each new crystal immediately dissolve again.
+        const limit = b === GEM ? SATURATED : 255;
+        if (i < 0 || (b === GEM ? sol[p + i] >= SATURATED : sol[p + i] > 220) || Math.random() > (b === CRISP ? 0.05 : 0.15)) continue;
         wake(k);
-        if (b === CRISP) { addSol(k, i, 48); if (Math.random() < 0.3) { solid[o] = 0; markDirty(o % W, (o / W) | 0); } continue; }
-        const have = held[o] || 255, take = Math.min(have, DISSOLVE);
-        addSol(k, i, Math.round(take * 255 / liq[k]));
-        if (have > take) held[o] = have - take; else { solid[o] = 0; held[o] = 0; }
+        const have = held[o] || 255, capacity = Math.max(0, limit - sol[p + i]) * liq[k] / 255;
+        const take = Math.min(have, DISSOLVE, capacity);
+        if (!take) continue;
+        addSoluteAmount(k, i, take);
+        if (have - take > 1e-12) held[o] = have - take; else { solid[o] = 0; held[o] = 0; }
         markDirty(o % W, (o / W) | 0);
       }
       for (const r of RECIPES) if (brews(k, r) && Math.random() < 0.05) { typ[k] = r.makes; clearSol(k); wake(k); puff(k, r.fx); break; }
@@ -140,7 +189,12 @@ function chemistry(k, x, p) {
   algae(k, x, p);
   if (sol[p + SOL_FERT] >= 30 && Math.random() < 0.004) {   // fertilised water greens the stone it touches with moss
     const o = nbr(x, (k / W) | 0, Math.floor(Math.random() * 4));
-    if (o >= 0 && solid[o] === STONE) { solid[o] = MOSS; markDirty(o % W, (o / W) | 0); sol[p + SOL_FERT] -= 10; }
+    const cost = ECO_COST.moss;
+    if (o >= 0 && solid[o] === STONE && lit(k, x) && soluteAmount(k, SOL_FERT) >= cost * ECO_QUOTA.n && soluteAmount(k, SOL_PHOSPHATE) >= cost * ECO_QUOTA.p && soluteAmount(k, SOL_CO2) * ECO_DISSOLVED_C >= cost) {
+      const fixed = ecoFixWater(k, cost);
+      takeSoluteAmount(k, SOL_FERT, fixed * ECO_QUOTA.n); takeSoluteAmount(k, SOL_PHOSPHATE, fixed * ECO_QUOTA.p);
+      solid[o] = MOSS; ecoInstallTissue(o, MOSS, bioTissue(fixed, ECO_QUOTA)); markDirty(o % W, (o / W) | 0);
+    }
   }
   for (let d = 0; d < 4; d++) {
     const o = d === 0 ? (k >= W ? k - W : -1) : d === 1 ? (x > 0 ? k - 1 : -1) : d === 2 ? (x < W - 1 ? k + 1 : -1) : (k < W * H - W ? k + W : -1);
@@ -148,12 +202,7 @@ function chemistry(k, x, p) {
     if (solid[o]) {
       // (dissolved acid and alkali acting on blocks, and rust: rules in js/chem.js)
       // salt crystals grow from still, saturated brine onto any surface, and dissolve again into fresher water
-      if (sol[p + SOL_SALT] >= SATURATED && S.tick - flux[k] > STILL && Math.random() < GROW) {
-        held[k] = liq[k] < 255 ? liq[k] : 0; solid[k] = GEM; liq[k] = 0; typ[k] = 0; clearSol(k); markDirty(x, (k / W) | 0); puff(k, 'spark'); return;
-      }
-      if (solid[o] === GEM && sol[p + SOL_SALT] < 150 && Math.random() < REDISSOLVE) {
-        solid[o] = 0; liq[o] = meltAmount(o); typ[o] = WATER; clearSol(o); sol[o * NSOL + SOL_SALT] = 255; markDirty(o % W, (o / W) | 0); wake(o); return;
-      }
+      if (sol[p + SOL_SALT] > SATURATED && S.tick - flux[k] > STILL && Math.random() < GROW) precipitateSalt(k, x, p);
     } else if (liq[o] && typ[o] === CHLORINE && sol[p + SOL_SALT] < 100 && Math.random() < 0.05) {
       // chlorine dissolves into fresh water as acid (hydrochloric and hypochlorous); hardly at all into brine
       liq[o] = Math.max(0, liq[o] - 16); if (!liq[o]) typ[o] = 0; addSol(k, SOL_ACID, 6); wake(o);
@@ -163,37 +212,35 @@ function chemistry(k, x, p) {
     }
   }
 }
-// Algae lives in water that gets light: daylight under open sky, or liquid light beside it. Plain water holds enough
-// trace nutrients for a thin wild growth (up to ALGAE_WILD); fertiliser feeds it beyond that, faster the more there is
-// already, into a bloom. In the dark, and when a bloom grows too thick, algae dies and rots back into fertiliser.
-// It needs warm water too: it grows half as fast below ALGAE_COOL and dies back below ALGAE_COLD, so open lakes,
-// which follow the seasons, bloom in summer and clear in winter.
+// A crystal occupies spare space, never the solution carrying it. Other ingredients and the solvent remain intact.
+function precipitateSalt(k, x, p) {
+  const excess = (sol[p + SOL_SALT] - SATURATED) * liq[k] / 255;
+  for (let d = 0; d < 4; d++) {
+    const o = nbr(x, (k / W) | 0, d);
+    if (o < 0 || liq[o] || (solid[o] && solid[o] !== GEM)) continue;
+    const had = solid[o] === GEM ? held[o] || 255 : 0;
+    const take = Math.min(DISSOLVE, excess, 255 - had);
+    if (take <= 1e-12) continue;
+    takeSoluteAmount(k, SOL_SALT, take);
+    solid[o] = GEM; held[o] = had + take >= 255 ? 0 : had + take;
+    markDirty(o % W, (o / W) | 0); puff(o, 'spark'); return take;
+  }
+  return 0;
+}
+// Algae needs light, actual dissolved carbon and mineral N/P. A finite saved inoculum bank supplies wild starters;
+// maintenance and death debit biomass, retaining nutrients in minerals/detritus. The chosen freshwater archetype
+// grows more slowly in cool water and dies outside its temperature/salinity range (ecology-data.js).
 const ALGAE_WILD = 24, ALGAE_CROWDED = 200, SPORE = 0.01, FED_AT = 5, ALGAE_COLD = 8, ALGAE_COOL = 15;
 let daylight = false;   // set once per solute pass
 function lit(k, x) {
-  if (!under[k] && daylight) return true;
+  if (daylight && skyAbove(k)) return true;
   for (let d = 0; d < 4; d++) { const o = nbr(x, (k / W) | 0, d); if (o >= 0 && liq[o] && typ[o] === LIGHT) return true; }
   return false;
 }
-// Runs for every water tile, so the common cases leave early: no algae and nothing to feed it, and the three ticks
-// in four when no chance below comes up (one roll serves them all).
+// Runs for every water tile; an empty tile can receive a finite starter, otherwise ecology handles its budget.
 function algae(k, x, p) {
-  const a = sol[p + SOL_ALGAE], fert = sol[p + SOL_FERT];
-  // algae make oxygen in the light and use it in the dark, so a thick bloom crashes the water's oxygen at night
-  // (their oxygen comes from the CO2 dissolved in the water, which they use up, and goes back into it in the dark)
-  if (a) { const lightNow = lit(k, x) && temp[k] >= ALGAE_COLD; if (Math.random() < a / (lightNow ? 250 : 500)) { if (lightNow && sol[p + SOL_CO2]) { sol[p + SOL_O2] = Math.max(0, sol[p + SOL_O2] - 1); sol[p + SOL_CO2]--; } else if (!lightNow) breatheWater(k, MG_PER_UNIT); } }
-  if (!a && fert < FED_AT) { if (!under[k] && daylight && Math.random() < SPORE) sol[p + SOL_ALGAE] = 2; return; }
-  const r = Math.random();
-  if (r >= 0.25) return;
-  if (!lit(k, x) || temp[k] < ALGAE_COLD) {
-    if (a && r < 0.02) { const m = Math.max(1, a >> 5); sol[p + SOL_ALGAE] = a - m; addSol(k, SOL_AMMONIA, m >> 1); breatheWater(k, m * ROT_OX); }   // dead algae rot
-    return;
-  }
-  if (a >= ALGAE_CROWDED && r < 0.05) { sol[p + SOL_ALGAE] = a - 8; addSol(k, SOL_AMMONIA, 4); breatheWater(k, 8 * ROT_OX); return; }
-  if (!a) { if (r < SPORE) sol[p + SOL_ALGAE] = 2; return; }
-  if (temp[k] < ALGAE_COOL && r >= 0.125) return;
-  if (fert >= FED_AT) { const g = Math.min(255 - a, Math.max(2, a >> 4), fert * 2); sol[p + SOL_ALGAE] = a + g; sol[p + SOL_FERT] = fert - Math.ceil(g / 2); }
-  else if (a < ALGAE_WILD && r < 0.05) sol[p + SOL_ALGAE] = a + 1;
+  if (!sol[p + SOL_ALGAE]) { if (daylight && Math.random() < SPORE) ecoSpore(k, SOL_ALGAE); return; }
+  ecoAlgae(k, lit(k, x));
 }
 // pH of a tile's liquid: its own for most liquids; water's from the acid and alkali dissolved in it.
 function phOf(k) {
@@ -203,11 +250,13 @@ function phOf(k) {
   return Math.max(0, Math.min(14, 7 - sol[p + SOL_ACID] / 255 * 6 + sol[p + SOL_BASE] / 255 * 6));
 }
 function diffuse(p, q) {
+  const a = liq[p / NSOL], b = liq[q / NSOL];
+  if (!a || !b) return;
   for (let i = 0; i < NSOL; i++) {
     const d = sol[p + i] - sol[q + i];
     if (!d) continue;
-    const m = Math.trunc(d * DIFFUSE[i] + Math.random() * Math.sign(d));
-    sol[p + i] -= m; sol[q + i] += m;
+    const moved = d * (2 * DIFFUSE[i]) * a * b / (a + b);
+    sol[p + i] -= moved / a; sol[q + i] += moved / b;
   }
 }
 function brews(k, r) {
@@ -241,4 +290,4 @@ function solTint(k) {
   return [cr / wsum, cg / wsum, cb / wsum, Math.min(0.85, wsum)];
 }
 
-export { NITRIFY, DENITRIFY, ROT_OX, YEAST_SPORE, YEAST_MAX, STRONGEST, VINEGAR, nitrogen, ferment, ALGAE_COLD, ALGAE_COOL, daylight, ALGAE_WILD, ALGAE_CROWDED, SPORE, FED_AT, lit, algae, CORRODE_AT, FIZZ_AT, SATURATED, STILL, chemistry, phOf, SOL_NAMES, DIFFUSE, RECIPES, mixSol, carrySol, clearSol, copySol, swapSol, heavy, densityOf, addSol, soluteTick, diffuse, brews, RYB, inkColor, TINTS, solTint };
+export { soluteAmount, setSoluteAmount, addSoluteAmount, takeSoluteAmount, removeCarrier, precipitateSalt, NITRIFY, DENITRIFY, ROT_OX, YEAST_SPORE, YEAST_MAX, STRONGEST, VINEGAR, nitrogen, ferment, ALGAE_COLD, ALGAE_COOL, daylight, ALGAE_WILD, ALGAE_CROWDED, SPORE, FED_AT, lit, algae, CORRODE_AT, FIZZ_AT, SATURATED, STILL, chemistry, phOf, SOL_NAMES, DIFFUSE, RECIPES, mixSol, carrySol, clearSol, copySol, swapSol, heavy, densityOf, addSol, soluteTick, diffuse, brews, RYB, inkColor, TINTS, solTint };

@@ -1,0 +1,10 @@
+START snapshots: exact restore, world codes, seeds and undo
+START ecology: algae, grazing fish, rot
+START ecology: seasonal algae, spreading plants, pike and moths
+START life: plants, flowers, bees, rot, nitrogen and fermentation
+DONE  snapshots: exact restore, world codes, seeds and undo (46.1 s)
+START air and water: oxygen, fire that needs it, stratified water, soap and emulsions
+DONE  ecology: algae, grazing fish, rot (74.3 s)
+DONE  ecology: seasonal algae, spreading plants, pike and moths (125.8 s)
+DONE  life: plants, flowers, bees, rot, nitrogen and fermentation (299.4 s)
+DONE  air and water: oxygen, fire that needs it, stratified water, soap and emulsions (320.4 s)

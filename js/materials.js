@@ -1,6 +1,6 @@
 // Blocks that work with liquid over time: sponges and soil soak water up and give it back, porous rock lets liquid
 // seep through, coral grows in warm salt water and bleaches when it's too hot, magnets pull ferrofluid (and iron
-// weights) towards them, lake ice floats, and trees regrow the leaves moths eat. Runs every 4 ticks.
+// weights) towards them, lake ice floats, trees regrow the leaves moths eat, and moss breathes. Runs every 4 ticks.
 // Groundwater: wet soil holds up to SOIL_CAP, soaks up water lying on or beside it (rain), sinks into the soil below,
 // and evens out sideways, so water collects into a saturated zone over the rock: a water table. Soaked soil seeps
 // water out wherever it meets open space, so hillsides grow springs and a pit dug down into it fills up like a well.
@@ -9,14 +9,20 @@ import { KINDS } from './bodies.js';
 import { LIQ } from './liquids.js';
 import { puff } from './particles.js';
 import { plantSeed } from './plants.js';
+import { ecoDeposit, ecoTreeLeaf } from './ecology.js';
+import { bioPool } from './ecology-core.js';
 import { nbr } from './pumps.js';
 import { carryHeat } from './sim.js';
-import { carrySol, clearSol } from './solutes.js';
-import { S, bodies, devices, held, liq, markDirty, redraw, sol, solid, temp, typ, wake } from './world.js';
+import { mixSol, clearSol, swapSol } from './solutes.js';
+import { S, bodies, devices, heatWake, held, latent, liq, markDirty, redraw, sol, solid, temp, typ, wake } from './world.js';
 import { EMAGNET, ICE, LEAF, WOOD } from './config.js';
 import { windAt } from './air.js';
 import { afloat, under, vel } from './world.js';
 import { vapour } from './air.js';
+import { MOSS, SOL_O2 } from './config.js';
+import { sunHeight } from './daynight.js';
+import { fixCarbon, respire, skyAbove, MG_PER_UNIT, OXYGEN_REFERENCE } from './oxygen.js';
+import { LCAP, dissolvedHeatCapacity, poreHeatCapacity } from './matter.js';
 
 const SOAK = 32, SQUEEZE = 32, SPONGE_HOT = 60, SOIL_HOLDS = 32, SEEP = 8, MAGNET_REACH = 8, PULL = 24;
 const SOIL_CAP = 96, SOAKED = 86, SINK = 32, LEVEL = 0.25, SPRING_OUT = 8, SPRING_CHANCE = 0.1;   // soil holds about 38% water
@@ -28,13 +34,63 @@ let pullPass = 0;
 function flowInto(a, b, n) {
   const mv = Math.min(n, liq[a], 255 - liq[b]);
   if (mv <= 0 || (liq[b] && typ[b] !== typ[a])) return 0;
-  carryHeat(a, b, mv, liq[b]); carrySol(a, b, mv, liq[b]);
+  carryHeat(a, b, mv, liq[b]);   // carries the dissolved contents too
   liq[b] += mv; typ[b] = typ[a];
   liq[a] -= mv; if (!liq[a]) { typ[a] = 0; clearSol(a); }
   wake(a); wake(b);
   return mv;
 }
 const isWater = k => liq[k] > 0 && typ[k] === WATER;
+// Pore water keeps its concentrations in the tile's existing sol vector, with held (not liq) as its volume.
+// Transfer before resizing either reservoir. A wet tile shares one temperature between its dry matrix, pore water
+// and dissolved ingredients; only the departing water parcel carries sensible heat and pending phase energy.
+function movePoreWater(a, b, requested, fromPore, toPore) {
+  const hadA = fromPore ? held[a] : liq[a], hadB = toPore ? held[b] : liq[b];
+  const mv = Math.max(0, Math.min(Math.floor(requested), Math.floor(hadA), Math.floor(255 - hadB)));
+  if (!mv) return 0;
+  const sentCapacity = LCAP[WATER] * mv / 255 + dissolvedHeatCapacity(mv, sol, a * NSOL);
+  const receivingCapacity = toPore ? poreHeatCapacity(solid[b], hadB, sol, b * NSOL)
+    : LCAP[WATER] * hadB / 255 + dissolvedHeatCapacity(hadB, sol, b * NSOL);
+  temp[b] = (temp[b] * receivingCapacity + temp[a] * sentCapacity) / (receivingCapacity + sentCapacity);
+  mixSol(sol, b * NSOL, hadB, sol, a * NSOL, mv);
+  const energy = latent[a] * mv / hadA;
+  latent[a] -= energy; latent[b] += energy;
+  if (toPore) held[b] += mv;
+  else {
+    liq[b] += mv; typ[b] = WATER; wake(b);
+  }
+  if (fromPore) held[a] -= mv;
+  else { liq[a] -= mv; if (!liq[a]) typ[a] = 0; wake(a); }
+  if (mv === hadA) clearSol(a);
+  heatWake(a); heatWake(b);
+  return mv;
+}
+// Evaporation/transpiration takes carrier water only. Retain dissolved quantities, including oxygen measured from
+// its fixed reference. Until a dry-residue store is available, a last unit holds any remaining dissolved matter.
+function removePoreCarrier(k, requested) {
+  const had = held[k], p = k * NSOL, reference = OXYGEN_REFERENCE / MG_PER_UNIT;
+  if (!had) return 0;
+  let contents = false;
+  for (let i = 0; i < NSOL; i++) if ((i === SOL_O2 ? reference - sol[p + i] : sol[p + i]) > 0) { contents = true; break; }
+  const mv = Math.max(0, Math.min(Math.floor(requested), Math.floor(had - (contents ? 1 : 0))));
+  if (!mv) return 0;
+  held[k] -= mv;
+  if (!held[k]) clearSol(k);
+  else for (let i = 0; i < NSOL; i++) {
+    sol[p + i] = i === SOL_O2 ? reference - (reference - sol[p + i]) * had / held[k] : sol[p + i] * had / held[k];
+  }
+  return mv;
+}
+// Adds pure water vapor to a gas tile without adding dissolved oxygen or duplicating its existing components.
+function poreSteam(k, amount, temperature) {
+  const had = liq[k], p = k * NSOL, reference = OXYGEN_REFERENCE / MG_PER_UNIT;
+  const receivingCapacity = LCAP[STEAM] * had / 255 + dissolvedHeatCapacity(had, sol, p);
+  const sentCapacity = LCAP[STEAM] * amount / 255;
+  temp[k] = (temp[k] * receivingCapacity + temperature * sentCapacity) / (receivingCapacity + sentCapacity);
+  for (let i = 0; i < NSOL; i++) sol[p + i] = i === SOL_O2 ? reference - (had ? reference - sol[p + i] : 0) * had / (had + amount)
+    : had ? sol[p + i] * had / (had + amount) : 0;
+  liq[k] += amount; typ[k] = STEAM; wake(k);
+}
 // A body heavy enough (40 or more) resting on the tile squeezes it.
 function squeezed(x, y) {
   return bodies.some(b => b.x < x * T + T && b.x + b.w > x * T && Math.abs(b.y + b.h - y * T) < 2 && KINDS[b.kind].rho * b.w * b.h >= 40);
@@ -46,18 +102,17 @@ function sponge(k, x, y) {
       if (n < 0 || solid[n] || !held[k] || (liq[n] && typ[n] !== WATER && typ[n] !== STEAM)) continue;
       const hot = temp[k] > 100, t = hot ? STEAM : WATER;
       if (liq[n] && typ[n] !== t) continue;
-      const mv = Math.min(SQUEEZE, held[k], 255 - liq[n]);
+      const mv = Math.floor(Math.min(SQUEEZE, held[k], 255 - liq[n]));
       if (mv <= 0) continue;
-      if (!liq[n]) { clearSol(n); temp[n] = hot ? 110 : temp[k]; }
-      liq[n] += mv; typ[n] = t; held[k] -= mv; wake(n);
+      if (hot) { const evaporated = removePoreCarrier(k, mv); if (evaporated) poreSteam(n, evaporated, 110); }
+      else movePoreWater(k, n, mv, true, false);
     }
   } else {
     for (let d = 0; d < 4 && held[k] < 255; d++) {
       const n = nbr(x, y, d);
       if (n < 0 || !isWater(n)) continue;
       const mv = Math.min(SOAK, liq[n], 255 - held[k]);
-      liq[n] -= mv; if (!liq[n]) { typ[n] = 0; clearSol(n); }
-      held[k] += mv; wake(n);
+      movePoreWater(n, k, mv, false, true);
     }
   }
   const want = held[k] ? WETSPONGE : SPONGE;
@@ -73,8 +128,8 @@ function soil(k, x, y) {
       const n = nbr(x, y, d);
       if (n < 0 || !isWater(n)) continue;
       const mv = Math.min(SOIL_HOLDS, liq[n]);
-      liq[n] -= mv; if (!liq[n]) { typ[n] = 0; clearSol(n); }
-      held[k] = mv; solid[k] = WETDIRT; redraw(x, y); wake(n);
+      movePoreWater(n, k, mv, false, true);
+      solid[k] = WETDIRT; redraw(x, y);
       return;
     }
     return;
@@ -83,13 +138,12 @@ function soil(k, x, y) {
   if (!held[k]) { solid[k] = DIRT; redraw(x, y); return; }
   const below = y < H - 1 ? k + W : -1;
   if (below >= 0 && !solid[below] && (!liq[below] || typ[below] === WATER) && liq[below] < 255 && Math.random() < 0.005) {
-    if (!liq[below]) { clearSol(below); temp[below] = temp[k]; }
     const mv = Math.min(held[k], 255 - liq[below]);   // what doesn't fit stays in the soil
-    liq[below] += mv; typ[below] = WATER; held[k] -= mv; wake(below);
+    movePoreWater(k, below, mv, true, false);
   } else if (below >= 0 && solid[below] === DIRT && Math.random() < 0.01) {
-    held[below] = held[k]; held[k] = 0; solid[below] = WETDIRT; redraw(x, y + 1);
-  } else if (temp[k] > 35 && Math.random() < 0.01) { vapour(k, held[k]); held[k] = 0; }   // dries out into the air
-  else if (k >= W && !solid[k - W] && !liq[k - W] && Math.random() < 0.0005) plantSeed(k - W);
+    movePoreWater(k, below, held[k], true, true); solid[below] = WETDIRT; redraw(x, y + 1);
+  } else if (temp[k] > 35 && Math.random() < 0.01) { const evaporated = removePoreCarrier(k, held[k]); if (evaporated) vapour(k, evaporated); }
+  // Natural seedlings come from paid parental seeds (plants.js), rather than appearing from wet soil.
   if (!held[k]) { solid[k] = DIRT; redraw(x, y); }
 }
 // Wet soil's groundwater: soaks up water it touches, sinks, levels out sideways, and seeps out where it's soaked.
@@ -99,28 +153,26 @@ function groundwater(k, x, y) {
       const n = nbr(x, y, d), room = (d === 0 ? SOIL_CAP : SOAKED) - held[k];
       if (n < 0 || room <= 0 || !isWater(n)) continue;
       const mv = Math.min(SINK, liq[n], room);
-      liq[n] -= mv; if (!liq[n]) { typ[n] = 0; clearSol(n); }
-      held[k] += mv; wake(n);
+      movePoreWater(n, k, mv, false, true);
     }
   }
   const below = y < H - 1 ? k + W : -1;
   if (below >= 0 && solid[below] === WETDIRT && held[below] < SOIL_CAP && Math.random() < 0.5) {   // sinks
     const mv = Math.min(SINK, held[k], SOIL_CAP - held[below]);
-    held[k] -= mv; held[below] += mv;
+    movePoreWater(k, below, mv, true, true);
   }
   if (Math.random() < LEVEL) {   // evens out with the soil beside it
     const n = nbr(x, y, Math.random() < 0.5 ? 1 : 2);
     if (n >= 0 && (solid[n] === DIRT || solid[n] === WETDIRT) && held[k] > held[n] + 4) {
       const mv = (held[k] - held[n]) >> 1;
-      held[k] -= mv; held[n] += mv;
+      movePoreWater(k, n, mv, true, true);
       if (solid[n] === DIRT) { solid[n] = WETDIRT; redraw(n % W, (n / W) | 0); }
     }
   }
   if (held[k] >= SOAKED && Math.random() < SPRING_CHANCE) {   // a spring: soaked soil seeps into open space beside or below it
     const n = nbr(x, y, [1, 2, 3][(Math.random() * 3) | 0]);
     if (n >= 0 && !solid[n] && (!liq[n] || typ[n] === WATER) && liq[n] <= 255 - SPRING_OUT) {
-      if (!liq[n]) { clearSol(n); temp[n] = temp[k]; }
-      liq[n] += SPRING_OUT; typ[n] = WATER; held[k] -= SPRING_OUT; wake(n);
+      movePoreWater(k, n, SPRING_OUT, true, false);
     }
   }
 }
@@ -129,15 +181,19 @@ function groundwater(k, x, y) {
 const floated = new Uint32Array(W * H);
 let floatPass = 0;
 function moveIce(k, n) {
+  const oldTemp = temp[n], oldLatent = latent[n];
+  sol.copyWithin(n * NSOL, k * NSOL, k * NSOL + NSOL); clearSol(k);
+  latent[n] = latent[k]; latent[k] = oldLatent;
   solid[n] = ICE; held[n] = held[k]; temp[n] = temp[k]; afloat[n] = 1; floated[n] = floatPass;
-  solid[k] = 0; held[k] = 0; afloat[k] = 0;
+  solid[k] = 0; held[k] = 0; afloat[k] = 0; temp[k] = oldTemp;
   markDirty(k % W, (k / W) | 0); markDirty(n % W, (n / W) | 0);
 }
 // Ice in tile k trades places with the water in tile w.
 function swapIce(k, w) {
-  const t = temp[k], h = held[k];
-  liq[k] = liq[w]; typ[k] = WATER; temp[k] = temp[w]; sol.copyWithin(k * NSOL, w * NSOL, w * NSOL + NSOL);
-  liq[w] = 0; typ[w] = 0; clearSol(w);
+  const t = temp[k], h = held[k], energy = latent[k];
+  swapSol(k, w); latent[k] = latent[w]; latent[w] = energy;
+  liq[k] = liq[w]; typ[k] = WATER; temp[k] = temp[w];
+  liq[w] = 0; typ[w] = 0;
   solid[k] = 0; held[k] = 0; afloat[k] = 0;
   solid[w] = ICE; held[w] = h; temp[w] = t; afloat[w] = 1; floated[w] = floatPass;
   markDirty(k % W, (k / W) | 0); markDirty(w % W, (w / W) | 0); wake(k);
@@ -165,7 +221,7 @@ function regrow(x, y) {
   const nx = n % W, ny = (n / W) | 0;
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
     const xx = nx + dx, yy = ny + dy;
-    if (xx >= 0 && yy >= 0 && xx < W && yy < H && solid[yy * W + xx] === WOOD) { solid[n] = LEAF; redraw(nx, ny); return; }
+    if (xx >= 0 && yy >= 0 && xx < W && yy < H && solid[yy * W + xx] === WOOD && ecoTreeLeaf(y * W + x, yy * W + xx, n, sunHeight() > 0)) { solid[n] = LEAF; redraw(nx, ny); return; }
   }
 }
 // Liquid resting on porous rock seeps down through it into open space below; rising gases seep up through it.
@@ -212,6 +268,12 @@ function pullFerro() {
 }
 
 function materialsTick() {
+  // Fixed carbon belongs to the moss that made it. Clearing a moss tile removes its reserve explicitly; a later
+  // moss tile at the same coordinate cannot inherit it. Full detritus/biomass recycling follows in Phase 22B.
+  for (const key of Object.keys(S.mossSugar)) if (solid[key] !== MOSS) {
+    ecoDeposit(+key, bioPool(S.mossSugar[key]));
+    delete S.mossSugar[key];
+  }
   magnets.length = 0;
   floatPass++;
   for (let k = 0; k < W * H; k++) {
@@ -222,6 +284,7 @@ function materialsTick() {
     else if (b === DIRT || b === WETDIRT) soil(k, x, y);
     else if (b === POROUS) seep(k, x, y);
     else if (b === CORAL) coral(k, x, y);
+    else if (b === MOSS) moss(k, x, y);
     else if (b === MAGNET) magnets.push(k);
     else if (b === ICE && afloat[k]) floe(k, x, y);
     else if (b === LEAF) regrow(x, y);
@@ -230,4 +293,20 @@ function materialsTick() {
   if (magnets.length) pullFerro();
 }
 
-export { REGROW, regrow, SOIL_CAP, SOAKED, SINK, LEVEL, SPRING_OUT, SPRING_CHANCE, DRIFT, groundwater, floated, moveIce, swapIce, floe, SOAK, SQUEEZE, SPONGE_HOT, SOIL_HOLDS, SEEP, MAGNET_REACH, PULL, magnets, flowInto, squeezed, sponge, soil, seep, coral, pullFerro, materialsTick };
+// Moss keeps the carbon it fixes as a saved sugar reserve, measured in the same airCarb units as plants. Respiration
+// can spend only that reserve and available oxygen. This small reserve does not yet model the mineral block's full
+// biomass or nutrient costs (Phase 22B).
+const MOSS_PHOTO = 0.5, MOSS_RESPIRE = 0.125;
+function moss(k, x, y) {
+  if (Math.random() >= MOSS_PHOTO / 4) return;   // one materials tick in eight
+  let air = -1;
+  for (let d = 0; d < 4 && air < 0; d++) { const n = nbr(x, y, d); if (n >= 0 && !solid[n] && !liq[n]) air = n; }
+  if (air < 0) return;
+  let reserve = S.mossSugar[k] || 0;
+  if (sunHeight() > 0 && skyAbove(k)) reserve += fixCarbon(air, 1);
+  if (Math.random() < MOSS_RESPIRE / MOSS_PHOTO) reserve -= respire(air, Math.min(1, reserve));
+  if (reserve > 0) S.mossSugar[k] = reserve;
+  else delete S.mossSugar[k];
+}
+
+export { movePoreWater, removePoreCarrier, MOSS_PHOTO, MOSS_RESPIRE, moss, REGROW, regrow, SOIL_CAP, SOAKED, SINK, LEVEL, SPRING_OUT, SPRING_CHANCE, DRIFT, groundwater, floated, moveIce, swapIce, floe, SOAK, SQUEEZE, SPONGE_HOT, SOIL_HOLDS, SEEP, MAGNET_REACH, PULL, magnets, flowInto, squeezed, sponge, soil, seep, coral, pullFerro, materialsTick };

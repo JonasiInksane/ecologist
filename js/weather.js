@@ -3,9 +3,9 @@
 // cloud; the water in the mud goes up into the air. Puddles dry by evaporating into the air (js/air.js).
 import { seedRain, vapour } from './air.js';
 import { shade, skyTempAt } from './climate.js';
-import { DIRT, H, ICE, MUD, NSOL, W, WATER } from './config.js';
+import { DIRT, H, ICE, MUD, W, WATER } from './config.js';
 import { sunHeight } from './daynight.js';
-import { S, afloat, drop, liq, markDirty, meltAmount, sol, solid, typ, under } from './world.js';
+import { S, afloat, drop, liq, markDirty, meltAmount, typ, solid, under } from './world.js';
 
 const THAW_CHANCE = 0.01, MUD_DRY = 0.004;
 
@@ -20,7 +20,7 @@ function sunshine() {
     if (solid[k] !== ICE && !(liq[k] && typ[k] === MUD)) continue;
     const sun = 1 - shade[k % W];
     if (solid[k] === ICE && !under[k] && !solid[k - W] && !liq[k - W] && Math.random() < THAW_CHANCE * sun && skyTempAt(k % W, (k / W) | 0) > 0) {
-      solid[k] = 0; afloat[k] = 0; liq[k] = meltAmount(k); typ[k] = WATER; sol.fill(0, k * NSOL, k * NSOL + NSOL); drop[k] = 0; markDirty(k % W, (k / W) | 0);
+      solid[k] = 0; afloat[k] = 0; liq[k] = meltAmount(k); typ[k] = WATER; drop[k] = 0; markDirty(k % W, (k / W) | 0);
       continue;
     }
     if (liq[k] && typ[k] === MUD && !under[k] && !solid[k - W] && !liq[k - W] && (k >= W * H - W || solid[k + W]) && Math.random() < MUD_DRY * sun) {

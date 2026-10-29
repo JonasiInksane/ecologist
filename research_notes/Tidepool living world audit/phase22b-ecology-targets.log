@@ -1,0 +1,62 @@
+
+snapshots: exact restore, world codes, seeds and undo  (46.1 s)
+  PASS  generated state contains no non-finite quantities
+  PASS  restoring a snapshot puts every tile, column and air cell back
+  PASS  a world code unpacks to the same world (temperatures to within 1/8°)
+  PASS  the reference fractional world code stays within 512 KiB  (code is 474 KiB)
+  PASS  an older (version 1) world code still loads
+  PASS  text that is not a world code is refused with a reason  (That isn't a Tidepool world code; it should start with TIDEPOOL2:)
+  PASS  the same seed builds the same world
+  PASS  undo takes back the last edit  (stepped back 0.5 s)
+  PASS  undo with no history does nothing
+
+ecology: algae, grazing fish, rot  (74.3 s)
+  PASS  algae needs light, and grows thick on fertiliser but stays thin without  (fertilised 89, dark 0, plain 3.0)
+  PASS  algae dies in the dark and rots into fertiliser  (algae 55 of 100, fertiliser 1.5)
+  PASS  fish graze algae and stay fed  (hunger 0)
+  PASS  fish with nothing to eat go hungry and don’t breed  (hunger 1400, 2 fish)
+  PASS  a dead fish leaves finite organic matter and recycled nutrients
+  PASS  a wilted plant retains its material as organic residue  (1 organic deposits)
+
+ecology: seasonal algae, spreading plants, pike and moths  (125.8 s)
+  PASS  algae blooms in warm water and dies back in cold  (warm 176, cold 13 (both started at 40))
+  PASS  grown plants drop seeds that take root nearby, spaced apart  (4 plants at 34, 37, 40, 44)
+  PASS  a grown plant regrows leaves
+  PASS  a pike hunts down the small fish  (3 of 6 fish left, 3 eaten since it last bred)
+  FAIL  a pike with nothing to eat starves and rots
+  PASS  moths eat leaves  (18 of 18 leaves eaten)
+  PASS  a fish snaps up a moth just over the water
+  PASS  moths die in a hard frost
+
+life: plants, flowers, bees, rot, nitrogen and fermentation  (299.4 s)
+  PASS  in daylight a plant takes up CO2, grows on the sugar it makes, and gives off oxygen  (CO₂ 0.60% → 0.56%, 7 tall, sugar 431)
+  PASS  at night it burns its sugar and gives CO2 back  (CO₂ 0.56% → 0.56%)
+  PASS  with no CO2 in the air a plant can’t grow  (1 tall)
+  PASS  a grown plant flowers in the sun and makes nectar  (0.26666666666666655 nectar at most)
+  PASS  bees carry measured nectar home while consuming finite honey  (1 comb, stock 15.831, collected 6.033, stored 6.033, eaten 0.202)
+  PASS  a finite carcass decays into ammonium, which oxygen-rich water turns into nitrate  (carcass carbon 17.89, nitrate 0.003)
+  PASS  organic donor in airless water turns nitrate into measured nitrogen gas  (nitrate 38.4, nitrogen gas 132.000)
+  PASS  ammonium poisons fish
+  PASS  sugar water left open catches wild yeast
+  PASS  shut away from air, yeast ferments sugar into alcohol  (alcohol 36, sugar 132)
+  PASS  with air, alcohol slowly turns to vinegar  (acid 3.8)
+
+air and water: oxygen, fire that needs it, stratified water, soap and emulsions  (320.4 s)
+  FAIL  a fire in a sealed room uses up the oxygen and goes out  (0 of 11 wood left, oxygen 20.3%, CO₂ 0.8%)
+  PASS  a fire with a doorway burns all its wood  (0 of 11 wood left, oxygen 21.0%, CO₂ 0.0%)
+  PASS  the explorer runs out of breath in stale air  (air 44)
+  PASS  carbon dioxide gas that thins out stays in the air as CO₂  (CO₂ 3.28%)
+  PASS  warm or salty water holds less oxygen
+  FAIL  sediment oxygen demand depletes the pond bottom while the surface and stone control stay oxygenated  (mud minimum 9.10, final top/bottom 9.10/9.10; stone minimum 9.10 mg/L)
+  PASS  fish suffocate at 2 mg/L of oxygen  (2.0 mg/L)
+  PASS  pike still breathe at 2 mg/L  (2.0 mg/L)
+  PASS  airless water open to the air takes oxygen back in  (8.7 mg/L at the surface)
+  PASS  brine poured on fresh water sinks under it  (salt 10 at the top, 117 at the bottom)
+  PASS  warm water rises over cold  (top 32°, bottom 16°)
+  PASS  water is densest at 4°, so ice-cold water floats on it
+  PASS  lye turns oil into soap  (soap 100)
+  PASS  oil and water shaken together separate again, oil on top  (0 emulsion, 15 oil tiles)
+  PASS  with soap, oil and water stay mixed  (30 emulsion, 0 oil tiles)
+  PASS  soapy water takes oil in  (10 emulsion tiles)
+
+3 check(s) failed · matching life: plants, ecology:, air and water:, snapshots: run, 5 scenes, 367.3 s

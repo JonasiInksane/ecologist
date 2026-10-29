@@ -23,6 +23,12 @@ const dirty = new Uint8Array(W * H);
 const dirtyList = [];
 const S = { tick: 0, seed: 1, dirtyAll: true, pendingIn: -1, lighting: true, heatView: false, pendingLink: -1, lastLiquid: 1, shake: 0, weather: true, sandboxWeather: true, momentum: true, level: null, rain: 0, wind: 0, windTarget: 0, windTimer: 0, flash: 0, pressure: true, slimeCount: 0, follow: true, zoom: 1, sound: false, showChunks: false, showHud: true, music: false, timeMode: 'cycle', heldPhase: 0, timeShift: 0 };   // shared mutable state
 const devices = new Map();   // tile index -> switch or target state
+// Quantitative diagnostics are world state, so resets, undo and saved worlds retain their boundaries.
+S.mossSugar = {};
+S.ecology = null;
+S.nextPlantId = 0;
+S.accounting = {};
+S.diagnostics = { deaths: [], deathCounts: {}, births: {} };
 const fire = new Uint8Array(W * H);   // burn time left on a burning tile
 const deco = new Uint8Array(W * H);   // 1 = glowcap mushroom growing in this tile
 const VIEW = { x: 0, y: 0, w: VIEW_W, h: VIEW_H, tx0: 0, ty0: 0, tx1: W - 1, ty1: H - 1 };   // the part of the world on screen
@@ -32,17 +38,17 @@ const HEAT_AWAKE = 4;
 const heatAwake = new Uint8Array(CW * CHH);   // heat ticks left before each chunk's heat may fall asleep (js/heat.js)
 const temp = new Float32Array(W * H).fill(AMBIENT), temp2 = new Float32Array(W * H);   // tile temperatures
 // Heat a tile has taken in (+) or given out (−) part-way through melting, boiling, freezing or condensing (js/heat.js)
-const latent = new Float32Array(W * H);
+const latent = new Float64Array(W * H);
 // The air in each empty tile: oxygen in tenths of a percent (210 is normal air) and carbon dioxide in hundredths of a
 // percent (4 is normal, the 0.04% plants live on); js/oxygen.js keeps them
 const AIR_OX = 210, AIR_CARB = 4;
-const airOx = new Uint8Array(W * H).fill(AIR_OX), airCarb = new Uint16Array(W * H).fill(AIR_CARB);
+const airOx = new Float64Array(W * H).fill(AIR_OX), airCarb = new Float64Array(W * H).fill(AIR_CARB);
 const drop = new Uint8Array(W * H);   // rows the liquid in each tile has fallen without stopping (nitro goes off on a hard landing)
 const vel = new Float32Array(W * H);   // sideways speed of each tile's liquid (js/momentum.js)
 const afloat = new Uint8Array(W * H);   // 1 on ice that froze on water: lake ice, which floats (js/materials.js)
-const held = new Uint8Array(W * H);   // liquid a frozen block was made from (0 = a full tile), given back when it melts
+const held = new Float64Array(W * H);   // stored liquid, powder grains or nectar (0 = a full block); retain partial grains
 const flux = new Uint32Array(W * H);   // tick a good amount of liquid last flowed into each tile (turns water wheels)
-const sol = new Uint8Array(W * H * NSOL);   // dissolved contents: tile k's channels start at k * NSOL
+const sol = new Float64Array(W * H * NSOL);   // concentrations; amount = concentration * liquid / 255, with fractional transfers retained
 const pumps = [], bodies = [];
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 

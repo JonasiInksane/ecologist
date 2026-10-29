@@ -3,12 +3,14 @@
 // a source touches it; a network is live while any of its sources is on. Live liquid shocks slime and the explorer.
 // Power fades with distance: every conductor tile it passes through costs some of its strength (copper least, liquid
 // most), and tiles it can't strengthAt with strength left aren't live, so far machines need a closer source.
-import { H, METAL, NSOL, SLIME, SOL_SALT, STORM, W, WATER } from './config.js';
+import { H, METAL, NSOL, SLIME, SOL_O2, SOL_SALT, STORM, W, WATER } from './config.js';
 import { LIQ } from './liquids.js';
 import { puff } from './particles.js';
 import { nbr } from './pumps.js';
 import { liq, sol, solid, temp, typ, wake } from './world.js';
 import { ALUMINIUM, CHLORINE, COPPER, GOLD, HYDROGEN, OXYGEN, PATINA, QUICK, SOL_BASE, ZINC } from './config.js';
+import { mixSol, removeCarrier } from './solutes.js';
+import { OXYGEN_REFERENCE, MG_PER_UNIT } from './oxygen.js';
 
 const BRINE_SALT = 60, NET_LIMIT = 8000;
 const netOf = new Int32Array(W * H), netStamp = new Uint32Array(netOf.length), netQueue = new Int32Array(netOf.length);
@@ -120,6 +122,7 @@ function shockTick() {
 // behind, so brine gets saltier as it's split.
 const SPLIT = 8, SPLIT_TRIES = 2;
 const CHLORINE_SALT = 120;   // brine saltier than this gives chlorine, more the saltier
+const ELECTROLYSIS_CONTENTS = new Float64Array(NSOL);   // reaction gas has no aqueous dissolved components
 function electrolysis() {
   for (const net of nets) {
     if (!net.live) continue;
@@ -135,21 +138,29 @@ function electrolysis() {
 }
 // Splits SPLIT units of the water in tile w into a bubble above it, if the bubble finds room.
 function split(w) {
+  if (w < 0 || w >= W * H || solid[w] || typ[w] !== WATER || liq[w] <= 1) return 0;
   // two parts hydrogen to one of oxygen; strong brine gives chlorine instead of oxygen, and the water turns to lye
   // (the chlor-alkali process). Weak brine still gives mostly oxygen.
   const salt = sol[w * NSOL + SOL_SALT], cl = Math.max(0, Math.min(1, (salt - CHLORINE_SALT) / (255 - CHLORINE_SALT)));
-  const gas = Math.random() < 2 / 3 ? HYDROGEN : Math.random() < cl ? CHLORINE : OXYGEN, m = Math.min(SPLIT, liq[w]);
+  const gas = Math.random() < 2 / 3 ? HYDROGEN : Math.random() < cl ? CHLORINE : OXYGEN;
   let u = w - W;
-  while (u >= 0 && !solid[u] && liq[u] && (typ[u] === WATER || (LIQ[typ[u]].gas && (typ[u] !== gas || liq[u] > 255 - m)))) u -= W;
-  if (u < 0 || solid[u] || (liq[u] && typ[u] !== gas)) return;
-  const a = liq[w], p = w * NSOL;
-  for (let c = 0; c < NSOL; c++) sol[p + c] = a > m ? Math.min(255, Math.round(sol[p + c] * a / (a - m))) : 0;   // the same amount in less water
-  liq[w] = a - m; if (!liq[w]) typ[w] = 0;
-  if (!liq[u]) { temp[u] = temp[w]; sol.fill(0, u * NSOL, u * NSOL + NSOL); }
+  while (u >= 0 && !solid[u] && liq[u] && (typ[u] === WATER || (LIQ[typ[u]].gas && (typ[u] !== gas || liq[u] === 255)))) u -= W;
+  if (u < 0 || solid[u] || (liq[u] && typ[u] !== gas)) return 0;
+  // Reserve product space before withdrawing water. removeCarrier retains every component, including actual
+  // dissolved oxygen (whose stored field is a signed deficit), and leaves the final residue-holding unit.
+  const m = removeCarrier(w, Math.min(SPLIT, 255 - liq[u]));
+  if (!m) return 0;
+  ELECTROLYSIS_CONTENTS[SOL_O2] = OXYGEN_REFERENCE / MG_PER_UNIT;
+  mixSol(sol, u * NSOL, liq[u], ELECTROLYSIS_CONTENTS, 0, m);
+  if (!liq[u]) temp[u] = temp[w];
   liq[u] += m; typ[u] = gas;
-  if (gas === CHLORINE) { const p = w * NSOL; sol[p + SOL_SALT] = Math.max(0, sol[p + SOL_SALT] - 2); sol[p + SOL_BASE] = Math.min(255, sol[p + SOL_BASE] + 2); }
+  if (gas === CHLORINE) {
+    const p = w * NSOL, converted = Math.min(sol[p + SOL_SALT], 2 * m / SPLIT);
+    sol[p + SOL_SALT] -= converted; sol[p + SOL_BASE] += converted;   // existing coarse salt/base proxy; no clipping loss
+  }
   wake(w); wake(u);
   if (Math.random() < 0.3) puff(w, 'bubble');
+  return m;
 }
 
 export { STRENGTH, strengthAt, cost, spread, seed, liveFrom, powerLeft, SPLIT, SPLIT_TRIES, electrolysis, split, BRINE_SALT, NET_LIMIT, netOf, netStamp, netQueue, nets, conductive, netAt, beginNets, flood, feed, netsTouching, charged, shockTick };

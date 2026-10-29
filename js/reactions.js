@@ -6,6 +6,8 @@ import { puff } from './particles.js';
 import { charged } from './power.js';
 import { nbr } from './pumps.js';
 import { addSol, clearSol } from './solutes.js';
+import { addSoluteAmount } from './solutes.js';
+import { ecoDeposit, ecoFood, ecoHoneyCaramel, ecoHoneyComb } from './ecology.js';
 import { S, deco, drop, held, liq, markDirty, meltAmount, sol, solid, temp, typ, wake } from './world.js';
 import { CO2, LYE, SOL_ACID, SOL_BASE } from './config.js';
 import { SODA } from './config.js';
@@ -37,17 +39,20 @@ setR(WATER, LAVA, { block: OBSIDIAN, fx: 'steam' });
 // water dissolves honey into sugar; icy water (below 10°) sets it into honeycomb instead
 setR(WATER, HONEY, { fn(k, o, t, above) {
   const w = t === WATER ? k : o, h = w === k ? o : k;
-  if (temp[w] < 10) { const target = above ? k : o; solidify(target, COMB); return target === k; }
+  if (temp[w] < 10) { ecoHoneyComb(h); return h === k; }
   if (sol[w * NSOL + SOL_SUGAR] > 220) return false;   // saturated: the honey stays put
-  addSol(w, SOL_SUGAR, 64); liq[h] = Math.max(0, liq[h] - 64); if (!liq[h]) typ[h] = 0;
+  const dissolved = Math.floor(Math.min(64, liq[h], Math.max(0, 255 - sol[w * NSOL + SOL_SUGAR]) * liq[w] / 255));
+  addSoluteAmount(w, SOL_SUGAR, dissolved);
+  const food = ecoFood(dissolved); food.c = 0; ecoDeposit(w, food);
+  liq[h] -= dissolved; if (!liq[h]) typ[h] = 0;
   return h === k && !liq[h];
 } });
 // bloomwater dissolves into water as essence
 setR(WATER, BLOOM, { fn(k, o, t) { const b = t === BLOOM ? k : o; typ[b] = WATER; clearSol(b); addSol(b, SOL_ESSENCE, 255); return b === k; } });
-setR(LAVA, HONEY, { block: CRISP, fx: 'smoke' });
+setR(LAVA, HONEY, { fn(k, o, t) { const honey = t === HONEY ? k : o; ecoHoneyCaramel(honey); solidify(honey, CRISP); puff(honey, 'smoke'); return honey === k; } });
 setR(AETHER, LAVA, { block: CRYSTAL, fx: 'spark' });
 setR(FROST, LAVA, { block: OBSIDIAN, fx: 'steam' });
-setR(FROST, HONEY, { block: COMB });
+setR(FROST, HONEY, { fn(k, o, t) { const honey = t === HONEY ? k : o; ecoHoneyComb(honey); return honey === k; } });
 setR(FROST, ACID, { block: ICE });
 // acid dilutes into water, and diluting it gives off heat
 // Acid and lye dissolve into water as concentrations that spread and weaken (js/solutes.js), warming it as they do.
@@ -78,6 +83,7 @@ setR(LYE, LAVA, { fn(k, o, t) { const a = t === LYE ? k : o; liq[a] = 0; typ[a] 
 setR(LAVA, ACID, { fn(k, o, t) { const a = t === ACID ? k : o; liq[a] = 0; typ[a] = 0; puff(a, 'smoke'); return a === k; } });
 setR(HONEY, ACID, { fn(k, o, t) {
   const h = t === HONEY ? k : o, a = h === k ? o : k;
+  ecoDeposit(h, ecoFood(liq[h]));
   liq[h] = 0; typ[h] = 0; liq[a] = Math.max(0, liq[a] - 40); if (!liq[a]) typ[a] = 0;
   puff(h, 'fizz'); return true;
 } });

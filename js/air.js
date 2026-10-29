@@ -8,11 +8,15 @@
 import { sfx } from './audio.js';
 import { colHum, colWind, drought, shade, skyTempAt } from './climate.js';
 import { H, METHANE, NSOL, CHLORINE, POISON, SALT, SMOKE, SNOW, STEAM, T, W, WATER } from './config.js';
-import { HYDROGEN, LEAF, OXYGEN, SOL_SALT, SOL_SUGAR, SUGAR } from './config.js';
+import { HYDROGEN, LEAF, OXYGEN, SOL_SALT, SOL_SUGAR, SUGAR, SOL_O2, SOL_CO2 } from './config.js';
 import { hurt } from './bodies.js';
 import { sunHeight } from './daynight.js';
 import { puff } from './particles.js';
-import { S, VIEW, bodies, drop, heatWake, held, liq, markDirty, sol, solid, temp, typ, under, vel, wake } from './world.js';
+import { S, VIEW, bodies, drop, heatWake, held, latent, airOx, airCarb, liq, markDirty, sol, solid, temp, typ, under, vel, wake } from './world.js';
+import { clearSol, mixSol, removeCarrier, soluteAmount } from './solutes.js';
+import { carryHeat } from './sim.js';
+import { MG_PER_UNIT, OXYGEN_REFERENCE, AIR_O2_MG_PER_UNIT, AIR_CO2_EQ_MG_PER_UNIT, MAX_AIR_OX, MAX_AIR_CARB, stir, recordAtmosphere } from './oxygen.js';
+import { LCAP, dissolvedHeatCapacity } from './matter.js';
 
 const CELL = 4, AW = W / CELL, AH = H / CELL, NC = AW * AH;
 const hum = new Float32Array(NC), cloud = new Float32Array(NC), u = new Float32Array(NC), v = new Float32Array(NC);
@@ -24,6 +28,7 @@ const AIR_EVERY = 8;                  // ticks between air updates
 const SAT_BASE = 60, SAT_DOUBLING = 11, CONDENSE = 0.3, REEVAPORATE = 0.08;
 // A flake is a quarter tile of snow; a full tile of snow melts into 64 units of water, so a flake costs its cloud 16.
 const RAIN_AT = 160, DROP = 32, FLAKE = 64, SNOW_COST = 16, MAX_DROPS = 3;
+const RAIN_CONTENTS = new Float64Array(NSOL);   // fresh water; its reference oxygen is an explicit atmosphere input
 // Hail: a storm cloud that's above freezing but cold aloft (under HAIL_COLD) throws some of its drops as hail pellets,
 // small grains of snow (HAIL, so a quarter of that in water) that melt where they land.
 const HAIL = 32, HAIL_COLD = 8, HAIL_SHARE = 0.3;
@@ -151,8 +156,8 @@ function precipitate() {
         hailStrikes(x, y);
       } else {
         if (liq[k] && (typ[k] !== WATER || liq[k] > 255 - DROP)) continue;
-        if (!liq[k]) { sol.fill(0, k * NSOL, k * NSOL + NSOL); drop[k] = 0; vel[k] = 0; temp[k] = Math.max(2, cellT[c]); }
-        liq[k] += DROP; typ[k] = WATER; wake(k); cloud[c] -= DROP;
+        const added = rainInto(k, DROP, Math.max(2, cellT[c]));
+        cloud[c] -= added;
       }
     }
     if (cloud[c] > STORM_AT && Math.random() < STRIKE_CHANCE) {
@@ -161,6 +166,22 @@ function precipitate() {
       if (col > STORM_COLUMN && cellT[lowCell(cx)] > STORM_WARM) strike(cx, cy);
     }
   }
+}
+// Rain adds a fresh-water vector, diluting rather than duplicating existing salts, sugar and other ingredients.
+// The weather grid tracks carrier water only; its initial dissolved oxygen is a named atmospheric source.
+function rainInto(k, requested, temperature) {
+  if (solid[k] || (liq[k] && typ[k] !== WATER)) return 0;
+  const had = liq[k], added = Math.max(0, Math.min(Math.floor(requested), 255 - had));
+  if (!added) return 0;
+  const receivingCapacity = LCAP[WATER] * had / 255 + dissolvedHeatCapacity(had, sol, k * NSOL);
+  const rainCapacity = LCAP[WATER] * added / 255;
+  temp[k] = (temp[k] * receivingCapacity + temperature * rainCapacity) / (receivingCapacity + rainCapacity);
+  mixSol(sol, k * NSOL, had, RAIN_CONTENTS, 0, added);
+  if (!had) { drop[k] = 0; vel[k] = 0; }
+  liq[k] += added; typ[k] = WATER; wake(k); heatWake(k);
+  S.accounting.rainOxygenMg = (S.accounting.rainOxygenMg || 0) + OXYGEN_REFERENCE * added / 255;
+  S.accounting.rainSensibleHeat = (S.accounting.rainSensibleHeat || 0) + rainCapacity * temperature;
+  return added;
 }
 // A hailstone falling down column x from row y knocks a leaf off the first thing it reaches, and stings the explorer
 // if it's standing in the open below.
@@ -199,8 +220,15 @@ function surfaces() {
     if (under[k]) continue;
     const c = cellOf(x, Math.max(0, y - 1));
     if (typ[k] === STEAM) {
-      const m = Math.min(liq[k], 48);
-      liq[k] -= m; if (!liq[k]) typ[k] = 0;
+      const before = liq[k], m = Math.min(before, 48);
+      // This path reaches the open atmosphere, rather than a sealed vessel. Preserve a named component-outflow
+      // record when weather vapor cannot represent the steam's carried ethanol or other dissolved ingredients.
+      const escaped = S.accounting.openSteamComponents || (S.accounting.openSteamComponents = Array(NSOL).fill(0));
+      for (let i = 0; i < NSOL; i++) escaped[i] += soluteAmount(k, i) * m / before;
+      const energy = latent[k] * m / before;
+      S.accounting.weatherVapourLatent = (S.accounting.weatherVapourLatent || 0) + energy;
+      latent[k] -= energy;
+      liq[k] -= m; if (!liq[k]) { typ[k] = 0; clearSol(k); }
       hum[c] += m; wake(k);
       continue;
     }
@@ -210,18 +238,43 @@ function surfaces() {
     const rate = (0.1 + 0.5 * sun * (1 - shade[x])) * warmth * dry * (1 + Math.abs(u[c])) * (drought[x] ? 2 : 1) * (liq[k] < 64 ? 3 : 1);
     const m = Math.min(liq[k], Math.floor(rate + Math.random()));
     if (m) {
-      liq[k] -= m; hum[c] += m; wake(k);
-      const salt = sol[k * NSOL + SOL_SALT], sugar = sol[k * NSOL + SOL_SUGAR];
-      if (liq[k] < 16 && salt + sugar >= 100) {   // dried brine or syrup leaves the pinch of salt or sugar it held
-        const pinch = Math.max(1, Math.round(Math.max(salt, sugar) * liq[k] / 255));
-        hum[c] += liq[k]; liq[k] = 0; typ[k] = 0; sol.fill(0, k * NSOL, k * NSOL + NSOL);
-        solid[k] = salt >= sugar ? SALT : SUGAR; held[k] = pinch; markDirty(x, y); continue;
-      }
-      if (!liq[k]) typ[k] = 0;
+      evaporateSurface(k, m);
     }
     if (S.momentum && Math.abs(u[c]) > 0.1) vel[k] = Math.max(-1, Math.min(1, vel[k] + u[c] * 0.03 * colWind[x]));
   }
   converge();
+}
+// Evaporation keeps all nonvolatile components in the remaining liquid. A final plain-water unit may dry only after
+// its O2 and CO2 have somewhere to go. Mixed residues retain a carrier unit until a precipitation process can place
+// every constituent; choosing just the largest ingredient would destroy the rest.
+function evaporateSurface(k, requested) {
+  if (!liq[k] || typ[k] !== WATER) return 0;
+  const before = liq[k], energyBefore = latent[k], p = k * NSOL;
+  let removed = removeCarrier(k, requested);
+  if (requested > removed && liq[k] === 1) {
+    let residue = false;
+    for (let i = 0; i < NSOL; i++) if (i !== SOL_O2 && i !== SOL_CO2 && sol[p + i] > 0) { residue = true; break; }
+    const up = k - W, outside = up < 0;
+    if (!residue && (outside || (!solid[up] && !liq[up]))) {
+      const oxygen = soluteAmount(k, SOL_O2) * MG_PER_UNIT, carbon = soluteAmount(k, SOL_CO2) * MG_PER_UNIT;
+      const oxUnits = oxygen / AIR_O2_MG_PER_UNIT, carbUnits = carbon / AIR_CO2_EQ_MG_PER_UNIT;
+      if (outside || (airOx[up] + oxUnits <= MAX_AIR_OX && airCarb[up] + carbUnits <= MAX_AIR_CARB)) {
+        if (outside) recordAtmosphere(-oxygen, -carbon);
+        else { airOx[up] += oxUnits; airCarb[up] += carbUnits; stir(up); }
+        liq[k] = 0; typ[k] = 0; clearSol(k); removed++;
+      }
+    }
+  }
+  if (removed) {
+    const energy = energyBefore * removed / before;
+    latent[k] -= energy;
+    S.accounting.weatherVapourLatent = (S.accounting.weatherVapourLatent || 0) + energy;
+    // The coarse weather grid has no temperature inventory. Record carrier sensible heat at this boundary;
+    // retained salt and sugar keep all of their heat capacity at the unchanged liquid temperature.
+    S.accounting.weatherVapourSensibleHeat = (S.accounting.weatherVapourSensibleHeat || 0) + LCAP[WATER] * removed / 255 * temp[k];
+    vapour(k, removed); wake(k);
+  }
+  return removed;
 }
 // The lowest open cell of air in column cx, just above the ground.
 function lowCell(cx) {
@@ -278,7 +331,8 @@ function drift() {
     if (solid[n] || (liq[n] && typ[n] !== t)) continue;
     const m = Math.min(liq[k], 255 - liq[n], Math.ceil(liq[k] * Math.min(1, Math.abs(w))));   // about a tile per update at full wind, like the clouds
     if (m <= 0) continue;
-    liq[n] += m; typ[n] = t; liq[k] -= m; if (!liq[k]) typ[k] = 0;
+    carryHeat(k, n, m, liq[n]);
+    liq[n] += m; typ[n] = t; liq[k] -= m; if (!liq[k]) { typ[k] = 0; clearSol(k); }
     drifted[n] = S.tick; wake(n);
   }
 }
@@ -300,4 +354,4 @@ function seedRain(amount = 500) {
 // All the water in the air, for checks that water is conserved.
 function airWater() { let s = 0; for (let c = 0; c < NC; c++) s += hum[c] + cloud[c]; return s; }
 
-export { HAIL, HAIL_COLD, HAIL_SHARE, hailStrikes, FLAKE, drifted, CELL, AW, AH, NC, hum, cloud, u, v, open, cellT, AIR_EVERY, SAT_BASE, SAT_DOUBLING, RAIN_AT, DROP, SNOW_COST, STORM_AT, STORM_COLUMN, STORM_WARM, CONVERGE, DIVERGE, GATHER_MAX, lowCell, gather, scatter, converge, vapour, bolts, strikes, sat, cellOf, windAt, rainAt, resetAir, airTick, measure, blow, moveAir, condense, precipitate, strike, surfaces, drift, seedRain, airWater };
+export { rainInto, evaporateSurface, HAIL, HAIL_COLD, HAIL_SHARE, hailStrikes, FLAKE, drifted, CELL, AW, AH, NC, hum, cloud, u, v, open, cellT, AIR_EVERY, SAT_BASE, SAT_DOUBLING, RAIN_AT, DROP, SNOW_COST, STORM_AT, STORM_COLUMN, STORM_WARM, CONVERGE, DIVERGE, GATHER_MAX, lowCell, gather, scatter, converge, vapour, bolts, strikes, sat, cellOf, windAt, rainAt, resetAir, airTick, measure, blow, moveAir, condense, precipitate, strike, surfaces, drift, seedRain, airWater };

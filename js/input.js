@@ -34,6 +34,8 @@ import { AIR_OX, airCarb, airOx } from './world.js';
 import { phOf } from './solutes.js';
 import { BATTERY, EMAGNET, LAMP, MOTOR, SOLAR } from './config.js';
 import { COOLANT, COPPER, CORAL, FERRO, FERT, FUSE, LIGHT, MAGNET, MEMBRANE, MIMIC, POROUS, SPONGE, VOID, WOOL } from './config.js';
+import { SOL_ALGAE, SOL_FERT, SOL_PHOSPHATE, SOL_YEAST } from './config.js';
+import { ecoEraseTile, ecoImportTile, ecoInspection, ecoRecordEdit, ecoSettleBody, ecoTileInventory } from './ecology.js';
 
 
 
@@ -80,6 +82,10 @@ const TOOLS = [
   { id: 'red',    name: 'Red ink',     dye: SOL_RED,    color: '#e61e28' },
   { id: 'yellow', name: 'Yellow ink',  dye: SOL_YELLOW, color: '#fad728' },
   { id: 'blue',   name: 'Blue ink',    dye: SOL_BLUE,   color: '#285fc8' },
+  { id: 'nitrate', name: 'Nitrogen nutrient', dye: SOL_FERT, color: '#8f9852' },
+  { id: 'phosphate', name: 'Phosphate nutrient', dye: SOL_PHOSPHATE, color: '#aaa87c' },
+  { id: 'algae', name: 'Algae', dye: SOL_ALGAE, color: '#398b37' },
+  { id: 'yeast', name: 'Yeast', dye: SOL_YEAST, color: '#ded1a9' },
   { id: 'dirt',   name: 'Dirt',   block: DIRT,  color: '#8a5a3b', key: 'q' },
   { id: 'stone',  name: 'Stone',  block: STONE, color: '#7c7f8c', key: 'w' },
   { id: 'ice',    name: 'Ice',    block: ICE,   color: '#a9dcf2', key: 'e' },
@@ -270,17 +276,18 @@ function applyAt(cx, cy, erase) {
     wake(k); heatWake(k);
     if ((erase || tool.dig || tool.block) && devices.has(k)) removeDevice(k);
     const isPump = solid[k] === PUMP_IN || solid[k] === PUMP_OUT;
+    let accounted = false;
     if (!erase && tool.seed) { if (dx === 0 && dy === 0) plantSeed(k); continue; }
     if (!erase && tool.heat) { temp[k] = Math.min(1800, temp[k] + 60); continue; }   // hot enough to melt iron
     if (!erase && tool.chill) { temp[k] = Math.max(-80, temp[k] - 30); continue; }
-    if (erase || tool.dig) { if (solid[k]) { if (isPump) removePump(k); solid[k] = 0; markDirty(x, y); } }
-    if (erase || tool.sponge) { liq[k] = 0; typ[k] = 0; continue; }
-    if (tool.liquid && !solid[k]) { sfx('pour', x * T + 4, y * T + 4, tool.liquid); liq[k] = 255; typ[k] = tool.liquid; temp[k] = LIQ[tool.liquid].paintT; clearSol(k); drop[k] = 0; vel[k] = 0; }
+    if (erase || tool.dig) { if (solid[k]) { ecoEraseTile(k); accounted = true; if (isPump) removePump(k); solid[k] = 0; held[k] = 0; markDirty(x, y); } }
+    if (erase || tool.sponge) { if (!accounted && liq[k]) ecoEraseTile(k); liq[k] = 0; typ[k] = 0; continue; }
+    if (tool.liquid && !solid[k]) { ecoEraseTile(k); sfx('pour', x * T + 4, y * T + 4, tool.liquid); liq[k] = 255; typ[k] = tool.liquid; temp[k] = LIQ[tool.liquid].paintT; clearSol(k); drop[k] = 0; vel[k] = 0; ecoImportTile(k); }
     if (tool.dye && !solid[k]) {   // ink colours the water already there, or pours new inked water
       if (!liq[k]) { liq[k] = 255; typ[k] = WATER; temp[k] = LIQ[WATER].paintT; clearSol(k); }
-      if (typ[k] === WATER) sol[k * NSOL + tool.dye] = 255;
+      if (typ[k] === WATER) { const before = ecoTileInventory(k); sol[k * NSOL + tool.dye] = 255; ecoRecordEdit(before, ecoTileInventory(k)); }
     }
-    if (tool.block && solid[k] !== tool.block) { if (isPump) removePump(k); solid[k] = tool.block; held[k] = 0; liq[k] = 0; typ[k] = 0; markDirty(x, y); }
+    if (tool.block && solid[k] !== tool.block) { ecoEraseTile(k); if (isPump) removePump(k); solid[k] = tool.block; held[k] = 0; liq[k] = 0; typ[k] = 0; ecoImportTile(k); markDirty(x, y); }
   }
 }
 
@@ -302,7 +309,7 @@ canvas.addEventListener('pointerdown', e => {
   checkpoint();   // every click edits the world, so undo can take it back
   if (e.button === 2) {   // right-click removes a body (not in puzzles), otherwise it erases; it never uses the selected tool
     const i = S.level ? -1 : bodies.findIndex(b => px.x >= b.x && px.x < b.x + b.w && px.y >= b.y && px.y < b.y + b.h);
-    if (i >= 0) { bodies.splice(i, 1); return; }
+    if (i >= 0) { ecoSettleBody(bodies[i], p.y * W + p.x, true); bodies.splice(i, 1); return; }
   } else if (tool.pump) { usePump(p.x, p.y); return; }
   else if (tool.wire || tool.device) {
     if (p.x >= 0 && p.y >= 0 && p.x < W && p.y < H) { if (tool.wire) linkClick(p.y * W + p.x); else useDeviceTool(tool.device, p.y * W + p.x); }
@@ -389,7 +396,7 @@ setupEditor({ tools: TOOLS, blocks: BLOCKS, enterMode });
 function escapeHtml(text) { return String(text).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`); }
 function solText(k) {
   let s = '';
-  for (let i = 0; i < NSOL; i++) if (i !== SOL_O2 && i !== SOL_OIL && sol[k * NSOL + i] > 4) s += ` · ${SOL_NAMES[i]} ${sol[k * NSOL + i]}`;
+  for (let i = 0; i < NSOL; i++) if (i !== SOL_O2 && i !== SOL_OIL && sol[k * NSOL + i] > (i === SOL_PHOSPHATE ? 0.005 : 4)) s += ` · ${SOL_NAMES[i]} ${Math.round(sol[k * NSOL + i] * 100) / 100}`;
   if (typ[k] === WATER) s += ` · oxygen ${oxygenIn(k).toFixed(1)} mg/L`;
   return s;
 }
@@ -418,7 +425,7 @@ function updateStatus() {
   else if (tool.wire && S.pendingLink >= 0) hoverEl.innerHTML = 'Click gates, springs, drains or pumps to link or unlink them · click the switch again to finish';
   else if (cursor.x >= 0 && cursor.x < W && cursor.y >= 0 && cursor.y < H) {
     const k = cursor.y * W + cursor.x;
-    const what = devices.has(k) ? deviceState(k) : solid[k] ? BLOCKS[solid[k]] + (solid[k] === PUMP_IN || solid[k] === PUMP_OUT ? pumpState(k) : '') : liq[k] ? `${LIQ[typ[k]].name} <b>${liq[k]}</b>/255 · pH ${phOf(k).toFixed(1)}${solText(k)}` : airText(k);
+    const what = (devices.has(k) ? deviceState(k) : solid[k] ? BLOCKS[solid[k]] + (solid[k] === PUMP_IN || solid[k] === PUMP_OUT ? pumpState(k) : '') : liq[k] ? `${LIQ[typ[k]].name} <b>${liq[k]}</b>/255 · pH ${phOf(k).toFixed(1)}${solText(k)}` : airText(k)) + ecoInspection(k);
     hoverEl.innerHTML = `tile ${cursor.x}, ${cursor.y} · ${what}${fall[k] ? ' · falling' : ''}${fire[k] ? ' · burning' : ''}${charged(k) ? ` · <b>live</b> (${Math.round(powerLeft(k) * 100)}% power)` : ''}${deco[k] ? ' · glowcaps' : ''} · ${Math.round(temp[k])}°`;
   }
   statsEl.innerHTML = `wet tiles <b>${lastStats.cells}</b> · volume <b>${(lastStats.vol / 255).toFixed(1)}</b> full tiles · tick <b>${S.tick}</b> · ${clockText()}${S.level ? '' : ` · ${biomeAt((VIEW.x + VIEW.w / 2) / T).name}${spellAt((VIEW.x + VIEW.w / 2) / T) ? ` (${spellAt((VIEW.x + VIEW.w / 2) / T)} spell)` : ''}`}${S.weather ? ` · ${seasonName()}, day ${Math.floor(day()) + 1} · wind ${S.wind > 0.05 ? '→' : S.wind < -0.05 ? '←' : '·'}${Math.round(Math.abs(S.wind) * 10)}${S.rain > 0.05 ? ' · rain' : ''}` : ''}${S.showChunks ? ` · <b>${awake.reduce((n, v) => n + (v > 0), 0)}</b> of ${awake.length} chunks awake` : ''}`;

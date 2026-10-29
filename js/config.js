@@ -20,10 +20,11 @@ const NONE = 0, WATER = 1, LAVA = 2, HONEY = 3, AETHER = 4, QUICK = 5, ACID = 6,
   CHLORINE = 32, BLEACH = 33, EMULSION = 34;   // EMULSION: oil and water shaken (or soaped) together
 const NLIQ = 40;   // reaction table stride; also the size of per-liquid tables
 const AMBIENT = 20;   // resting temperature
-// What can be dissolved in a liquid: one concentration channel each (0-255) per tile.
-const SOL_SALT = 0, SOL_SUGAR = 1, SOL_ESSENCE = 2, SOL_RED = 3, SOL_YELLOW = 4, SOL_BLUE = 5, SOL_SILT = 6, SOL_ACID = 7, SOL_BASE = 8, SOL_FERT = 9, SOL_ALGAE = 10, SOL_METAL = 11, SOL_O2 = 12, SOL_SOAP = 13, SOL_OIL = 14, SOL_AMMONIA = 15, SOL_YEAST = 16, SOL_ETHANOL = 17, SOL_CO2 = 18, NSOL = 19;   // acid and base: how acidic or alkaline a watery liquid is; metal: metal salts from acid eating metal;
-// O2: how far the water's dissolved oxygen is below saturation (0 = saturated, so plain water starts full of it;
-// js/oxygen.js); soap; oil: the oil share of an emulsion; ammonium from rot (fertiliser stands for nitrate); yeast;
+// Dissolved contents: fractional concentration channels; concentrating a solution can exceed 255.
+const SOL_SALT = 0, SOL_SUGAR = 1, SOL_ESSENCE = 2, SOL_RED = 3, SOL_YELLOW = 4, SOL_BLUE = 5, SOL_SILT = 6, SOL_ACID = 7, SOL_BASE = 8, SOL_FERT = 9, SOL_ALGAE = 10, SOL_METAL = 11, SOL_O2 = 12, SOL_SOAP = 13, SOL_OIL = 14, SOL_AMMONIA = 15, SOL_YEAST = 16, SOL_ETHANOL = 17, SOL_CO2 = 18, SOL_PHOSPHATE = 19, SOL_ACETATE = 20, NSOL = 21;
+// O2: signed deficit from a fixed 9.1 mg/L reference, independent of temperature (js/oxygen.js);
+// soap; oil: the oil share of an emulsion; ammonium from rot (fertiliser stands for nitrate); yeast;
 // ethanol (alcohol); dissolved carbon dioxide
+export { SOL_PHOSPHATE, SOL_ACETATE };
 
 export { SOL_CO2, SOL_AMMONIA, SOL_YEAST, SOL_ETHANOL, FLOWER, EMULSION, SOL_O2, SOL_SOAP, SOL_OIL, LIMESTONE, QUICKLIME, LIME, CHARCOAL, ASH, ALUMINIUM, ZINC, GOLD, PATINA, CHLORINE, BLEACH, SOL_METAL, RUST, FNITRO, SUGAR, THERMO, DEPTH, PIXEL, ORE, SLAG, HYDROGEN, OXYGEN, MSLAG, BATTERY, LAMP, MOTOR, EMAGNET, SOLAR, SPONGE, WETSPONGE, WETDIRT, POROUS, WOOL, COPPER, MEMBRANE, CORAL, BLEACHED, FUSE, MAGNET, VOID, MIMIC, COOLANT, FERRO, LIGHT, FERT, SOL_FERT, SOL_ALGAE, SODA, GEM, LYE, CO2, SOL_ACID, SOL_BASE, W, H, T, PW, PH, VIEW_W, VIEW_H, CHUNK, AIR, DIRT, STONE, OBSIDIAN, COMB, CRISP, ICE, CRYSTAL, PUMP_IN, PUMP_OUT, BASALT, LEVER, PLATE, SENSOR, TIMER, GATE, SPRING, DRAIN, WOOD, MOSS, SALT, SAND, GLASS, BRICK, METAL, PIPE, VALVE, FILTER, TURBINE, WHEEL, BOILER, SEPARATOR, AND, OR, NOT, COUNTER, PLANT, LEAF, SNOW, PERMAFROST, CLAY, WINDMILL, GEYSER, VENT, NBLOCK, NONE, WATER, LAVA, HONEY, AETHER, QUICK, ACID, FROST, STEAM, OIL, SLIME, BLOOM, MUD, TONIC, FOAM, STORM, MOLTEN, SMOKE, METHANE, POISON, NITRO, NLIQ, AMBIENT, SOL_SALT, SOL_SUGAR, SOL_ESSENCE, SOL_RED, SOL_YELLOW, SOL_BLUE, SOL_SILT, NSOL };

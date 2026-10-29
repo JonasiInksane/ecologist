@@ -4,14 +4,15 @@
 // air beside it, quickly, so a cave or a room with a door is topped up from outside while a sealed room is not. Fires
 // use oxygen and make CO2 (js/fire.js), breathing does the same (js/bodies.js), and oxygen and CO2 gas that thins out
 // joins the air it's in (js/gases.js). Below 15% oxygen nothing burns; below 12%, or above 5% CO2, the explorer chokes.
-// Water: SOL_O2 is how far a water tile's dissolved oxygen is below saturation, so plain water is full of it. How much
-// that is depends on temperature (14.6 mg/L at 0°, 9.1 at 20°, 7.6 at 30°) and salt (a fifth less in strong brine), so
-// warming water loses oxygen by itself. Water open to the air takes oxygen back in at its surface, faster where it's
-// moving; below, only mixing brings it down. Fish use it up and suffocate below 3 mg/L (pike below 1.5); algae make it
-// in the light and use it in the dark; mud on the bottom uses it (js/erosion.js).
+// Water: SOL_O2 is a signed deficit from a fixed 9.1 mg/L reference. Zero-initialized fresh water starts at that
+// concentration; negative deficits represent supersaturation. Temperature and salt change the exchange target, not
+// the oxygen already present. A full water tile and an empty air tile each represent a 1 L reference reservoir for
+// gas accounting. Surface exchange debits both finite reservoirs; only the open atmosphere is an external source.
+// This is a fixed-volume, room-temperature air reference, not a pressure simulation. Dissolved CO2 uses oxygen-
+// equivalent mass (equal molecule counts), so its actual mass is the reported equivalent times 44/32.
 import { SOL_CO2, CHUNK, FLOWER, GLASS, H, LEAF, NBLOCK, NSOL, PLANT, SOL_O2, SOL_SALT, W, WATER } from './config.js';
 import { LIQ } from './liquids.js';
-import { AIR_CARB, AIR_OX, CHH, CW, airCarb, airOx, liq, sol, solid, temp, typ, vel } from './world.js';
+import { AIR_CARB, AIR_OX, CHH, CW, S, airCarb, airOx, liq, sol, solid, temp, typ, vel } from './world.js';
 
 const RISING = 20;   // degrees hotter that makes air below rise into the air above, mixing fully
 const MIX_AIR = 0.45;   // share of the difference two neighbouring air tiles even out per pass (draughts and convection stir a room's air quickly)
@@ -19,14 +20,20 @@ const FIRE_OX = 150, CHOKE_OX = 120, CHOKE_CARB = 500;   // 15% and 12% oxygen; 
 const CARB_PER_OX = 10;   // CO2 counts in hundredths of a percent, oxygen in tenths: a breath trades them one for one
 const STILL_FOR = 6;   // passes a chunk's air keeps mixing after it last changed
 const busy = new Uint8Array(CW * CHH);
-const MG_PER_UNIT = 15 / 255;   // SOL_O2 counts missing oxygen in these steps, mg/L
+const MG_PER_UNIT = 15 / 255, OXYGEN_REFERENCE = 9.1;   // deficit units are mg/L; the reference never follows temperature
+const AIR_GAS_MOLAR_VOLUME = 24.055;   // L/mol at the chosen 20°C, 1 atm reference
+const AIR_O2_MG_PER_UNIT = 32 / AIR_GAS_MOLAR_VOLUME;   // mg O2 per 0.1% of the reference litre
+const AIR_CO2_EQ_MG_PER_UNIT = AIR_O2_MG_PER_UNIT / CARB_PER_OX;
+const MAX_AIR_OX = 1000, MAX_AIR_CARB = 10000;   // a reference litre of pure gas; fractional quantities are retained
+const GAS_MIX_EPSILON = 1e-7, SURFACE_STILL = 0.05, SURFACE_MOVING = 0.15, MOVING_SURFACE = 0.3;
 const SAT = [[0, 14.6], [10, 11.3], [20, 9.1], [30, 7.6], [40, 6.4], [60, 4.7], [80, 2.9], [100, 0]];
 const FISH_GASPS = 3, PIKE_GASPS = 1.5;
-const CO2_PER_AIR = 2.5;   // dissolved CO2 units in water at rest with air of each hundredth of a percent of CO2 (0.6 mg/L at 0.04%)   // mg/L below which they suffocate
+const CO2_PER_AIR = 2.5;   // coarse equilibrium coefficient: dissolved CO2 units per airCarb unit
 
 // Marks tile k's air as changed, so it keeps mixing.
 function stir(k) { busy[((k / W / CHUNK) | 0) * CW + (((k % W) / CHUNK) | 0)] = STILL_FOR; }
-const isAir = k => !solid[k] && !liq[k];
+function wakeAir() { busy.fill(STILL_FOR); }
+const isAir = k => k >= 0 && k < W * H && !solid[k] && !liq[k];
 // Oxygen saturation of water at temperature T with salt s (mg/L).
 function saturation(T, s) {
   let v = 0;
@@ -36,37 +43,59 @@ function saturation(T, s) {
   return v * (1 - 0.2 * s / 255);
 }
 // Dissolved oxygen in water tile k, mg/L.
-function oxygenIn(k) { return Math.max(0, saturation(temp[k], sol[k * NSOL + SOL_SALT]) - sol[k * NSOL + SOL_O2] * MG_PER_UNIT); }
-// Uses up mg of the water's oxygen (or gives it back, for negative mg); returns false if there wasn't enough.
+function oxygenIn(k) { return liq[k] ? Math.max(0, OXYGEN_REFERENCE - sol[k * NSOL + SOL_O2] * MG_PER_UNIT) : 0; }
+// Uses mg/L of this tile's oxygen, producing an equal molar concentration of CO2. Negative requests reverse that
+// exchange, limited by dissolved CO2. The boolean result retains the existing API; a shortfall consumes only what
+// exists. Concentrations multiplied by liq[k]/255 give the corresponding quantities in the reference litre.
 function breatheWater(k, mg) {
-  const p = k * NSOL + SOL_O2, have = oxygenIn(k);
-  if (mg > 0 && have < mg) { sol[p] = Math.min(255, sol[p] + Math.ceil(have / MG_PER_UNIT)); return false; }
-  const d = mg / MG_PER_UNIT, n = Math.floor(Math.abs(d)) + (Math.random() < Math.abs(d) % 1 ? 1 : 0);
-  sol[p] = Math.max(0, Math.min(255, sol[p] + Math.sign(d) * n));
-  if (d > 0) sol[k * NSOL + SOL_CO2] = Math.min(255, sol[k * NSOL + SOL_CO2] + n);   // what breathes out carbon dioxide
-  return true;
+  if (!liq[k] || !Number.isFinite(mg)) return false;
+  const p = k * NSOL, have = oxygenIn(k), available = mg >= 0 ? have : sol[p + SOL_CO2] * MG_PER_UNIT;
+  const amount = Math.min(Math.abs(mg), Math.max(0, available)), d = Math.sign(mg) * amount / MG_PER_UNIT;
+  sol[p + SOL_O2] = (OXYGEN_REFERENCE - have) / MG_PER_UNIT + d;
+  sol[p + SOL_CO2] = Math.max(0, sol[p + SOL_CO2] + d);
+  return amount + GAS_MIX_EPSILON >= Math.abs(mg);
 }
-// Breathing air at tile k: uses n tenths of a percent of oxygen and gives back as much CO2.
+// Separate oxygen removal from respiratory products so combustion can use its own reaction stoichiometry.
+function consumeAirOxygen(k, n) {
+  if (!isAir(k) || !(n > 0)) return 0;
+  const used = Math.min(n, airOx[k]);
+  if (used) { airOx[k] -= used; stir(k); }
+  return used;
+}
+function addAirCarbon(k, carb) {
+  if (!isAir(k) || !(carb > 0)) return 0;
+  const added = Math.min(carb, Math.max(0, MAX_AIR_CARB - airCarb[k]));
+  if (added) { airCarb[k] += added; stir(k); }
+  return added;
+}
+// Breathing air: reserve room for the CO2, consume available oxygen, then return how much was actually used.
 function breatheAir(k, n = 1) {
-  if (!isAir(k)) return;
-  airOx[k] = Math.max(0, airOx[k] - n); airCarb[k] = Math.min(65535, airCarb[k] + n * CARB_PER_OX); stir(k);
+  if (!isAir(k) || !(n > 0)) return 0;
+  const used = consumeAirOxygen(k, Math.min(n, Math.max(0, MAX_AIR_CARB - airCarb[k]) / CARB_PER_OX));
+  addAirCarbon(k, used * CARB_PER_OX);
+  return used;
 }
 // Respiration at tile k, in photosynthesis's units: gives back `carb` hundredths of a percent of CO2 and takes the
-// matching oxygen (in its coarser steps, by chance).
+// matching oxygen. Returning the actual conversion lets organisms spend only the sugar they metabolized.
 function respire(k, carb) {
-  if (!isAir(k)) return;
-  const ox = carb / CARB_PER_OX, whole = Math.floor(ox) + (Math.random() < ox % 1 ? 1 : 0);
-  airOx[k] = Math.max(0, airOx[k] - whole); airCarb[k] = Math.min(65535, airCarb[k] + Math.round(carb)); stir(k);
+  return breatheAir(k, carb / CARB_PER_OX) * CARB_PER_OX;
 }
 // Photosynthesis at tile k: takes up to n hundredths of a percent of CO2 from the air and gives back as much oxygen
-// (in its coarser steps, by chance). Returns how much CO2 it took.
+// in matching fractional units. Returns how much CO2 it took, limited by both reactant and product storage.
 function fixCarbon(k, n) {
-  if (!isAir(k)) return 0;
-  const got = Math.min(n, airCarb[k]);
+  if (!isAir(k) || !(n > 0)) return 0;
+  const got = Math.min(n, airCarb[k], Math.max(0, MAX_AIR_OX - airOx[k]) * CARB_PER_OX);
   airCarb[k] -= got;
-  const ox = got / CARB_PER_OX, whole = Math.floor(ox) + (Math.random() < ox % 1 ? 1 : 0);
-  airOx[k] = Math.min(255, airOx[k] + whole); stir(k);
+  airOx[k] += got / CARB_PER_OX;
+  if (got) stir(k);
   return got;
+}
+// Signed exchange with the external atmosphere, in mg of O2 or the equal-molecule CO2 equivalent. These counters
+// describe this boundary only; they are not a claim that every other source in the world is already audited.
+function recordAtmosphere(oxygen, carbon) {
+  const a = S.accounting;
+  if (oxygen) a.gasAtmosphereOxygenMg = (a.gasAtmosphereOxygenMg || 0) + oxygen;
+  if (carbon) a.gasAtmosphereCarbonEqMg = (a.gasAtmosphereCarbonEqMg || 0) + carbon;
 }
 // Whether tile k's air is open to the sky: nothing solid or liquid (gas aside) above it, as for the air's top-up.
 function skyAir(k) {
@@ -90,7 +119,10 @@ const stifling = k => isAir(k) && (airOx[k] < CHOKE_OX || airCarb[k] > CHOKE_CAR
 function airTickOx() {
   for (let x = 0; x < W; x++) for (let y = 0, k = x; y < H; y++, k += W) {
     if (solid[k] || (liq[k] && !LIQ[typ[k]].gas)) break;   // gas lets the sky's air through; anything else roofs it over
-    if (!liq[k] && (airOx[k] !== AIR_OX || airCarb[k] !== AIR_CARB)) { airOx[k] = AIR_OX; airCarb[k] = AIR_CARB; stir(k); }
+    if (!liq[k] && (airOx[k] !== AIR_OX || airCarb[k] !== AIR_CARB)) {
+      recordAtmosphere((AIR_OX - airOx[k]) * AIR_O2_MG_PER_UNIT, (AIR_CARB - airCarb[k]) * AIR_CO2_EQ_MG_PER_UNIT);
+      airOx[k] = AIR_OX; airCarb[k] = AIR_CARB; stir(k);
+    }
   }
   for (let cy = 0; cy < CHH; cy++) for (let cx = 0; cx < CW; cx++) {
     const c = cy * CW + cx;
@@ -108,27 +140,39 @@ function share(a, b, f) {
   let moved = false;
   for (const arr of [airOx, airCarb]) {
     const d = arr[a] - arr[b];
-    if (!d) continue;
-    const m = Math.trunc(d * f) || (Math.random() < 0.5 ? Math.sign(d) : 0);
+    if (Math.abs(d) < GAS_MIX_EPSILON) continue;
+    const m = d * f;
     if (m) { arr[a] -= m; arr[b] += m; moved = true; }
   }
   return moved;
 }
-// Water's oxygen at its surface: water with air above it takes oxygen in (towards what that air allows), faster when
-// it's moving. Called for each water tile from js/solutes.js.
+// Bidirectional gas exchange. Calculate an amount from the concentration difference and water volume, then debit
+// the donor and credit the recipient with precisely that amount. Warming changes the target and causes outgassing
+// over time; cooling cannot create oxygen in a closed vessel. A water surface at the top edge contacts the external
+// atmosphere directly, and that exchange is recorded just like the open-air boundary above.
 function surfaceOx(k, p) {
+  if (!liq[k]) return;
   const up = k - W;
   if (up >= 0 && (solid[up] || liq[up])) return;
-  // carbon dioxide: the water evens out with the air above it, in step with that air's CO2 (giving off what it
-  // breathed out, or taking some in where the air is rich in it)
-  if (up >= 0) {
-    const want = Math.min(255, Math.round(airCarb[up] * CO2_PER_AIR)), c = sol[p + SOL_CO2];
-    if (c !== want) { const m = Math.sign(c - want) * Math.max(1, Math.round(Math.abs(c - want) * 0.05)); sol[p + SOL_CO2] = c - m; airCarb[up] = Math.max(0, airCarb[up] + m); stir(up); }
+  const volume = liq[k] / 255, outside = up < 0;
+  const airO = outside ? AIR_OX : airOx[up], airC = outside ? AIR_CARB : airCarb[up];
+  const rate = Math.abs(vel[k]) > MOVING_SURFACE ? SURFACE_MOVING : SURFACE_STILL;
+  const have = oxygenIn(k), target = saturation(temp[k], sol[p + SOL_SALT]) * airO / AIR_OX;
+  let oxygen = (target - have) * volume * rate;
+  oxygen = oxygen >= 0 ? Math.min(oxygen, outside ? Infinity : airO * AIR_O2_MG_PER_UNIT)
+    : -Math.min(-oxygen, have * volume, outside ? Infinity : Math.max(0, MAX_AIR_OX - airO) * AIR_O2_MG_PER_UNIT);
+  sol[p + SOL_O2] = (OXYGEN_REFERENCE - have) / MG_PER_UNIT - oxygen / (volume * MG_PER_UNIT);
+  const carbonHave = Math.max(0, sol[p + SOL_CO2]), carbonTarget = airC * CO2_PER_AIR;
+  let carbon = (carbonTarget - carbonHave) * volume * MG_PER_UNIT * SURFACE_STILL;
+  carbon = carbon >= 0 ? Math.min(carbon, outside ? Infinity : airC * AIR_CO2_EQ_MG_PER_UNIT)
+    : -Math.min(-carbon, carbonHave * volume * MG_PER_UNIT, outside ? Infinity : Math.max(0, MAX_AIR_CARB - airC) * AIR_CO2_EQ_MG_PER_UNIT);
+  sol[p + SOL_CO2] = Math.max(0, carbonHave + carbon / (volume * MG_PER_UNIT));
+  if (outside) recordAtmosphere(oxygen, carbon);
+  else {
+    airOx[up] = Math.max(0, airO - oxygen / AIR_O2_MG_PER_UNIT);
+    airCarb[up] = Math.max(0, airC - carbon / AIR_CO2_EQ_MG_PER_UNIT);
+    if (oxygen || carbon) stir(up);
   }
-  const want = up >= 0 && airOx[up] < AIR_OX ? Math.round(255 * (1 - airOx[up] / AIR_OX)) : 0, d = sol[p + SOL_O2];
-  if (d <= want) return;
-  const rate = Math.abs(vel[k]) > 0.3 ? 0.15 : 0.05;
-  sol[p + SOL_O2] = Math.max(want, d - Math.max(1, Math.round((d - want) * rate)));
 }
 
-export { FIRE_OX, CHOKE_OX, CHOKE_CARB, MIX_AIR, MG_PER_UNIT, SAT, FISH_GASPS, PIKE_GASPS, CARB_PER_OX, busy, stir, skyAir, skyAbove, saturation, oxygenIn, breatheWater, breatheAir, respire, fixCarbon, burnable, stifling, airTickOx, surfaceOx };
+export { FIRE_OX, CHOKE_OX, CHOKE_CARB, MIX_AIR, MG_PER_UNIT, OXYGEN_REFERENCE, AIR_GAS_MOLAR_VOLUME, AIR_O2_MG_PER_UNIT, AIR_CO2_EQ_MG_PER_UNIT, MAX_AIR_OX, MAX_AIR_CARB, SAT, FISH_GASPS, PIKE_GASPS, CARB_PER_OX, busy, stir, wakeAir, skyAir, skyAbove, saturation, oxygenIn, breatheWater, consumeAirOxygen, addAirCarbon, breatheAir, respire, fixCarbon, burnable, stifling, airTickOx, surfaceOx, recordAtmosphere };

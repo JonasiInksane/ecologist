@@ -1,0 +1,162 @@
+START steam rises and condenses back into water
+START water on hot rock boils into steam
+START deep lava stays liquid, a thin film hardens into basalt
+START ice melts beside heat and frost freezes water
+START a sensor opens a floodgate when the water reaches it
+START a timer switches a spring on and off
+START a crate on a pressure plate holds a gate open; a drain empties a pool
+START fire: oil ignites, spreads to wood, burns on water, water puts it out
+DONE  a timer switches a spring on and off (6.4 s)
+START brine freezes colder, and boiling it away leaves salt
+DONE  a sensor opens a floodgate when the water reaches it (10.3 s)
+START inks swirl together
+DONE  brine freezes colder, and boiling it away leaves salt (9.6 s)
+START a sensor set to one liquid ignores the others
+DONE  inks swirl together (6.0 s)
+START turbines and water wheels make power
+DONE  a sensor set to one liquid ignores the others (0.7 s)
+START methane burns in a flash
+DONE  a crate on a pressure plate holds a gate open; a drain empties a pool (17.8 s)
+START warm water dissolves honey; brewing tonic and frost
+DONE  deep lava stays liquid, a thin film hardens into basalt (19.2 s)
+START settled chunks sleep and wake when disturbed
+DONE  water on hot rock boils into steam (19.3 s)
+START slime eats dirt; bloomwater grows moss and glowcaps
+DONE  methane burns in a flash (3.2 s)
+START water: washes smoke away, warms with acid, dissolves caramel; salt melts ice
+DONE  ice melts beside heat and frost freezes water (21.3 s)
+START salt dissolves into brine, which sinks under fresh water
+DONE  settled chunks sleep and wake when disturbed (12.9 s)
+START live stormwater shocks slime
+DONE  steam rises and condenses back into water (32.6 s)
+START pressure levels a U-bend
+DONE  fire: oil ignites, spreads to wood, burns on water, water puts it out (32.4 s)
+START churned oil and water make foam, which separates again
+DONE  salt dissolves into brine, which sinks under fresh water (15.8 s)
+START logic gates and counters
+DONE  live stormwater shocks slime (9.7 s)
+START gases rise, layer, pool and escape
+DONE  logic gates and counters (6.3 s)
+START gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen
+DONE  warm water dissolves honey; brewing tonic and frost (25.0 s)
+START a boiler boils water only while powered
+DONE  water: washes smoke away, warms with acid, dissolves caramel; salt melts ice (28.0 s)
+START climate: height, depth and seasons
+DONE  climate: height, depth and seasons (3.9 s)
+START rafts, boats and balloons; air and health
+DONE  turbines and water wheels make power (47.1 s)
+START nitro explodes from heat, hard landings and power, and sets off more nitro
+DONE  slime eats dirt; bloomwater grows moss and glowcaps (46.3 s)
+START sand piles up, sinks, turns to mud, glass and brick
+DONE  nitro explodes from heat, hard landings and power, and sets off more nitro (8.1 s)
+START mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds
+DONE  rafts, boats and balloons; air and health (21.3 s)
+START a generated river keeps flowing and keeps its pond full
+DONE  a boiler boils water only while powered (32.5 s)
+START blasts throw crates, spare obsidian and metal, and nitro rests safely under water
+DONE  pressure levels a U-bend (48.5 s)
+START stormwater, brine and metal carry a lever to a floodgate
+DONE  gases rise, layer, pool and escape (39.7 s)
+START momentum: pump jets, waterfalls and whirlpools push things
+DONE  stormwater, brine and metal carry a lever to a floodgate (1.2 s)
+START molten metal sets into metal
+DONE  blasts throw crates, spare obsidian and metal, and nitro rests safely under water (7.5 s)
+START fish swim, breed, and die out of water or in acid
+DONE  gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen (42.1 s)
+START heat: quicksilver boils, foam breaks, wax and metal melt
+DONE  heat: quicksilver boils, foam breaks, wax and metal melt (3.0 s)
+START fog, snow, lightning and windmills
+DONE  momentum: pump jets, waterfalls and whirlpools push things (8.6 s)
+START the air: clouds drift on the wind, smoke too, and mountains cast rain shadows
+DONE  sand piles up, sinks, turns to mud, glass and brick (35.1 s)
+START a separator splits foam and takes the salt out of brine
+DONE  fish swim, breed, and die out of water or in acid (18.9 s)
+START biome weather: frozen tundra, drying desert, droughts, tides
+DONE  molten metal sets into metal (21.7 s)
+START momentum: waves slosh, then settle and sleep
+DONE  fog, snow, lightning and windmills (23.2 s)
+START the explorer scoops, pours, digs and places
+DONE  the explorer scoops, pours, digs and places (4.2 s)
+START water landscapes: groundwater, valleys and deltas, floating ice
+DONE  churned oil and water make foam, which separates again (89.9 s)
+START pipes carry liquid downhill; valves and filters stop it
+DONE  a separator splits foam and takes the salt out of brine (46.8 s)
+START weather: rain, drying puddles and freezing nights
+DONE  momentum: waves slosh, then settle and sleep (45.0 s)
+START puzzle levels can be solved, and fail when they should
+DONE  pipes carry liquid downhill; valves and filters stop it (70.7 s)
+START running water carves dirt and drops it as mud where it stills
+DONE  mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds (123.1 s)
+START generated worlds have their biomes and layers
+DONE  the air: clouds drift on the wind, smoke too, and mountains cast rain shadows (111.4 s)
+START snapshots: exact restore, world codes, seeds and undo
+DONE  a generated river keeps flowing and keeps its pond full (144.5 s)
+START chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach
+DONE  generated worlds have their biomes and layers (30.2 s)
+START acid and alkali, fizz and carbon dioxide, growing crystals
+DONE  snapshots: exact restore, world codes, seeds and undo (53.9 s)
+START ecology: seasonal algae, spreading plants, pike and moths
+DONE  water landscapes: groundwater, valleys and deltas, floating ice (153.6 s)
+START air and water: oxygen, fire that needs it, stratified water, soap and emulsions
+DONE  acid and alkali, fizz and carbon dioxide, growing crystals (81.9 s)
+START the time of day can be held at day or night, or stopped, and carries on from there
+DONE  puzzle levels can be solved, and fail when they should (165.4 s)
+START freezing, melting and dissolving keep mass
+DONE  weather: rain, drying puddles and freezing nights (190.6 s)
+START plants drink, grow, wilt and burn
+DONE  running water carves dirt and drops it as mud where it stills (144.6 s)
+START salamanders live in lava and die in water; slimelings split and fear salt
+DONE  freezing, melting and dissolving keep mass (33.6 s)
+START ecology: algae, grazing fish, rot
+DONE  salamanders live in lava and die in water; slimelings split and fear salt (23.4 s)
+START nature keeps its water: humid biomes, wet spells, drying ground, plants
+DONE  the time of day can be held at day or night, or stopped, and carries on from there (72.6 s)
+START the deep caverns, rust, and frozen nitro
+DONE  biome weather: frozen tundra, drying desert, droughts, tides (282.2 s)
+START sponges, soil, porous rock, wool and copper, membranes, coral, fuses
+DONE  ecology: seasonal algae, spreading plants, pike and moths (145.6 s)
+START life: plants, flowers, bees, rot, nitrogen and fermentation
+DONE  ecology: algae, grazing fish, rot (70.9 s)
+START matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density
+DONE  nature keeps its water: humid biomes, wet spells, drying ground, plants (57.3 s)
+START void ink, mimic, coolant, ferrofluid, fertiliser
+DONE  the deep caverns, rust, and frozen nitro (90.5 s)
+START life: moss exchanges gases in daylight
+DONE  void ink, mimic, coolant, ferrofluid, fertiliser (59.8 s)
+START fine powders, gases that don’t shove, warm honey, planks, and pressure on by default
+DONE  sponges, soil, porous rock, wool and copper, membranes, coral, fuses (102.5 s)
+START custom levels: goals, ways to lose, and a level code that starts in the level
+DONE  custom levels: goals, ways to lose, and a level code that starts in the level (1.5 s)
+START electrolysis splits water into hydrogen and oxygen
+DONE  life: moss exchanges gases in daylight (40.9 s)
+DONE  matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density (112.2 s)
+START temperature and depth sensors, pixels, and power fading along long lines
+DONE  electrolysis splits water into hydrogen and oxygen (42.8 s)
+START life: local fish capacity and causal oxygen stress
+DONE  life: local fish capacity and causal oxygen stress (0.2 s)
+DONE  temperature and depth sensors, pixels, and power fading along long lines (19.5 s)
+DONE  chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach (360.1 s)
+START life: an overfed jar, bloom and recorded mortality
+DONE  fine powders, gases that don’t shove, warm honey, planks, and pressure on by default (118.9 s)
+START hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode
+DONE  hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode (6.1 s)
+START life: spirit burns from a flame
+DONE  life: spirit burns from a flame (22.4 s)
+DONE  plants drink, grow, wilt and burn (325.5 s)
+START geysers, gas vents, clay and permafrost
+DONE  geysers, gas vents, clay and permafrost (10.4 s)
+START solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers
+DONE  air and water: oxygen, fire that needs it, stratified water, soap and emulsions (405.6 s)
+START life: a sealed jar through two day and night cycles
+DONE  solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers (38.4 s)
+START a living world: seasons in the leaves, birds that hunt moths, hail and flash floods
+DONE  life: plants, flowers, bees, rot, nitrogen and fermentation (319.4 s)
+START every kind of block draws without errors
+DONE  every kind of block draws without errors (0.0 s)
+DONE  a living world: seasons in the leaves, birds that hunt moths, hail and flash floods (33.7 s)
+START smelting: ore and charcoal give molten iron and slag
+DONE  smelting: ore and charcoal give molten iron and slag (27.5 s)
+START life: a heated still enriches its condensate
+DONE  life: a heated still enriches its condensate (32.0 s)
+DONE  life: an overfed jar, bloom and recorded mortality (238.8 s)
+DONE  life: a sealed jar through two day and night cycles (184.4 s)

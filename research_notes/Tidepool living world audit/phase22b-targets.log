@@ -1,0 +1,38 @@
+
+brine freezes colder, and boiling it away leaves salt  (11.4 s)
+  PASS  fresh water freezes at -12°
+  PASS  brine stays liquid at -12°
+  PASS  boiling brine leaves salt behind  (3 salt blocks)
+
+void ink, mimic, coolant, ferrofluid, fertiliser  (101.1 s)
+  PASS  void ink deletes the water it touches, using itself up  (19 of 95 water tiles deleted)
+  PASS  mimic turns into the first liquid it touches
+  PASS  coolant doesn’t freeze
+  PASS  coolant quenches lava into a basalt crust  (9 basalt, 9 lava, 18 coolant)
+  PASS  a magnet pulls ferrofluid up towards it  (17 tiles above the pool)
+  PASS  a plant on fertilised water grows faster  (fed 10 tiles tall, plain 2)
+  PASS  a carbon- and nutrient-fed bloom grows and consumes oxygen at night  (algae 89.0, day oxygen 18.0, night 15.0 mg/L)
+  PASS  fertilised water greens the stone around it with moss  (17 moss)
+
+life: plants, flowers, bees, rot, nitrogen and fermentation  (346.9 s)
+  PASS  in daylight a plant takes up CO2, grows on the sugar it makes, and gives off oxygen  (CO₂ 0.60% → 0.56%, 7 tall, sugar 431)
+  PASS  at night it burns its sugar and gives CO2 back  (CO₂ 0.56% → 0.56%)
+  PASS  with no CO2 in the air a plant can’t grow  (1 tall)
+  PASS  a grown plant flowers in the sun and makes nectar  (3.1999999999999984 nectar at most)
+  FAIL  bees carry nectar home and turn it into honeycomb  (1 comb, first cell 9.797777777772323)
+  FAIL  a finite carcass decays into ammonium, which oxygen-rich water turns into nitrate  (carcass carbon 22.80, nitrate 0.003)
+  FAIL  in airless water, nitrate is lost as nitrogen gas  (nitrate 38.4)
+  PASS  ammonium poisons fish
+  FAIL  sugar water left open catches wild yeast
+  PASS  shut away from air, yeast ferments sugar into alcohol  (alcohol 36, sugar 132)
+  PASS  with air, alcohol slowly turns to vinegar  (acid 2.7)
+
+hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode  (13.4 s)
+  PASS  sealed pure hydrogen cannot burn without an exposed oxidizer  (66555 hydrogen remains, no reaction water or blast)
+  PASS  the same hydrogen cloud remains unburned in oxygen-free air  (0 burned, 1275 remaining, 0 water, 0.0000 oxygen units)
+  PASS  hydrogen in air burns into measured water, using oxygen without a blast  (832 burned, 443 remaining, 832 water, 1631.3725 oxygen units)
+  PASS  hydrogen mixed with oxygen explodes when lit  (80 blocks broken)
+  PASS  methane mixed with oxygen explodes when lit  (80 blocks broken)
+  PASS  wood burns in oxygen and uses it up  (5 tiles burning, 5 gas units used (fractional credit retained))
+
+4 check(s) failed · matching void ink, brine freezes, hydrogen burns, life: plants run, 4 scenes, 348.8 s

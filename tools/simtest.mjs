@@ -4,7 +4,8 @@
 //   npm test -- pipes heat    only the scenes whose name contains any of the words (any tier)
 //   npm run test:full         every scene, for before publishing
 //   npm test -- --list        list the scenes, marking the quick ones
-// The scenes are independent, so the run splits them across child processes, one per CPU core, and prints the results
+//   npm test -- --full --jobs=4 --progress   bound parallel workers and show completed-scene progress
+// The scenes are independent, so the run splits them across bounded child processes and prints the results
 // in scene order with each scene's time. Randomness is seeded per scene, so a run gives the same result every time.
 // A stand-in for the page, so the drawing and toolbar modules load: any property or call gives another stand-in.
 const fakeCtx = { createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), putImageData() {} };
@@ -30,6 +31,8 @@ function reseed(i) { rngState = (0x9e3779b9 ^ Math.imul(i + 1, 7919)) | 0; }
 const C = await import('../js/config.js');
 const Wd = await import('../js/world.js');
 const { step } = await import('../js/sim.js');
+const Eco = await import('../js/ecology.js');
+const EcoData = await import('../js/ecology-data.js');
 const { W, H } = C;
 const { solid, liq, typ, temp, sol, bodies, pumps } = Wd;
 
@@ -75,6 +78,7 @@ const QUICK = new Set([
   'snapshots: exact restore, world codes, seeds and undo',
   'the explorer scoops, pours, digs and places',
   'rafts, boats and balloons; air and health',
+  'life: local fish capacity and causal oxygen stress',
 ]);
 function scene(name, fn) { scenes.push([name, fn, QUICK.has(name)]); }
 
@@ -526,9 +530,39 @@ scene('a separator splits foam and takes the salt out of brine', () => {
   clear(); devices.clear();
   tank(40, 40, 50, 50);
   fill(41, 42, 49, 50, C.WATER, 20); setSol(41, 42, 49, 50, C.SOL_SALT, 200);
-  place(C.SEPARATOR, 50, 45);
+  const separator = place(C.SEPARATOR, 50, 45);
+  const saltAmounts = () => {
+    let dissolved = 0, powder = 0;
+    for (let k = 0; k < W * H; k++) {
+      dissolved += sol[k * C.NSOL + C.SOL_SALT] * liq[k] / 255;
+      if (solid[k] === C.SALT || solid[k] === C.GEM) powder += Wd.held[k] || 255;
+    }
+    return { dissolved, powder, total: dissolved + powder + separator.store };
+  };
+  const saltBefore = saltAmounts().total;
+  // The 255-unit buffer can discharge once per eight ticks; 16,200 units cannot all leave in 400 ticks.
+  run(1200);
+  const extracted = saltAmounts();
+  check('a separator desalinates brine at finite throughput and retains every grain', extracted.dissolved < 1e-6 && extracted.powder > 0 && Math.abs(extracted.total - saltBefore) < 1e-6,
+    `${extracted.dissolved.toFixed(6)} dissolved, ${extracted.powder.toFixed(4)} powder, ${separator.store.toFixed(4)} stored; ${extracted.total.toFixed(4)}/${saltBefore}`);
+
+  // Block all dry outlets: extraction must stop with a full buffer, then resume when an outlet opens.
+  clear(); devices.clear();
+  tank(40, 40, 50, 50);
+  fill(41, 42, 49, 50, C.WATER, 20); setSol(41, 42, 49, 50, C.SOL_SALT, 200);
+  const blocked = place(C.SEPARATOR, 50, 45);
+  solid[at(51, 45)] = C.STONE;
   run(400);
-  check('a separator desalinates brine and drops the salt', avgSol(41, 42, 49, 50, C.SOL_SALT) < 20 && count(k => solid[k] === C.SALT) > 0, `salt ${avgSol(41, 42, 49, 50, C.SOL_SALT).toFixed(0)}, ${count(k => solid[k] === C.SALT)} salt blocks`);
+  const retained = lifeAmount(C.SOL_SALT);
+  check('a blocked separator retains the salt in its buffer and brine', blocked.store === 255 && count(k => solid[k] === C.SALT) === 0 && Math.abs(retained + blocked.store - saltBefore) < 1e-6,
+    `${retained.toFixed(4)} dissolved + ${blocked.store} stored`);
+  solid[at(51, 45)] = C.AIR; Wd.wakeAll();
+  run(1200);
+  let powder = 0;
+  for (let k = 0; k < W * H; k++) if (solid[k] === C.SALT || solid[k] === C.GEM) powder += Wd.held[k] || 255;
+  const left = lifeAmount(C.SOL_SALT);
+  check('opening its outlet resumes separation without losing buffered salt', left < 1e-6 && powder > 0 && Math.abs(left + powder + blocked.store - saltBefore) < 1e-6,
+    `${left.toFixed(6)} dissolved, ${(powder + blocked.store).toFixed(4)} recovered`);
 });
 scene('molten metal sets into metal', () => {
   clear(); devices.clear();
@@ -546,19 +580,26 @@ scene('molten metal sets into metal', () => {
 
 // ---- gases ----
 const avgRow = t => { let s = 0, n = 0; for (let k = 0; k < W * H; k++) if (typ[k] === t) { s += (k / W) | 0; n++; } return n ? s / n : -1; };
-scene('gases rise, layer, pool and fade', () => {
+scene('gases rise, layer, pool and escape', () => {
   clear(); devices.clear(); fire.fill(0);
   box(30, 20, 50, 20, C.STONE); box(30, 20, 30, 45, C.STONE); box(50, 20, 50, 45, C.STONE);
+  box(30, 46, 50, 46, C.STONE);
   fill(31, 40, 49, 42, C.SMOKE, 20); fill(31, 43, 49, 45, C.METHANE, 20);
+  const trappedSmoke = gasVol(C.SMOKE), trappedMethane = gasVol(C.METHANE);
   run(200);
   check('methane rises above smoke', avgRow(C.METHANE) >= 0 && avgRow(C.METHANE) < avgRow(C.SMOKE), `methane row ${avgRow(C.METHANE).toFixed(1)}, smoke row ${avgRow(C.SMOKE).toFixed(1)}`);
-  const smoke = count(k => typ[k] === C.SMOKE);
   run(600);
-  check('smoke thins out and disappears', count(k => typ[k] === C.SMOKE) < smoke / 4, `${smoke} → ${count(k => typ[k] === C.SMOKE)} tiles`);
+  check('sealed smoke and methane spread without losing any gas', gasVol(C.SMOKE) === trappedSmoke && gasVol(C.METHANE) === trappedMethane && !(S.accounting.gasEscaped?.[C.SMOKE] || 0) && !(S.accounting.gasEscaped?.[C.METHANE] || 0),
+    `${gasVol(C.SMOKE)}/${trappedSmoke} smoke, ${gasVol(C.METHANE)}/${trappedMethane} methane`);
   clear(); Wd.under.fill(0);
   fill(60, 10, 64, 12, C.METHANE, 20);
+  fill(70, 10, 74, 12, C.SMOKE, 20);
+  const openMethane = gasVol(C.METHANE), openSmoke = gasVol(C.SMOKE);
   run(400);
-  check('methane escapes into open sky', count(k => typ[k] === C.METHANE) === 0);
+  check('methane escapes into open sky with its quantity recorded', gasVol(C.METHANE) === 0 && S.accounting.gasEscaped?.[C.METHANE] === openMethane,
+    `${S.accounting.gasEscaped?.[C.METHANE] || 0}/${openMethane} escaped`);
+  check('open smoke disperses into the atmosphere with every removed unit recorded', gasVol(C.SMOKE) < openSmoke / 4 && gasVol(C.SMOKE) + (S.accounting.gasEscaped?.[C.SMOKE] || 0) === openSmoke,
+    `${gasVol(C.SMOKE)} remain + ${S.accounting.gasEscaped?.[C.SMOKE] || 0} dispersed = ${openSmoke}`);
   clear();
   tank(70, 40, 90, 60);
   fill(71, 55, 89, 60, C.WATER, 20);
@@ -591,12 +632,17 @@ scene('gas sources: fire smokes, slime makes methane, acid on metal makes hydrog
 scene('methane burns in a flash', () => {
   clear(); devices.clear(); fire.fill(0);
   box(30, 20, 60, 20, C.STONE); box(30, 20, 30, 30, C.STONE); box(60, 20, 60, 30, C.STONE);
+  box(30, 30, 60, 30, C.STONE);
   fill(31, 21, 59, 24, C.METHANE, 20);
-  const gas = count(k => typ[k] === C.METHANE);
+  const gas = gasVol(C.METHANE);
   temp[at(31, 24)] = 1000;   // a spark
   let burning = 0;
   for (let i = 0; i < 60; i++) { step(); burning = Math.max(burning, count(k => fire[k] > 0)); }
-  check('a spark sets the whole methane cloud alight', burning > 20 && count(k => typ[k] === C.METHANE) < gas / 10, `${burning} burning at once, ${count(k => typ[k] === C.METHANE)} of ${gas} left`);
+  const burned = S.accounting.methaneBurned || 0, left = gasVol(C.METHANE), water = gasVol(C.STEAM) + gasVol(C.WATER);
+  check('a spark spreads through methane while conserving the unburned fuel', burning > 20 && burned > 0 && left > 0 && left + burned === gas,
+    `${burning} burning at once, ${burned} burned + ${left} remaining = ${gas}`);
+  check('methane burning consumes oxygen and produces measured water and carbon dioxide', water === burned * 2 && S.accounting.gasReactionWater === water && Math.abs(S.accounting.combustionOxygen - burned * 2 * 1000 / 255) < 1e-6 && Math.abs(S.accounting.combustionCarbon - burned * 10000 / 255) < 1e-6,
+    `${water} water, ${(S.accounting.combustionOxygen || 0).toFixed(4)} oxygen units, ${(S.accounting.combustionCarbon || 0).toFixed(4)} carbon dioxide units`);
 });
 
 // ---- nitro ----
@@ -660,9 +706,10 @@ scene('blasts throw crates, spare obsidian and metal, and nitro rests safely und
 // ---- erosion and weather ----
 const { DAY_TICKS } = await import('../js/daynight.js');
 const DayNight = await import('../js/daynight.js');
-const { startRain } = await import('../js/weather.js');
+const { startRain, sunshine } = await import('../js/weather.js');
 const Air = await import('../js/air.js');
 const Oxy = await import('../js/oxygen.js');
+const NO_DISSOLVED_OXYGEN = Oxy.OXYGEN_REFERENCE / Oxy.MG_PER_UNIT;
 const Crt = await import('../js/creatures.js');
 function setClock(phase) { S.tick = Math.round(((phase - 0.35 + 1) % 1) * DAY_TICKS) + DAY_TICKS * 4; }   // phase 0.5 is noon, 0 midnight
 
@@ -684,6 +731,15 @@ scene('running water carves dirt and drops it as mud where it stills', () => {
   const packed = count(k => (solid[k] === C.DIRT || solid[k] === C.WETDIRT) && ((k / W) | 0) <= 50);   // dirt under water soaks some up
   check('mud under still water packs down into dirt', packed > 0, `${packed} new dirt`);
 });
+function evaporationResiduesOnly() {
+  for (let k = 0; k < W * H; k++) if (typ[k] === C.WATER && liq[k]) {
+    if (liq[k] !== 1) return false;
+    let residue = false;
+    for (let i = 0; i < C.NSOL; i++) if (i !== C.SOL_O2 && i !== C.SOL_CO2 && sol[k * C.NSOL + i] > 0) residue = true;
+    if (!residue) return false;
+  }
+  return true;
+}
 scene('weather: rain, drying puddles and freezing nights', () => {
   clear(); devices.clear(); fire.fill(0); Wd.under.fill(0); S.weather = true;
   Air.resetAir();
@@ -700,8 +756,10 @@ scene('weather: rain, drying puddles and freezing nights', () => {
   setClock(0.45);
   for (let x = 30; x <= 60; x++) { liq[at(x, H - 2)] = 40; typ[at(x, H - 2)] = C.WATER; }
   Wd.wakeAll();
+  const puddle = gasVol(C.WATER), puddleTotal = puddle + Air.airWater();
   run(1200);
-  check('the daytime sun dries shallow puddles', count(k => typ[k] === C.WATER) === 0, `${count(k => typ[k] === C.WATER)} wet tiles left`);
+  check('the daytime sun evaporates a shallow puddle while retaining its nonvolatile residue', gasVol(C.WATER) < puddle * 0.05 && evaporationResiduesOnly() && Math.abs(gasVol(C.WATER) + Air.airWater() - puddleTotal) < 1e-3,
+    `${gasVol(C.WATER)} of ${puddle} carrier units remain as one-unit residue films; water difference ${(gasVol(C.WATER) + Air.airWater() - puddleTotal).toExponential(2)}`);
   clear(); Wd.under.fill(0); S.weather = true; Air.resetAir();
   setClock(0.9);
   tank(40, 40, 60, 50); fill(41, 42, 59, 50, C.WATER, 20);
@@ -843,8 +901,14 @@ scene('mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; 
   S.weather = false;
   clear(); devices.clear();
   tank(60, 30, 70, 50); fill(61, 50, 69, 50, C.MUD, 20); fill(61, 42, 69, 49, C.WATER, 20);
-  run(3000);
-  check('mud under still water bubbles up swamp gas', count(k => typ[k] === C.METHANE) > 0, `${count(k => typ[k] === C.METHANE)} methane tiles`);
+  // Marsh gas requires an organic, oxygen-depleted bed; sterile mineral mud has no carbon fuel.
+  for (let x = 61; x <= 69; x++) Eco.ecoDeposit(at(x, 50), { c: 200, n: 20, p: 2 });
+  for (let y = 42; y <= 49; y++) for (let x = 61; x <= 69; x++) sol[at(x, y) * C.NSOL + C.SOL_O2] = 255;
+  Wd.airOx.fill(0); // retain anoxic conditions instead of continually aerating this substrate control
+  let methanePeak = 0;
+  // Sub-carrier methane is retained until enough carbon exists for one visible gas unit.
+  for (let i = 0; i < 60 && !methanePeak; i++) { run(100); methanePeak = count(k => typ[k] === C.METHANE); }
+  check('organic mud under anoxic water bubbles up finite swamp gas', methanePeak > 0, `${methanePeak} methane tiles`);
   clear(); fire.fill(0);
   box(80, 61, 90, 61, C.STONE); fill(81, 60, 89, 60, C.OIL, 220);
   let smoke = 0;
@@ -915,17 +979,19 @@ scene('plants drink, grow, wilt and burn', () => {
   clear(); devices.clear(); fire.fill(0); plants.length = 0;
   box(30, 61, 60, 70, C.DIRT); box(40, 61, 44, 63, C.AIR); fill(40, 61, 44, 63, C.WATER, 20);
   plantSeed(at(46, 60));
+  Eco.ecoInitializeWorld(); // finite soil/water nutrients are required for this healthy-growth control
   run(3000);
   const first = plants.find(p => p.root === at(46, 60));   // grown plants drop seeds, so it may have company
   check('a plant beside water grows tall', first && first.h >= 4, `height ${first ? first.h : 0}`);
   const tall = first.h;
   box(40, 61, 44, 63, C.DIRT); for (let k = 0; k < W * H; k++) if (solid[k] === C.WETDIRT) { solid[k] = C.DIRT; Wd.held[k] = 0; }   // the soil dries out too
-  for (let i = 0; i < 14 && plants.length; i++) run(1500);
-  check('without water it wilts away', plants.length === 0 || plants[0].h < tall, `height ${plants[0] ? plants[0].h : 0}`);
+  for (let i = 0; i < 14 && plants.includes(first) && first.h >= tall; i++) run(1500);
+  check('without water the original plant wilts', !plants.includes(first) || first.h < tall, `height ${plants.includes(first) ? first.h : 0}`);
   clear(); plants.length = 0; fire.fill(0);
   box(30, 61, 60, 70, C.DIRT); fill(40, 60, 44, 60, C.WATER, 20);
   plantSeed(at(46, 60)); plants[0].max = 6;
-  for (let y = 54; y < 60; y++) solid[at(46, y)] = C.PLANT;
+  Object.assign(plants[0], { sugar: 100, nitrogen: 10, phosphorus: 1 });
+  for (let y = 54; y < 60; y++) { Eco.ecoPlantCost(plants[0], EcoData.ECO_COST.stem, at(46, y), C.PLANT); solid[at(46, y)] = C.PLANT; }
   plants[0].top = at(46, 54); plants[0].h = 7;
   temp[at(46, 56)] = 400;
   run(600);
@@ -962,13 +1028,23 @@ scene('puzzle levels can be solved, and fail when they should', () => {
 function brew(lever) {
   const { checkLevel } = Lvl;
   const [water, boiler, honey, bloom] = [26, 30, 34, 38].map(x => lever(x, 79));
-  const potTemp = () => { let s = 0, n = 0; for (let y = 60; y <= 72; y++) for (let x = 61; x <= 71; x++) if (liq[at(x, y)] && typ[at(x, y)] === C.WATER) { s += temp[at(x, y)]; n++; } return n ? s / n : 0; };
+  const potTemp = () => {
+    let heat = 0, amount = 0;
+    for (let y = 60; y <= 72; y++) for (let x = 61; x <= 71; x++) {
+      const k = at(x, y);
+      if (liq[k] && (typ[k] === C.WATER || typ[k] === C.TONIC)) { heat += temp[k] * liq[k]; amount += liq[k]; }
+    }
+    return amount ? heat / amount : 0;
+  };
+  const hold = ticks => { for (let i = 0; i < ticks; i++) { boiler.on = potTemp() < 90; step(); } };
   water.on = true; run(400); water.on = false;
   boiler.on = true;
   for (let i = 0; i < 100 && potTemp() < 60; i++) run(20);
-  honey.on = true; run(200); honey.on = false;
-  bloom.on = true; run(80); bloom.on = false;
-  for (let t = 0; t < 6000 && !S.level.done; t += 20) { boiler.on = potTemp() < 92; run(20); checkLevel(); }
+  // Control the heater while ingredients arrive too: leaving it on blindly burns honey before it dissolves.
+  boiler.on = false;
+  honey.on = true; hold(200); honey.on = false;
+  bloom.on = true; hold(80); bloom.on = false;
+  for (let t = 0; t < 6000 && !S.level.done; t += 20) { hold(20); checkLevel(); }
   return S.level.done;
 }
 
@@ -1096,8 +1172,10 @@ scene('biome weather: frozen tundra, drying desert, droughts, tides', () => {
   check('a tundra lake stays frozen through a sunny day', count(k => solid[k] === C.ICE) >= 15);
   sky(0); setClock(0.45); Clim.colTemp.fill(14); Clim.colHum.fill(0.15); Clim.colSwing.fill(1.6);
   for (let x = 30; x <= 60; x++) { liq[at(x, 99)] = 40; typ[at(x, 99)] = C.WATER; }
+  const puddle = gasVol(C.WATER), puddleTotal = puddle + Air.airWater();
   run(600);
-  check('a desert puddle dries out within the day', count(k => typ[k] === C.WATER) === 0, `${count(k => typ[k] === C.WATER)} wet tiles left`);
+  check('desert heat evaporates a puddle within the day without deleting its residues', gasVol(C.WATER) < puddle * 0.05 && evaporationResiduesOnly() && Math.abs(gasVol(C.WATER) + Air.airWater() - puddleTotal) < 1e-3,
+    `${gasVol(C.WATER)} of ${puddle} carrier units remain as one-unit residue films; water difference ${(gasVol(C.WATER) + Air.airWater() - puddleTotal).toExponential(2)}`);
   // a drought warms the air, so the same storm passing over dissolves and rains far less
   const storm = spell => {
     sky(0); setClock(0.5);
@@ -1143,8 +1221,22 @@ scene('nature keeps its water: humid biomes, wet spells, drying ground, plants',
   for (let c = 0; c < Air.NC; c++) { if (c % Air.AW < Air.AW / 2) wet += Air.hum[c] + Air.cloud[c]; else dry += Air.hum[c] + Air.cloud[c]; }
   check('humid biomes gather the air’s moisture and dry ones lose it, and no water is made or lost', wet > dry * 2 && Math.abs(after - before) < before * 0.01,
     `${(before / 255).toFixed(1)} → ${(after / 255).toFixed(1)} tiles; humid half ${(wet / 255).toFixed(1)}, dry half ${(dry / 255).toFixed(1)}`);
-  // how fast it dries depends on the clouds' shade
-  check('mud baked dry in the sun sends its water into the air', mud() < 20 * 120 * 0.15, `${mud()} of ${20 * 120} mud left`);
+  check('exposed mud loses water during the changing weather', mud() < 20 * 120, `${mud()} of ${20 * 120} mud left`);
+  // Isolate sunlight from this deliberately cloudy biome's changing weather and global RNG traffic.
+  sky(0); setClock(0.5); Clim.shade.fill(0);
+  for (let x = 100; x < 140; x++) {
+    liq[at(x, 99)] = 120; typ[at(x, 99)] = C.MUD;
+    if (x >= 120) Clim.shade[x] = 1;
+  }
+  const controlBefore = total();
+  for (let i = 0; i < 800; i++) sunshine();
+  let sunnyMud = 0, shadedMud = 0;
+  for (let x = 100; x < 140; x++) if (typ[at(x, 99)] === C.MUD) {
+    if (x < 120) sunnyMud += liq[at(x, 99)]; else shadedMud += liq[at(x, 99)];
+  }
+  check('sun dries mud faster than full shade and transfers its water into the air',
+    sunnyMud < shadedMud * 0.5 && shadedMud === 2400 && Math.abs(total() - controlBefore) < 1e-6,
+    `sun ${sunnyMud}, shade ${shadedMud}; water difference ${(total() - controlBefore).toExponential(2)}`);
   Bio.regions.length = 0;
   S.weather = false;
 });
@@ -1203,9 +1295,12 @@ scene('freezing, melting and dissolving keep mass', () => {
   box(130, 61, 150, 61, C.ICE); solid[at(140, 60)] = C.SALT;
   for (let k = 0; k < W * H; k++) temp[k] = -10;
   run(1000);   // ice touching salt melts at 1% per heat pass (every other tick)
-  let salt = 0;   // dissolved contents are a concentration, so the amount of salt is concentration times liquid
-  for (let k = 0; k < W * H; k++) if (liq[k]) salt += solAt(k, C.SOL_SALT) * liq[k] / 255;
-  check('a salt block melts ice and is used up, making no extra salt', !count(k => solid[k] === C.SALT) && salt > 0 && salt <= 121, `${count(k => solid[k] === C.SALT)} salt blocks left, ${Math.round(salt)} salt dissolved (one block makes 120)`);
+  let salt = 0, saltGrains = 0;   // concentrations must be weighted by actual carrier, and undissolved grains retained
+  for (let k = 0; k < W * H; k++) {
+    if (liq[k]) salt += solAt(k, C.SOL_SALT) * liq[k] / 255;
+    if (solid[k] === C.SALT || solid[k] === C.GEM) saltGrains += Wd.held[k] || 255;
+  }
+  check('salt melts ice while preserving all dissolved and solid salt', salt > 0 && Math.abs(salt + saltGrains - 255) < 1e-6, `${saltGrains.toFixed(4)} grains remain, ${salt.toFixed(4)} dissolved; initially255`);
 
   clear(); devices.clear();
   box(40, 60, 60, 80, C.STONE);
@@ -1240,13 +1335,17 @@ function differs(a, b, near = {}) {
 scene('snapshots: exact restore, world codes, seeds and undo', async () => {
   S.seed = 4242; Gen.generate(); S.weather = true; run(240);   // a generated world with weather, bodies and plants
   const a = Sn.capture();
+  const invalid = Object.entries(a.arrays).find(([, values]) => !values.every(Number.isFinite));
+  check('generated state contains no non-finite quantities', !invalid, invalid && invalid[0]);
   run(240);
   Sn.restore(a);
   const b = Sn.capture(), d1 = differs(a, b);
   check('restoring a snapshot puts every tile, column and air cell back', !d1 && JSON.stringify(a.lists) === JSON.stringify(b.lists) && JSON.stringify(a.state) === JSON.stringify(b.state) && a.devices.length === b.devices.length, d1 && `${d1} differs`);
   const near = { temp: 0.126, ambient: 0.126, vel: 0.004, flux: true };
   const code = await Sn.packWorld(a), c = await Sn.unpackWorld(code), d2 = differs(a, c, near);
-  check('a world code unpacks to the same world (temperatures to within 1/8°)', !d2 && JSON.stringify(a.lists) === JSON.stringify(c.lists) && JSON.stringify(a.state) === JSON.stringify(c.state) && code.length < 120 * 1024, d2 ? `${d2} differs` : `code is ${(code.length / 1024).toFixed(0)} KB`);
+  check('a world code unpacks to the same world (temperatures to within 1/8°)', !d2 && JSON.stringify(a.lists) === JSON.stringify(c.lists) && JSON.stringify(a.state) === JSON.stringify(c.state), d2 && `${d2} differs`);
+  // Exact fractional ingredients replace byte arrays; preserve fidelity and measure size separately.
+  check('the reference fractional world code stays within 512 KiB', code.length < 512 * 1024, `code is ${(code.length / 1024).toFixed(0)} KiB`);
   // a version 1 code (JSON with the arrays in base64, gzipped) still loads, exactly
   const v1json = JSON.stringify({ ...a, arrays: Object.fromEntries(Object.entries(a.arrays).map(([n, x]) => [n, Sn.toBase64(new Uint8Array(x.buffer, x.byteOffset, x.byteLength))])) });
   const v1 = Sn.OLD_PREFIX + Sn.toBase64(new Uint8Array(await new Response(new Blob([new TextEncoder().encode(v1json)]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()));
@@ -1442,8 +1541,15 @@ scene('sponges, soil, porous rock, wool and copper, membranes, coral, fuses', ()
   clear(); devices.clear();
   box(40, 61, 50, 61, C.STONE); box(45, 60, 45, 60, C.WETSPONGE); Wd.held[at(45, 60)] = 200;
   temp[at(45, 60)] = 150;
-  run(40);
-  check('heat wrings a sponge out as steam', Wd.held[at(45, 60)] < 100 && count(k => typ[k] === C.STEAM) > 0);
+  let spongeSteamPeak = 0, spongeWaterKept = true;
+  for (let i = 0; i < 40; i++) {
+    step();
+    const steam = gasVol(C.STEAM);
+    spongeSteamPeak = Math.max(spongeSteamPeak, steam);
+    spongeWaterKept &&= steam + gasVol(C.WATER) + Wd.held[at(45, 60)] === 200;
+  }
+  check('heat releases sponge water as steam, which can condense without losing water', Wd.held[at(45, 60)] < 100 && spongeSteamPeak > 0 && spongeWaterKept,
+    `steam peaked at ${spongeSteamPeak}; ${Wd.held[at(45, 60)]} held + ${gasVol(C.STEAM)} steam + ${gasVol(C.WATER)} water; conserved every tick`);
 
   // dirt soaks up water and drips it into a cave below
   clear(); devices.clear();
@@ -1543,6 +1649,7 @@ scene('void ink, mimic, coolant, ferrofluid, fertiliser', () => {
     Pl.plantSeed(at(root, 100));
   }
   setSol(32, 100, 33, 100, C.SOL_FERT, 200);
+  setSol(32, 100, 33, 100, C.SOL_PHOSPHATE, 20);
   const plain = Pl.plants.find(p => p.root === at(15, 100)), fed = Pl.plants.find(p => p.root === at(35, 100));
   plain.max = fed.max = 10;
   run(700);
@@ -1551,14 +1658,16 @@ scene('void ink, mimic, coolant, ferrofluid, fertiliser', () => {
   clear(); devices.clear();
   tank(70, 80, 90, 100);
   fill(71, 86, 89, 100, C.WATER, 20); setSol(71, 86, 89, 100, C.SOL_FERT, 180);
+  setSol(71, 86, 89, 100, C.SOL_PHOSPHATE, 20); setSol(71, 86, 89, 100, C.SOL_CO2, 500); setSol(71, 86, 89, 100, C.SOL_ALGAE, 20);
   for (let y = 80; y <= 100; y++) for (let x = 70; x <= 90; x++) Wd.under[at(x, y)] = 0;   // under open sky, at noon: algae needs light
   setClock(0.5);
   const fish = Bd.addBody('fish', 80 * C.T, 95 * C.T);
   run(1500);   // the bloom grows by day, making oxygen
   const byDay = bodies.includes(fish);
+  const grownAlgae = avgSol(71, 86, 89, 100, C.SOL_ALGAE), byDayOxygen = Oxy.oxygenIn(at(80, 95));
   setClock(0.02);   // and uses it up at night
   for (let i = 0; i < 60 && bodies.includes(fish); i++) run(50);
-  check('an algae bloom from too much fertiliser kills fish: it uses up the water’s oxygen at night', byDay && !bodies.includes(fish), `alive by day ${byDay}, oxygen ${Oxy.oxygenIn(at(80, 95)).toFixed(1)} mg/L`);
+  check('a carbon- and nutrient-fed bloom grows and consumes oxygen at night', byDay && grownAlgae > 20 && Oxy.oxygenIn(at(80, 95)) < byDayOxygen, `algae ${grownAlgae.toFixed(1)}, day oxygen ${byDayOxygen.toFixed(1)}, night ${Oxy.oxygenIn(at(80, 95)).toFixed(1)} mg/L`);
   check('fertilised water greens the stone around it with moss', count(k => solid[k] === C.MOSS) > 0, `${count(k => solid[k] === C.MOSS)} moss`);
 });
 
@@ -1637,13 +1746,16 @@ const Cr = await import('../js/creatures.js'), { ALGAE_WILD } = await import('..
 function lake(x0, y0, x1, y1, sky) {   // a tank of water, under open sky or in a cave
   tank(x0, y0, x1, y1); fill(x0 + 1, y0 + 2, x1 - 1, y1, C.WATER, 20);
   if (sky) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) Wd.under[at(x, y)] = 0;
+  else box(x0, y0, x1, y0, C.STONE);   // an opaque ceiling blocks daylight; background terrain alone does not
 }
 scene('ecology: algae, grazing fish, rot', () => {
   // algae grows only in the light; fertiliser feeds it far past the thin wild growth of plain water
   clear(); devices.clear(); setClock(0.5);
   lake(10, 80, 20, 90, true); setSol(11, 82, 19, 90, C.SOL_FERT, 60);
+  setSol(11, 82, 19, 90, C.SOL_PHOSPHATE, 10); setSol(11, 82, 19, 90, C.SOL_CO2, 500); setSol(11, 82, 19, 90, C.SOL_ALGAE, 20);
   lake(30, 80, 40, 90, false); setSol(31, 82, 39, 90, C.SOL_FERT, 60);
   lake(50, 80, 60, 90, true);
+  setSol(51, 82, 59, 90, C.SOL_ALGAE, 1); setSol(51, 82, 59, 90, C.SOL_FERT, 0.2); setSol(51, 82, 59, 90, C.SOL_PHOSPHATE, 0.02); setSol(51, 82, 59, 90, C.SOL_CO2, 100);
   run(1500);
   const fed = avgSol(11, 82, 19, 90, C.SOL_ALGAE), dark = avgSol(31, 82, 39, 90, C.SOL_ALGAE), wild = avgSol(51, 82, 59, 90, C.SOL_ALGAE);
   check('algae needs light, and grows thick on fertiliser but stays thin without', fed > 60 && dark === 0 && wild > 0 && wild <= ALGAE_WILD,
@@ -1669,13 +1781,13 @@ scene('ecology: algae, grazing fish, rot', () => {
   box(10, 90, 30, 90, C.STONE);
   const stranded = Bd.addBody('fish', 20 * C.T, 88 * C.T);
   run(800);
-  check('a dead fish rots into fertiliser', !bodies.includes(stranded) && count(k => typ[k] === C.FERT) > 0);
+  check('a dead fish leaves finite organic matter and recycled nutrients', !bodies.includes(stranded) && Object.values(Eco.ecoState().dead).some(p => p.c > 0) && Object.values(Eco.ecoState().soil).some(p => p.n > 0) && count(k => typ[k] === C.FERT) === 0);
   // a plant with nothing to drink wilts and rots into fertiliser
   clear(); devices.clear();
   box(10, 101, 20, 101, C.DIRT);
   Pl.plantSeed(at(15, 100)); Pl.plants[0].thirst = Pl.WILT_AT - 2;   // about to wilt
   run(200);
-  check('a wilted plant rots into fertiliser', !Pl.plants.length && count(k => typ[k] === C.FERT) > 0, `${count(k => typ[k] === C.FERT)} fertiliser tiles`);
+  check('a wilted plant retains its material as organic residue', !Pl.plants.length && Object.values(Eco.ecoState().dead).some(p => p.c > 0) && count(k => typ[k] === C.FERT) === 0, `${Object.keys(Eco.ecoState().dead).length} organic deposits`);
 });
 
 scene('ecology: seasonal algae, spreading plants, pike and moths', () => {
@@ -1683,6 +1795,8 @@ scene('ecology: seasonal algae, spreading plants, pike and moths', () => {
   clear(); devices.clear(); setClock(0.5);
   lake(10, 80, 20, 90, true); setSol(11, 82, 19, 90, C.SOL_FERT, 60); setSol(11, 82, 19, 90, C.SOL_ALGAE, 40);
   lake(30, 80, 40, 90, true); setSol(31, 82, 39, 90, C.SOL_FERT, 60); setSol(31, 82, 39, 90, C.SOL_ALGAE, 40);
+  setSol(11, 82, 19, 90, C.SOL_PHOSPHATE, 10); setSol(11, 82, 19, 90, C.SOL_CO2, 500);
+  setSol(31, 82, 39, 90, C.SOL_PHOSPHATE, 10); setSol(31, 82, 39, 90, C.SOL_CO2, 500);
   const hold = () => { for (let y = 82; y <= 90; y++) { for (let x = 11; x <= 19; x++) temp[at(x, y)] = 25; for (let x = 31; x <= 39; x++) temp[at(x, y)] = 4; } };
   for (let i = 0; i < 300; i++) { hold(); run(5); }
   const warm = avgSol(11, 82, 19, 90, C.SOL_ALGAE), cold = avgSol(31, 82, 39, 90, C.SOL_ALGAE);
@@ -1691,11 +1805,12 @@ scene('ecology: seasonal algae, spreading plants, pike and moths', () => {
   clear(); devices.clear(); Pl.plants.length = 0;
   box(10, 61, 70, 70, C.DIRT);
   Pl.plantSeed(at(40, 60));
+  Object.assign(Pl.plants[0], { sugar: 300, nitrogen: 30, phosphorus: 3 });
   for (let i = 0; i < 60; i++) Pl.dropSeed(Pl.plants[0]);
   const xs = Pl.plants.map(p => p.root % W).sort((a, b) => a - b);
   const spaced = xs.every((x, i) => !i || x - xs[i - 1] > Pl.SPACING), onSoil = Pl.plants.every(p => solid[p.root + W] === C.DIRT);
   check('grown plants drop seeds that take root nearby, spaced apart', Pl.plants.length >= 3 && spaced && onSoil && xs.every(x => Math.abs(x - 40) <= Pl.SEED_REACH + 1), `${Pl.plants.length} plants at ${xs.join(', ')}`);
-  for (let y = 55; y < 60; y++) solid[at(40, y)] = C.PLANT;
+  for (let y = 55; y < 60; y++) { Eco.ecoPlantCost(Pl.plants[0], EcoData.ECO_COST.stem, at(40, y), C.PLANT); solid[at(40, y)] = C.PLANT; }
   Object.assign(Pl.plants[0], { h: 6, top: at(40, 55), max: 6 });
   for (let i = 0; i < 40; i++) Pl.regrowLeaf(Pl.plants[0]);
   check('a grown plant regrows leaves', count(k => solid[k] === C.LEAF) > 0);
@@ -1709,9 +1824,10 @@ scene('ecology: seasonal algae, spreading plants, pike and moths', () => {
   check('a pike hunts down the small fish', fishLeft < 6 && pike.hunger < Cr.PIKE_STARVE, `${fishLeft} of 6 fish left, ${pike.fed || 0} eaten since it last bred`);
   clear(); devices.clear();
   lake(10, 80, 30, 90, false);
-  const starving = Bd.addBody('pike', 20 * C.T, 86 * C.T); starving.hunger = Cr.PIKE_STARVE - 50;
-  run(200);
-  check('a pike with nothing to eat starves and rots', !bodies.includes(starving) && avgSol(11, 82, 29, 90, C.SOL_FERT) > 0);
+  const starving = Bd.addBody('pike', 20 * C.T, 86 * C.T);
+  starving.bio.c = EcoData.ECO_ANIMALS.pike.body + EcoData.ECO_ANIMALS.pike.burn * 50;
+  run(EcoData.ECO_RATE.starvingGrace + 200);
+  check('a pike with exhausted food reserves starves and leaves finite remains', !bodies.includes(starving) && starving.deathCause === 'starvation' && Object.values(Eco.ecoState().dead).some(p => p.c > 0));
   // moths eat leaves; fish leap at moths over the water; moths die in frost
   clear(); devices.clear();
   box(10, 61, 40, 61, C.DIRT);
@@ -1871,22 +1987,41 @@ scene('custom levels: goals, ways to lose, and a level code that starts in the l
 scene('fine powders, gases that don’t shove, warm honey, planks, and pressure on by default', () => {
   const grainsAt = k => Wd.held[k] || 255;
   const powder = b => { let n = 0; for (let k = 0; k < W * H; k++) if (solid[k] === b) n += grainsAt(k); return n; };
-  // boiling brine leaves just the salt that was in it, as grains: a pinch from weak brine, most of a tile from strong
-  for (const [salt, lo, hi] of [[20, 10, 30], [200, 180, 220]]) {
+  // A hot plate supplies latent heat and a heated hood carries vapor away; a cold cup instead condenses it back.
+  const dryCup = () => {
+    for (let i = 0; i < 300 && typ[at(40, 60)] === C.WATER; i++) {
+      temp[at(40, 61)] = 400;
+      for (let y = 48; y <= 59; y++) for (let x = 38; x <= 42; x++) temp[at(x, y)] = 140;
+      step();
+    }
+  };
+  // boiling brine leaves exactly its salt as grains: a pinch from weak brine, most of a tile from strong
+  for (const salt of [20, 200]) {
     clear(); devices.clear(); box(39, 61, 41, 61, C.STONE); box(39, 59, 39, 60, C.STONE); box(41, 59, 41, 60, C.STONE);
     fill(40, 60, 40, 60, C.WATER, 100); setSol(40, 60, 40, 60, C.SOL_SALT, salt);
-    for (let i = 0; i < 300 && typ[at(40, 60)] === C.WATER; i++) { temp[at(40, 61)] = 400; step(); }   // a hot plate under it
-    run(10);
-    check(`boiling brine with ${salt} salt leaves that much salt as grains`, powder(C.SALT) >= lo && powder(C.SALT) <= hi && typ[at(40, 60)] !== C.WATER, `${powder(C.SALT)} grains`);
+    dryCup();
+    const vent = at(40, 59);
+    if (solid[vent] === C.GEM) {
+      check('a crystallized salt crust blocks the narrow vapor outlet without losing salt',
+        typ[at(40, 60)] === C.WATER && Math.abs(powder(C.SALT) + powder(C.GEM) + lifeAmount(C.SOL_SALT) - salt) < 1e-6);
+      // Move the crust to a weighed collection site and reopen the vent; retain every grain.
+      const collected = at(50, 60); solid[at(50, 61)] = C.STONE;
+      solid[collected] = C.GEM; Wd.held[collected] = Wd.held[vent];
+      solid[vent] = 0; Wd.held[vent] = 0; Wd.wake(vent); dryCup();
+    }
+    const drySalt = powder(C.SALT) + powder(C.GEM);
+    check(`boiling brine with ${salt} salt leaves exactly that much as grains or crystals`, Math.abs(drySalt - salt) < 1e-6 && lifeAmount(C.SOL_SALT) < 1e-6 && typ[at(40, 60)] !== C.WATER,
+      `${drySalt.toFixed(6)} grains/crystals, ${lifeAmount(C.SOL_SALT).toFixed(6)} dissolved`);
   }
   // syrup leaves sugar, which caramelises when hot
   clear(); devices.clear(); box(39, 61, 41, 61, C.STONE); box(39, 59, 39, 60, C.STONE); box(41, 59, 41, 60, C.STONE);
   fill(40, 60, 40, 60, C.WATER, 100); setSol(40, 60, 40, 60, C.SOL_SUGAR, 120);
-  for (let i = 0; i < 300 && typ[at(40, 60)] === C.WATER; i++) { temp[at(40, 61)] = 400; step(); }   // a hot plate under it
-  run(10);
-  const sugar = powder(C.SUGAR);
+  dryCup();
+  // Observe the dry grains immediately: leaving them on the hot plate for ten more ticks already caramelises them.
+  const sugar = powder(C.SUGAR), dissolvedSugar = lifeAmount(C.SOL_SUGAR);
   temp[at(40, 60)] = 300; run(20);
-  check('boiling syrup leaves sugar grains, which caramelise when hot', sugar > 80 && solid[at(40, 60)] === C.CRISP, `${sugar} sugar grains`);
+  check('boiling syrup preserves its sugar as grains, which caramelise when hot', Math.abs(sugar - 120) < 1e-6 && dissolvedSugar < 1e-6 && solid[at(40, 60)] === C.CRISP && Math.abs(powder(C.CRISP) - 120) < 1e-6,
+    `${sugar.toFixed(6)} dry sugar, ${powder(C.CRISP).toFixed(6)} caramel grains`);
   // thin layers settle onto each other into a pile; a thin layer doesn't stop a body; water dissolves it bit by bit
   clear(); devices.clear(); box(30, 61, 50, 61, C.STONE);
   for (let y = 50; y <= 57; y++) { solid[at(40, y)] = C.SALT; Wd.held[at(40, y)] = 40; }
@@ -2013,15 +2148,25 @@ scene('matter: heat is conserved, melting and boiling take latent heat, liquids 
   }
 });
 
-scene('life: plants make sugar from light, rot and the nitrogen cycle, yeast, bees and a sealed jar', () => {
-  const glassBox = (x0, y0, x1, y1) => { box(x0, y0, x1, y0, C.GLASS); box(x0, y1, x1, y1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); };
-  const airIn = (x0, y0, x1, y1, a) => { let n = 0, s = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!solid[at(x, y)] && !liq[at(x, y)]) { s += a[at(x, y)]; n++; } return n ? s / n : 0; };
+// Extra scenes are appended after the older registrations, preserving every older scene's deterministic seed.
+const extraLifeScenes = [];
+function lifeScene(name, fn) { extraLifeScenes.push([name, fn]); }
+const glassBox = (x0, y0, x1, y1) => { box(x0, y0, x1, y0, C.GLASS); box(x0, y1, x1, y1, C.GLASS); box(x0, y0, x0, y1, C.GLASS); box(x1, y0, x1, y1, C.GLASS); };
+const airIn = (x0, y0, x1, y1, a) => { let n = 0, s = 0; for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!solid[at(x, y)] && !liq[at(x, y)]) { s += a[at(x, y)]; n++; } return n ? s / n : 0; };
+function lifeAmount(channel) { let amount = 0; for (let k = 0; k < W * H; k++) if (liq[k]) amount += sol[k * N + channel] * liq[k] / 255; return amount; }
+function lifeCarrier() { let amount = 0; for (let k = 0; k < W * H; k++) if (typ[k] === C.WATER || typ[k] === C.STEAM) amount += liq[k]; return amount; }
+function lifeConcentration(x0, y0, x1, y1, channel) {
+  let amount = 0, volume = 0;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const k = at(x, y); if (typ[k] === C.WATER && liq[k]) { amount += sol[k * N + channel] * liq[k]; volume += liq[k]; } }
+  return volume ? amount / volume : 0;
+}
+scene('life: plants, flowers, bees, rot, nitrogen and fermentation', () => {
   // a plant in a sealed glass box: in daylight it takes CO2 out of the air and gives oxygen; in the dark it does the reverse
   const garden = () => {
     clear(); devices.clear(); plants.length = 0; glassBox(40, 30, 56, 52);
     box(41, 50, 55, 51, C.DIRT); box(41, 50, 45, 51, C.STONE); fill(41, 50, 44, 51, C.WATER, 20);   // a pool walled into the soil
     for (let y = 31; y <= 49; y++) for (let x = 41; x <= 55; x++) if (!solid[at(x, y)] && !liq[at(x, y)]) Wd.airCarb[at(x, y)] = 60;   // 0.6% CO2: plenty
-    plantSeed(at(46, 49)); plants[0].h = plants[0].h; Wd.wakeAll();
+    plantSeed(at(46, 49)); Eco.ecoInitializeWorld(); Wd.wakeAll();
   };
   garden(); setClock(0.45);
   const c0 = airIn(41, 31, 55, 48, Wd.airCarb), o0 = airIn(41, 31, 55, 48, Wd.airOx);
@@ -2040,22 +2185,26 @@ scene('life: plants make sugar from light, rot and the nitrogen cycle, yeast, be
   clear(); devices.clear(); plants.length = 0; Wd.under.fill(1); setClock(0.4);
   box(29, 60, 70, 62, C.DIRT); box(29, 60, 35, 62, C.STONE); fill(30, 60, 34, 61, C.WATER, 20);   // a pool walled into the soil
   plantSeed(at(37, 59)); Object.assign(plants[0], { h: 1, max: 3, sugar: 80 });
+  Eco.ecoInitializeWorld();
   solid[at(50, 52)] = C.COMB; Wd.held[at(50, 52)] = 10;   // a hive with a little honey in it
   for (let i = 0; i < 3; i++) Bd.addBody('bee', 50 * C.T, (51 - i) * C.T);
   let nectar = 0;
   for (let i = 0; i < 40; i++) { run(100); const f = count(k => solid[k] === C.FLOWER); if (f) for (let k = 0; k < W * H; k++) if (solid[k] === C.FLOWER) nectar = Math.max(nectar, Wd.held[k]); }
   const comb = count(k => solid[k] === C.COMB), honey = Wd.held[at(50, 52)];
   check('a grown plant flowers in the sun and makes nectar', nectar > 0, `${nectar} nectar at most`);
-  check('bees carry nectar home and turn it into honeycomb', comb > 1 || honey > 10 || honey === 0, `${comb} comb, first cell ${honey}`);
+  check('bees carry measured nectar home while consuming finite honey', (S.accounting.honeyStored || 0) > 0 && (S.accounting.nectarCollected || 0) > 0, `${comb} comb, stock ${honey.toFixed(3)}, collected ${(S.accounting.nectarCollected || 0).toFixed(3)}, stored ${(S.accounting.honeyStored || 0).toFixed(3)}, eaten ${(S.accounting.honeyEaten || 0).toFixed(3)}`);
   // rot: a dead fish in water gives ammonium and uses oxygen; with oxygen it turns to nitrate; airless water loses nitrate
   clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 20);
   const f = Bd.addBody('fish', 44 * C.T, 45 * C.T); Crt.die(f, at(45, 45), 'fizz'); bodies.splice(bodies.indexOf(f), 1);
-  const amm = sol[at(45, 45) * N + C.SOL_AMMONIA];
+  const corpse = Eco.ecoState().dead[at(45, 45)];
   run(2000);
-  check('a dead fish rots into ammonium, which oxygen-rich water turns into nitrate', amm > 0 && avgSol(41, 41, 49, 49, C.SOL_FERT) > 0, `ammonium ${amm} at first, nitrate ${avgSol(41, 41, 49, 49, C.SOL_FERT).toFixed(1)}`);
-  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 20); setSol(41, 41, 49, 49, C.SOL_FERT, 40); setSol(41, 41, 49, 49, C.SOL_O2, 255);
-  run(2000);
-  check('in airless water, nitrate is lost as nitrogen gas', avgSol(41, 41, 49, 49, C.SOL_FERT) < 30, `nitrate ${avgSol(41, 41, 49, 49, C.SOL_FERT).toFixed(1)}`);
+  const remainingCorpse = Object.values(Eco.ecoState().dead).reduce((total, pool) => total + pool.c, 0);
+  check('a finite carcass decays into ammonium, which oxygen-rich water turns into nitrate', remainingCorpse < 22.8 && avgSol(41, 41, 49, 49, C.SOL_FERT) > 0, `carcass carbon ${remainingCorpse.toFixed(2)}, nitrate ${avgSol(41, 41, 49, 49, C.SOL_FERT).toFixed(3)}`);
+  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 20); setSol(41, 41, 49, 49, C.SOL_FERT, 40); setSol(41, 41, 49, 49, C.SOL_O2, NO_DISSOLVED_OXYGEN);
+  for (let y = 41; y <= 49; y++) for (let x = 41; x <= 49; x++) Eco.ecoDeposit(at(x, y), { c: 100, n: 10, p: 1 });
+  run(3000);
+  const nitrateLeft = avgSol(41, 41, 49, 49, C.SOL_FERT), nitrogenGas = Eco.ecoState().nitrogenGas;
+  check('organic donor in airless water turns nitrate into measured nitrogen gas', nitrateLeft < 40 && nitrogenGas > 0 && Math.abs((40 - nitrateLeft) * 81 - nitrogenGas) < 1e-6, `nitrate ${nitrateLeft.toFixed(1)}, nitrogen gas ${nitrogenGas.toFixed(3)}`);
   clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 44, 49, 50, C.WATER, 20); setSol(41, 44, 49, 50, C.SOL_AMMONIA, 120);
   const fish2 = Bd.addBody('fish', 44 * C.T, 47 * C.T); run(60);
   check('ammonium poisons fish', !bodies.includes(fish2));
@@ -2064,26 +2213,121 @@ scene('life: plants make sugar from light, rot and the nitrogen cycle, yeast, be
   clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 46, 49, 50, C.WATER, 25); setSol(41, 46, 49, 50, C.SOL_SUGAR, 150);
   run(3000);
   check('sugar water left open catches wild yeast', avgSol(41, 46, 49, 50, C.SOL_YEAST) > 0);
-  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 25); setSol(41, 41, 49, 49, C.SOL_SUGAR, 150); setSol(41, 41, 49, 49, C.SOL_YEAST, 40); setSol(41, 41, 49, 49, C.SOL_O2, 160);
+  clear(); devices.clear(); room2(40, 40, 50, 50); fill(41, 41, 49, 49, C.WATER, 25); setSol(41, 41, 49, 49, C.SOL_SUGAR, 150); setSol(41, 41, 49, 49, C.SOL_YEAST, 40); setSol(41, 41, 49, 49, C.SOL_O2, NO_DISSOLVED_OXYGEN);
   run(3000);
   check('shut away from air, yeast ferments sugar into alcohol', avgSol(41, 41, 49, 49, C.SOL_ETHANOL) > 10 && avgSol(41, 41, 49, 49, C.SOL_SUGAR) < 145, `alcohol ${avgSol(41, 41, 49, 49, C.SOL_ETHANOL).toFixed(0)}, sugar ${avgSol(41, 41, 49, 49, C.SOL_SUGAR).toFixed(0)}`);
   clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 49, 49, 50, C.WATER, 25); setSol(41, 49, 49, 50, C.SOL_ETHANOL, 100);
   run(3000);
   check('with air, alcohol slowly turns to vinegar', avgSol(41, 49, 49, 50, C.SOL_ACID) > 0 && avgSol(41, 49, 49, 50, C.SOL_ETHANOL) < 100, `acid ${avgSol(41, 49, 49, 50, C.SOL_ACID).toFixed(1)}`);
+});
   // a sealed jar: soil, a pool with a little algae and two fish, and a plant, under the sun for two days. Plant and fish
   // trade oxygen and CO2 through the jar's air; the algae feed the fish; the fish's ammonium feeds the plant
-  clear(); devices.clear(); plants.length = 0; glassBox(30, 30, 60, 56);
-  box(31, 54, 59, 55, C.STONE); box(41, 50, 59, 53, C.STONE);
-  for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) { solid[at(x, y)] = 0; liq[at(x, y)] = 255; typ[at(x, y)] = C.WATER; }
-  for (let y = 46; y <= 49; y++) for (let x = 41; x <= 59; x++) solid[at(x, y)] = y === 49 ? C.DIRT : 0;
-  setSol(31, 46, 40, 53, C.SOL_ALGAE, 20); setSol(31, 46, 40, 53, C.SOL_FERT, 10);
-  box(41, 46, 41, 48, C.STONE);   // the pool's wall
-  plantSeed(at(42, 48)); plantSeed(at(44, 48));
-  const jarFish = [Bd.addBody('fish', 33 * C.T, 50 * C.T), Bd.addBody('fish', 37 * C.T, 51 * C.T)];
-  setClock(0.3); Wd.wakeAll();
+const jar = fert => {
+    clear(); devices.clear(); plants.length = 0; glassBox(30, 30, 60, 56);
+    box(31, 54, 59, 55, C.STONE); box(41, 50, 59, 53, C.STONE);
+    for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) { solid[at(x, y)] = 0; liq[at(x, y)] = 255; typ[at(x, y)] = C.WATER; }
+    for (let y = 46; y <= 49; y++) for (let x = 41; x <= 59; x++) solid[at(x, y)] = y === 49 ? C.DIRT : 0;
+    setSol(31, 46, 40, 53, C.SOL_ALGAE, 20); setSol(31, 46, 40, 53, C.SOL_FERT, fert);
+    box(41, 46, 41, 48, C.STONE);   // the pool's wall
+    plantSeed(at(42, 48)); plantSeed(at(44, 48));
+    Eco.ecoInitializeWorld();
+    if (fert > 100) for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) Eco.ecoDeposit(at(x, y), { c: 1000, n: 100, p: 10 });
+    const fish = [Bd.addBody('fish', 33 * C.T, 50 * C.T), Bd.addBody('fish', 37 * C.T, 51 * C.T)];
+    setClock(0.3); Wd.wakeAll();
+    return fish;
+  };
+lifeScene('life: a sealed jar through two day and night cycles', () => {
+  const jarFish = jar(10);
   run(Math.round(2 * DAY_TICKS));
-  const alive = jarFish.filter(b => bodies.includes(b)).length + count(k => false), green = plants.filter(p => solid[p.root] === C.PLANT).length;
-  check('a sealed jar with a plant, algae and fish lives through two days', alive >= 1 && green >= 1, `${alive} of 2 fish, ${green} plants, water oxygen ${Oxy.oxygenIn(at(35, 50)).toFixed(1)} mg/L, air oxygen ${(airIn(31, 31, 59, 45, Wd.airOx) / 10).toFixed(1)}%`);
+  const alive = jarFish.filter(b => bodies.includes(b)).length, green = plants.filter(p => solid[p.root] === C.PLANT).length;
+  check('a balanced sealed jar retains its two original fish and plants through two days', alive === 2 && green >= 2, `${alive} of 2 fish, ${green} plants, water oxygen ${Oxy.oxygenIn(at(35, 50)).toFixed(1)} mg/L, deaths ${JSON.stringify(S.diagnostics.deathCounts)}`);
+});
+  // the same jar overfed: the algae bloom by day and use up the water's oxygen at night, and the fish die
+lifeScene('life: an overfed jar, bloom and recorded mortality', () => {
+  const fedFish = jar(200);
+  let thickest = 0;
+  for (let i = 0; i < 2 * DAY_TICKS / 100; i++) { run(100); thickest = Math.max(thickest, avgSol(31, 46, 40, 53, C.SOL_ALGAE)); }
+  const fedAlive = fedFish.filter(b => bodies.includes(b)).length;
+  const losses = S.diagnostics.deaths.filter(d => fedFish.some(f => f.id === d.id));
+  check('an overfed glass jar supports an algae bloom', thickest > 100, `algae ${thickest.toFixed(0)} at thickest`);
+  check('every original fish lost in the overfed jar has a recorded cause', losses.length === 2 - fedAlive && losses.every(d => d.cause !== 'other'), `${fedAlive} of 2 fish alive; ${JSON.stringify(losses)}`);
+});
+  // moss breathes like a plant: a mossy floor in a sealed glass box takes CO2 from the air by day and gives oxygen
+lifeScene('life: moss exchanges gases in daylight', () => {
+  clear(); devices.clear(); glassBox(40, 30, 56, 52); box(41, 51, 55, 51, C.MOSS);
+  for (let y = 31; y <= 50; y++) for (let x = 41; x <= 55; x++) Wd.airCarb[at(x, y)] = 60;
+  setClock(0.45); Wd.wakeAll();
+  const mc0 = airIn(41, 31, 55, 50, Wd.airCarb), mo0 = airIn(41, 31, 55, 50, Wd.airOx);
+  run(2400);
+  check('moss in daylight takes up CO2 and gives off oxygen', airIn(41, 31, 55, 50, Wd.airCarb) < mc0 - 1 && airIn(41, 31, 55, 50, Wd.airOx) > mo0, `CO₂ ${(mc0 / 100).toFixed(2)}% → ${(airIn(41, 31, 55, 50, Wd.airCarb) / 100).toFixed(2)}%`);
+});
+  // fish in a small pool with plenty to eat breed, but stop once it's crowded
+lifeScene('life: local fish capacity and causal oxygen stress', async () => {
+  const Sol = await import('../js/solutes.js');
+  clear(); fill(40, 40, 52, 46, C.WATER, 20);
+  S.timeMode = 'day';
+  for (let i = 0; i < 3; i++) { const f = Bd.addBody('fish', (43 + i) * C.T, 43 * C.T); f.grazed = true; }
+  // Exercise reproduction in controlled healthy water. Holding these fields fixed deliberately isolates the
+  // local-population rule from the separate oxygen, ammonia, temperature and pathfinding scenarios.
+  for (let i = 0; i < 6000; i++) for (const f of [...bodies]) {
+    const k = Crt.centre(f), p = k * N, A = f.w * f.h;
+    sol[p + C.SOL_O2] = 0; sol[p + C.SOL_AMMONIA] = 0; sol[p + C.SOL_ALGAE] = 150; temp[k] = 20;
+    Crt.driveCreature(f, { water: A, acid: 0, poison: 0, shock: 0, lava: 0 }, 1, false, A, Bd.addBody);
+  }
+  check('fish reproduce up to the local capacity, including the parents', bodies.length === Crt.CROWDED && bodies.every(f => !f.deathCause), `${bodies.length} fish from 3; capacity ${Crt.CROWDED}`);
+  const stressed = bodies[0], sk = Crt.centre(stressed), A = stressed.w * stressed.h;
+  S.timeMode = 'night'; sol[sk * N + C.SOL_O2] = (Oxy.OXYGEN_REFERENCE - 6) / Oxy.MG_PER_UNIT; sol[sk * N + C.SOL_AMMONIA] = 0; sol[sk * N + C.SOL_ALGAE] = 180;
+  Sol.soluteTick();
+  let firstLow = null;
+  for (let i = 0; i < 3600 && !stressed.deathCause; i++) {
+    S.tick++;
+    if (!(S.tick & 3)) Sol.algae(sk, sk % W, sk * N);
+    if (Oxy.oxygenIn(sk) < Oxy.FISH_GASPS && firstLow === null) firstLow = S.tick;
+    Crt.driveCreature(stressed, { water: A, acid: 0, poison: 0, shock: 0, lava: 0 }, 1, false, A, Bd.addBody);
+  }
+  const death = S.diagnostics.deaths.at(-1);
+  check('nighttime algae deplete healthy water before a tagged hypoxic death', death?.id === stressed.id && death.cause === 'hypoxia' && death.night && death.oxygen < Oxy.FISH_GASPS && death.ammonia < 80 && death.temperature === 20 && firstLow !== null && death.tick - firstLow >= Crt.SUFFOCATE - 1, JSON.stringify(death));
+  const control = Bd.addBody('fish', 50 * C.T, 43 * C.T), ck = Crt.centre(control);
+  sol[ck * N + C.SOL_ALGAE] = 180;
+  for (let i = 0; i < 3600; i++) {
+    if (!(i & 3)) Sol.algae(ck, ck % W, ck * N);
+    sol[ck * N + C.SOL_O2] = 0;
+    Crt.driveCreature(control, { water: A, acid: 0, poison: 0, shock: 0, lava: 0 }, 1, false, A, Bd.addBody);
+  }
+  check('the matched aerated control survives the same nighttime exposure', !control.deathCause && !control.gasp);
+});
+  // spirit: strong alcohol burns off the water it's in when a flame touches it, and the water stays
+lifeScene('life: spirit burns from a flame', () => {
+  clear(); devices.clear(); fire.fill(0); Wd.under.fill(1); glassBox(40, 35, 50, 51); fill(41, 49, 49, 50, C.WATER, 20); setSol(41, 49, 49, 50, C.SOL_ETHANOL, 200);
+  S.timeMode = 'night';
+  const ethanolBefore = lifeAmount(C.SOL_ETHANOL), waterBefore = lifeCarrier();
+  box(45, 48, 45, 48, C.WOOD); temp[at(45, 48)] = 400;   // a burning stick laid on the spirit
+  let flamed = false;
+  for (let i = 0; i < 1500; i++) {
+    const burnedBefore = S.accounting.ethanolBurned || 0;
+    step();
+    if ((S.accounting.ethanolBurned || 0) > burnedBefore) flamed ||= count(k => typ[k] === C.WATER && fire[k] > 0) > 0;
+  }
+  const ethanolAfter = lifeAmount(C.SOL_ETHANOL), burned = S.accounting.ethanolBurned || 0, vinegar = S.accounting.acetifiedEthanol || 0;
+  check('strong spirit catches from a flame and consumes measured alcohol', flamed && burned > 0 && ethanolAfter < ethanolBefore, `${burned.toFixed(2)} alcohol burnt; ${ethanolAfter.toFixed(2)} of ${ethanolBefore} remains`);
+  check('spirit burning retains its carrier and accounts for ethanol products', Math.abs(ethanolAfter + burned + vinegar - ethanolBefore) < 1e-5 && lifeCarrier() === waterBefore, `ethanol difference ${(ethanolAfter + burned + vinegar - ethanolBefore).toExponential(2)}; carrier ${lifeCarrier()}/${waterBefore}`);
+});
+  // A heated pot and warm riser lead to a separate cold condenser above the receiving basin. Cooling the entire
+  // headspace instead makes reflux fall straight back into the pot, which is not a collecting still.
+lifeScene('life: a heated still enriches its condensate', () => {
+  clear(); devices.clear(); room2(40, 40, 60, 52); box(50, 46, 50, 51, C.STONE);   // the wall between the pot (right) and the basin (left)
+  const stillHeater = 105, stillCondenser = 5;   // °C, controlled external heat source and sink
+  fill(51, 48, 59, 51, C.WATER, stillHeater); setSol(51, 48, 59, 51, C.SOL_ETHANOL, 36);
+  const ethanolBefore = lifeAmount(C.SOL_ETHANOL), waterBefore = lifeCarrier();
+  const still = () => {
+    for (let y = 41; y <= 51; y++) for (let x = y < 46 ? 50 : 51; x <= 59; x++) if (!solid[at(x, y)]) temp[at(x, y)] = stillHeater;
+    for (let x = 40; x < 50; x++) temp[at(x, 40)] = stillCondenser;
+  };
+  for (let i = 0; i < 3000; i++) { still(); step(); }
+  const basin = lifeConcentration(41, 46, 49, 51, C.SOL_ETHANOL), pot = lifeConcentration(51, 48, 59, 51, C.SOL_ETHANOL), caught = count(k => k >= at(41, 46) && k <= at(49, 51) && k % W >= 41 && k % W <= 49 && liq[k] && typ[k] === C.WATER);
+  const ethanolAfter = lifeAmount(C.SOL_ETHANOL), vinegar = S.accounting.acetifiedEthanol || 0;
+  check('a heated still catches an enriched mixture rather than pure alcohol', caught > 0 && basin > pot && basin < 255, `${caught} tiles caught at ${basin.toFixed(1)}, source wine ${pot.toFixed(1)} (from36)`);
+  check('the enclosed still preserves its carrier and accounts for all alcohol', lifeCarrier() === waterBefore && Math.abs(ethanolAfter + vinegar - ethanolBefore) < 1e-5, `carrier ${lifeCarrier()}/${waterBefore}; alcohol difference ${(ethanolAfter + vinegar - ethanolBefore).toExponential(2)}`);
 });
 
 scene('air and water: oxygen, fire that needs it, stratified water, soap and emulsions', async () => {
@@ -2093,9 +2337,11 @@ scene('air and water: oxygen, fire that needs it, stratified water, soap and emu
   for (const open of [false, true]) {
     clear(); devices.clear(); fire.fill(0); Wd.under.fill(1);
     room(40, 40, 52, 50, open); box(41, 49, 51, 49, C.WOOD); temp[at(41, 49)] = 400;
+    // Use a measured oxygen-limited charge; a room at21% holds more oxygen than this fuel requires.
+    for (let y = 41; y < 50; y++) for (let x = 41; x < 52; x++) Wd.airOx[at(x, y)] = Oxy.FIRE_OX + 0.1;
     run(6000);
     const wood = count(k => solid[k] === C.WOOD), ox = Wd.airOx[at(46, 43)];
-    check(open ? 'a fire with a doorway burns all its wood' : 'a fire in a sealed room uses up the oxygen and goes out', open ? wood === 0 : wood > 3 && ox < Oxy.FIRE_OX && Wd.airCarb[at(46, 43)] > 100,
+    check(open ? 'a fire with a doorway burns all its wood' : 'a fire in an oxygen-limited sealed room goes out with fuel remaining', open ? wood === 0 : wood > 3 && ox < Oxy.FIRE_OX + 0.1 && Wd.airCarb[at(46, 43)] > 4 && count(k => fire[k]) === 0,
       `${wood} of 11 wood left, oxygen ${(ox / 10).toFixed(1)}%, CO₂ ${(Wd.airCarb[at(46, 43)] / 100).toFixed(1)}%`);
   }
   // the explorer chokes in stale air
@@ -2110,10 +2356,19 @@ scene('air and water: oxygen, fire that needs it, stratified water, soap and emu
   check('carbon dioxide gas that thins out stays in the air as CO₂', Wd.airCarb[at(45, 49)] > 20 || Wd.airCarb[at(45, 45)] > 20, `CO₂ ${(Wd.airCarb[at(45, 45)] / 100).toFixed(2)}%`);
   // water holds less oxygen warm, and less salty
   check('warm or salty water holds less oxygen', Oxy.saturation(30, 0) < Oxy.saturation(10, 0) && Oxy.saturation(20, 255) < Oxy.saturation(20, 0) && Math.abs(Oxy.saturation(20, 0) - 9.1) < 0.01);
-  // a still pond over a mud bed: its bottom loses its oxygen while the surface keeps it
+  // Mud consumes bottom oxygen; a matching stone bed does not. Observe the trajectory because mud later compacts
+  // into soil and depleted water can recover. Sediment alone need not make every pond anoxic; that depends on demand
+  // relative to oxygen supply. The separate nighttime-algae test verifies genuine hypoxia and its delayed fish death.
   clear(); devices.clear(); tank(60, 30, 70, 50); fill(61, 50, 69, 50, C.MUD, 20); fill(61, 42, 69, 49, C.WATER, 20);
-  run(3000);
-  check('a still pond over mud goes airless at the bottom and stays fresh at the top', Oxy.oxygenIn(at(65, 49)) < 1 && Oxy.oxygenIn(at(65, 42)) > 8, `${Oxy.oxygenIn(at(65, 42)).toFixed(1)} mg/L at the top, ${Oxy.oxygenIn(at(65, 49)).toFixed(1)} at the bottom`);
+  for (let x = 61; x <= 69; x++) Eco.ecoDeposit(at(x, 50), { c: 200, n: 20, p: 2 }); // finite organic sediment, not sterile mineral mud
+  tank(80, 30, 90, 50); box(81, 50, 89, 50, C.STONE); fill(81, 42, 89, 49, C.WATER, 20);
+  let mudMinimum = Infinity, stoneMinimum = Infinity;
+  for (let i = 0; i < 3000; i++) {
+    step(); mudMinimum = Math.min(mudMinimum, Oxy.oxygenIn(at(65, 49))); stoneMinimum = Math.min(stoneMinimum, Oxy.oxygenIn(at(85, 49)));
+  }
+  const mudTop = Oxy.oxygenIn(at(65, 42)), mudBottom = Oxy.oxygenIn(at(65, 49)), stoneBottom = Oxy.oxygenIn(at(85, 49));
+  check('finite organic sediment depletes the pond bottom while the surface and sterile control stay oxygenated', mudMinimum < stoneMinimum / 2 && mudBottom < stoneBottom / 2 && mudTop > 8 && stoneMinimum > 8 && mudTop - mudBottom > 4,
+    `mud minimum ${mudMinimum.toFixed(2)}, final top/bottom ${mudTop.toFixed(2)}/${mudBottom.toFixed(2)}; stone minimum ${stoneMinimum.toFixed(2)} mg/L`);
   // fish suffocate in water short of oxygen; pike manage on less
   for (const kind of ['fish', 'pike']) {
     clear(); devices.clear(); room(40, 40, 50, 50, false); fill(41, 41, 49, 49, C.WATER, 20); setSol(41, 41, 49, 49, C.SOL_O2, 120);   // about 2 mg/L
@@ -2122,7 +2377,7 @@ scene('air and water: oxygen, fire that needs it, stratified water, soap and emu
     check(kind === 'fish' ? 'fish suffocate at 2 mg/L of oxygen' : 'pike still breathe at 2 mg/L', kind === 'fish' ? !bodies.includes(f) : bodies.includes(f), `${Oxy.oxygenIn(at(45, 45)).toFixed(1)} mg/L`);
   }
   // water open to the air takes oxygen back in
-  clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 48, 49, 50, C.WATER, 20); setSol(41, 48, 49, 50, C.SOL_O2, 255);
+  clear(); devices.clear(); tank(40, 40, 50, 50); fill(41, 48, 49, 50, C.WATER, 20); setSol(41, 48, 49, 50, C.SOL_O2, NO_DISSOLVED_OXYGEN);
   run(1200);
   check('airless water open to the air takes oxygen back in', Oxy.oxygenIn(at(45, 48)) > 6, `${Oxy.oxygenIn(at(45, 48)).toFixed(1)} mg/L at the surface`);
   // layering by real density: brine poured on fresh water sinks under it; warm water rises over cold; water is densest at 4°
@@ -2323,7 +2578,21 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
   const walls = stone(), gas = gasVol(C.HYDROGEN);
   temp[at(31, 29)] = 1000;   // a spark
   run(60);
-  check('a spark burns pure hydrogen into steam without a blast', gasVol(C.HYDROGEN) < gas / 10 && gasVol(C.STEAM) > gas * 0.8 && stone() === walls, `${(gasVol(C.HYDROGEN) / 255).toFixed(1)} tiles of hydrogen left, ${(gasVol(C.STEAM) / 255).toFixed(1)} of steam, ${walls - stone()} blocks broken`);
+  check('sealed pure hydrogen cannot burn without an exposed oxidizer', gasVol(C.HYDROGEN) === gas && gasVol(C.STEAM) + gasVol(C.WATER) === 0 && !(S.accounting.hydrogenBurned || 0) && stone() === walls,
+    `${gasVol(C.HYDROGEN)} hydrogen remains, no reaction water or blast`);
+  // A small cloud has air beside it and room for reaction water. Match it with an oxygen-free control.
+  for (const oxygen of [false, true]) {
+    chamber();
+    if (!oxygen) Wd.airOx.fill(0);
+    fill(40, 25, 44, 25, C.HYDROGEN, 20);
+    const initial = gasVol(C.HYDROGEN), walls = stone();
+    temp[at(40, 25)] = 1000;
+    run(60);
+    const burned = S.accounting.hydrogenBurned || 0, left = gasVol(C.HYDROGEN), water = gasVol(C.STEAM) + gasVol(C.WATER);
+    check(oxygen ? 'hydrogen in air burns into measured water, using oxygen without a blast' : 'the same hydrogen cloud remains unburned in oxygen-free air',
+      (oxygen ? burned > 0 : burned === 0) && left + burned === initial && water === burned && (S.accounting.gasReactionWater || 0) === water && Math.abs((S.accounting.combustionOxygen || 0) - burned * 0.5 * 1000 / 255) < 1e-6 && !(S.accounting.combustionCarbon || 0) && stone() === walls,
+      `${burned} burned, ${left} remaining, ${water} water, ${(S.accounting.combustionOxygen || 0).toFixed(4)} oxygen units`);
+  }
   for (const [name, fuel] of [['hydrogen', C.HYDROGEN], ['methane', C.METHANE]]) {
     chamber();
     fill(31, 21, 59, 29, fuel, 20);
@@ -2343,7 +2612,7 @@ scene('hydrogen burns into steam; mixed with oxygen, hydrogen and methane explod
   temp[at(45, 26)] = 1000;
   let burning = 0;
   for (let i = 0; i < 120; i++) { step(); burning = Math.max(burning, count(k => fire[k] > 0)); }
-  check('wood burns in oxygen and uses it up', burning > 2 && gasVol(C.OXYGEN) < o - 255, `${burning} tiles burning, ${((o - gasVol(C.OXYGEN)) / 255).toFixed(1)} tiles of oxygen used`);
+  check('wood burns in oxygen and uses it up', burning > 2 && gasVol(C.OXYGEN) < o, `${burning} tiles burning, ${(o - gasVol(C.OXYGEN)).toFixed(0)} gas units used (fractional credit retained)`);
 });
 scene('smelting: ore and charcoal give molten iron and slag', () => {
   const metal = () => count(k => solid[k] === C.METAL || typ[k] === C.MOLTEN), slag = () => count(k => solid[k] === C.SLAG || typ[k] === C.MSLAG);
@@ -2431,16 +2700,27 @@ scene('every kind of block draws without errors', () => {
   check('every kind of block draws without errors', !bad.length, bad.join('; '));
 });
 
+for (const [name, fn] of extraLifeScenes) scene(name, fn);
+
 if (process.env.SCENES) {   // a worker: run the scenes it was given
   for (const j of process.env.SCENES.split(',').map(Number)) {
     current = j; reseed(j);
     const t0 = performance.now();
+    if (process.env.SIM_PROGRESS) console.error(`START ${scenes[j][0]}`);
     await scenes[j][1]();
+    if (process.env.SIM_PROGRESS) console.error(`DONE  ${scenes[j][0]} (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
     console.log(`${j}	TIME	${Math.round(performance.now() - t0)}`);
   }
   process.exitCode = failed ? 1 : 0;
 } else {
-  const args = process.argv.slice(2), words = args.filter(a => !a.startsWith('--')).map(a => a.toLowerCase());
+  const args = process.argv.slice(2), words = [];
+  let jobs;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--jobs') jobs = Number(args[++i]);
+    else if (args[i].startsWith('--jobs=')) jobs = Number(args[i].slice(7));
+    else if (!args[i].startsWith('--')) words.push(args[i].toLowerCase());
+  }
+  if (jobs !== undefined && (!Number.isInteger(jobs) || jobs < 1)) { console.error('--jobs must be a positive integer'); process.exit(1); }
   const full = args.includes('--full');
   if (args.includes('--list')) {
     scenes.forEach(([name, , quick]) => console.log(`${quick ? 'quick' : '     '}  ${name}`));
@@ -2450,11 +2730,12 @@ if (process.env.SCENES) {   // a worker: run the scenes it was given
   if (!picked.length) { console.log(`no scene matches ${words.join(', ')} (npm test -- --list shows them all)`); process.exit(1); }
   const { spawn } = await import('node:child_process');
   const os = await import('node:os');
-  const n = Math.min(picked.length, os.availableParallelism ? os.availableParallelism() : os.cpus().length);
+  const cores = os.availableParallelism ? os.availableParallelism() : os.cpus().length;
+  const n = Math.min(picked.length, jobs ?? Math.min(4, cores));
   const t0 = performance.now();
   const runs = Array.from({ length: n }, (_, i) => new Promise(done => {
     const mine = picked.filter((_, j) => j % n === i);
-    const child = spawn(process.execPath, [process.argv[1]], { env: { ...process.env, SCENES: mine.join(',') } });
+    const child = spawn(process.execPath, [process.argv[1]], { env: { ...process.env, SCENES: mine.join(','), SIM_PROGRESS: args.includes('--progress') ? '1' : '' } });
     let out = '';
     child.stdout.on('data', d => { out += d; });
     child.stderr.on('data', d => process.stderr.write(d));

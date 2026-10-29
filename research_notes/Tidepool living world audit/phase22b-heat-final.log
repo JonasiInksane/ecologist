@@ -1,0 +1,13 @@
+
+warm water dissolves honey; brewing tonic and frost  (22.9 s)
+  PASS  water dissolves honey into sugar  (average sugar 54)
+  PASS  icy water sets honey into honeycomb
+  PASS  sugar and essence brewed past 80° become tonic  (45 tonic tiles)
+  PASS  salt and essence chilled below 0° become frost  (45 of 45 tiles became frost)
+  PASS  bloomwater dissolves into water as essence
+
+life: a heated still enriches its condensate  (41.0 s)
+  PASS  a heated still catches an enriched mixture rather than pure alcohol  (28 tiles caught at 40.4, source wine 0.0 (from36))
+  PASS  the enclosed still preserves its carrier and accounts for all alcohol  (carrier 9180/9180; alcohol difference 6.82e-13)
+
+all checks passed · matching a heated still, real matter, warm water dissolves honey, heat: sponges run, 2 scenes, 41.9 s

@@ -12,7 +12,11 @@ import { placeDevice } from './devices.js';
 import { LIQ } from './liquids.js';
 import { plantSeed } from './plants.js';
 import { hash, vnoise } from './util.js';
-import { S, liq, markDirty, sol, solid, temp, typ, wake } from './world.js';
+import { S, latent, liq, markDirty, sol, solid, temp, typ, wake } from './world.js';
+import { mixSol } from './solutes.js';
+import { LCAP, dissolvedHeatCapacity } from './matter.js';
+import { ecoContents, ecoState } from './ecology.js';
+import { bioAdd } from './ecology-core.js';
 import { T } from './config.js';
 import { addBody } from './bodies.js';
 
@@ -179,6 +183,11 @@ function river(x0, x1, surf) {
 const RIVER_LONGEST = 44, RIVER_EVERY = 4, RIVER_RATE = 8, RIVER_START = 255 * 200;   // the spring's groundwater: wets the banks, and outlasts dry weather a while
 function riversTick() {
   for (const r of rivers) {
+    if (!r.sol) r.sol = Array(NSOL).fill(0);
+    if (r.sol.length !== NSOL) r.sol = Array.from({ length: NSOL }, (_, i) => r.sol[i] || 0);
+    if (!Number.isFinite(r.temp)) r.temp = 12;
+    if (!Number.isFinite(r.latent)) r.latent = 0;
+    if (!r.bioRegistered) { bioAdd(ecoState().riverInventory, ecoContents(r.sol, 0, r.store)); r.bioRegistered = true; }
     for (const x of [r.mouth - 1, r.mouth, r.mouth + 1]) {   // a brimming pond's top goes underground
       let y = 0;
       while (y < H && !liq[y * W + x] && !solid[y * W + x]) y++;
@@ -186,13 +195,25 @@ function riversTick() {
       const keep = y === r.level ? 128 : 0;   // a pond keeps its top row half full and sends the rest back
       if (y > r.level || solid[k] || typ[k] !== WATER || liq[k] <= keep) continue;
       const m = Math.min(liq[k] - keep, RIVER_RATE);
+      const storedCap = LCAP[WATER] * r.store / 255 + dissolvedHeatCapacity(r.store, r.sol);
+      const incomingCap = LCAP[WATER] * m / 255 + dissolvedHeatCapacity(m, sol, k * NSOL);
+      r.temp = (r.temp * storedCap + temp[k] * incomingCap) / (storedCap + incomingCap);
+      bioAdd(ecoState().riverInventory, ecoContents(sol, k * NSOL, m));
+      mixSol(r.sol, 0, r.store, sol, k * NSOL, m);
+      const energy = latent[k] * m / liq[k]; latent[k] -= energy; r.latent += energy;
       liq[k] -= m; if (!liq[k]) typ[k] = 0; r.store += m; wake(k);
     }
     const k = r.src;   // and comes up at the source
     if (solid[k] || (liq[k] && typ[k] !== WATER)) continue;
     const m = Math.min(r.store, RIVER_RATE, 255 - liq[k]);
     if (m <= 0) continue;
-    if (!liq[k]) { sol.fill(0, k * NSOL, k * NSOL + NSOL); temp[k] = 12; }
+    const receiverCap = LCAP[WATER] * liq[k] / 255 + dissolvedHeatCapacity(liq[k], sol, k * NSOL);
+    const sentCap = LCAP[WATER] * m / 255 + dissolvedHeatCapacity(m, r.sol);
+    temp[k] = (temp[k] * receiverCap + r.temp * sentCap) / (receiverCap + sentCap);
+    const exported = ecoContents(r.sol, 0, m);
+    for (const key of ['c', 'n', 'p']) ecoState().riverInventory[key] -= exported[key];
+    mixSol(sol, k * NSOL, liq[k], r.sol, 0, m);
+    const energy = r.latent * m / r.store; r.latent -= energy; latent[k] += energy;
     liq[k] += m; typ[k] = WATER; r.store -= m; wake(k);
   }
 }

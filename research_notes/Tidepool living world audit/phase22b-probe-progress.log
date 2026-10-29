@@ -1,0 +1,16 @@
+START a boiler boils water only while powered
+START mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds
+START fine powders, gases that don’t shove, warm honey, planks, and pressure on by default
+DONE  a boiler boils water only while powered (15.7 s)
+DONE  fine powders, gases that don’t shove, warm honey, planks, and pressure on by default (58.4 s)
+file:///C:/Users/jonas/Documents/tidepool%202/tidepool/tools/.phase22b-probe.mjs:908
+  console.log(current+'\tPROBE '+JSON.stringify({dead:Eco.ecoState().dead,methane:Eco.ecoState().methane,oxygen:Array.from({length:9},(_,i)=>Ox.oxygenIn(at(i+61,49)))})); check('mud under still water bubbles up swamp gas', count(k => typ[k] === C.METHANE) > 0, `${count(k => typ[k] === C.METHANE)} methane tiles`);
+                                                                                                                                                ^
+
+ReferenceError: Ox is not defined
+    at file:///C:/Users/jonas/Documents/tidepool%202/tidepool/tools/.phase22b-probe.mjs:908:145
+    at Function.from (<anonymous>)
+    at Array.<anonymous> (file:///C:/Users/jonas/Documents/tidepool%202/tidepool/tools/.phase22b-probe.mjs:908:119)
+    at file:///C:/Users/jonas/Documents/tidepool%202/tidepool/tools/.phase22b-probe.mjs:2684:23
+
+Node.js v20.15.1

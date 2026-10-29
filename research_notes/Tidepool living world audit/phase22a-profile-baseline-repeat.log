@@ -1,0 +1,30 @@
+generate  2664 ms
+step      mean 22.38 ms · median 18.48 · 95th 48.85 · worst 242.76
+render    mean 24.95 ms · median 18.53 · 95th 45.67 · worst 722.26  (every other tick)
+
+self time by function:
+   1258 ms   9.0%  applyLight  render/lighting.js:112
+   1062 ms   7.6%  step  js/sim.js:52
+    910 ms   6.5%  drawBody  render/liquids.js:85
+    835 ms   6.0%  phaseChanges  js/heat.js:153
+    777 ms   5.5%  momentumTick  js/momentum.js:31
+    749 ms   5.3%  tileHeat  js/heat.js:71
+    728 ms   5.2%  heatTick  js/heat.js:92
+    610 ms   4.3%  compose  render/backdrop.js:43
+    505 ms   3.6%  computeLight  render/lighting.js:43
+    504 ms   3.6%  sweep  render/lighting.js:33
+    399 ms   2.8%  render  render/render.js:61
+    378 ms   2.7%  airTickOx  js/oxygen.js:90
+    375 ms   2.7%  powderTick  js/powders.js:50
+    373 ms   2.7%  fireTick  js/fire.js:84
+    368 ms   2.6%  drawTile  render/terrain.js:118
+    362 ms   2.6%  push  js/pressure.js:48
+    355 ms   2.5%  chemTick  js/chem.js:145
+    314 ms   2.2%  soluteTick  js/solutes.js:97
+    243 ms   1.7%  pipesTick  js/pipes.js:43
+    233 ms   1.7%  viscAt  js/liquids.js:75
+    206 ms   1.5%  pressureTick  js/pressure.js:34
+    173 ms   1.2%  drift  js/air.js:271
+    155 ms   1.1%  (garbage collector)  :0
+    139 ms   1.0%  materialsTick  js/materials.js:217
+    132 ms   0.9%  erosionTick  js/erosion.js:21

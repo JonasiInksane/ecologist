@@ -4,8 +4,9 @@
 // build up deltas. Over time a river cuts a valley: it wears the soil over it as well as beside and under it, and a
 // bank it has undercut slumps into it as mud, which it washes away. At its mouth, in still water, the silt sinks to
 // the bottom and settles there, and even lightly silty water lays its silt on a mud bed, so the delta grows.
-import { DIRT, H, METHANE, MUD, NSOL, SAND, SOL_O2, SOL_SILT, W, WATER, WETDIRT } from './config.js';
-import { oxygenIn } from './oxygen.js';
+import { DIRT, H, METHANE, MUD, NSOL, SAND, SOL_SILT, W, WATER, WETDIRT } from './config.js';
+import { breatheWater, MG_PER_UNIT, oxygenIn } from './oxygen.js';
+import { ecoDecay, ecoMethane } from './ecology.js';
 import { held } from './world.js';
 import { S, drop, flux, liq, markDirty, sol, solid, typ, vel, wake } from './world.js';
 
@@ -63,10 +64,7 @@ function erosionTick() {
       }
     } else if (t === MUD && liq[k - W] && typ[k - W] === WATER && rots(k)) {
       // with the water's oxygen gone, mud rotting under it bubbles methane up to the surface
-      let s = k - W;
-      while (s >= W && liq[s - W] && typ[s - W] === WATER) s -= W;
-      const top = s - W;
-      if (top >= 0 && !solid[top] && (!liq[top] || (typ[top] === METHANE && liq[top] < 220))) { liq[top] += 32; typ[top] = METHANE; wake(top); }
+      // rots() already debited finite substrate and retained/emitted the measured products.
     } else if (t === MUD && solid[k + W] && liq[k - W] && (typ[k - W] === WATER || typ[k - W] === MUD) && !flowing(k - W) && Math.random() < PACK) {
       solid[k] = DIRT; liq[k] = 0; typ[k] = 0; markDirty(x, (k / W) | 0);
     }
@@ -75,9 +73,8 @@ function erosionTick() {
 
 // Rot in a mud bed uses the oxygen in the water over it; true when, with that oxygen gone, it gives off swamp gas.
 function rots(k) {
-  const p = (k - W) * NSOL + SOL_O2;
-  if (Math.random() < MUD_BREATH) sol[p] = Math.min(255, sol[p] + 1);
-  return oxygenIn(k - W) < ANOXIC && Math.random() < SWAMP_GAS;
+  const used = ecoDecay(k, k - W);
+  return !used && ecoMethane(k, k - W) > 0;
 }
 
 export { rots, SLUMP, BED_SILT, SOFT, ERODE, FALL_BOOST, SILT_PER_BLOCK, STILL_TICKS, SETTLE_SILT, PACK, SWAMP_GAS, MUD_WASH, flowing, erosionTick };

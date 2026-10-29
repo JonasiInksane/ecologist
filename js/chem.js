@@ -17,6 +17,7 @@
 // (acid, alkali) or amount (water, gas) it takes; `heat` J; `fx` a puff.
 import { AIR, ALUMINIUM, ASH, BLEACHED, CHARCOAL, CHLORINE, CO2, COMB, COPPER, CORAL, CRISP, DIRT, FUSE, GLASS, H, HYDROGEN, ICE, LEAF, LIME, LIMESTONE, LYE, METAL, MOLTEN, MOSS, MSLAG, NBLOCK, NLIQ, NSOL, ORE, OXYGEN, PATINA, PLANT, QUICKLIME, RUST, SALT, SAND, SMOKE, SODA, SOL_ACID, SOL_BASE, SOL_METAL, SOL_SALT, SPONGE, STEAM, STORM, SUGAR, W, WATER, WETDIRT, WETSPONGE, WOOD, WOOL, ZINC } from './config.js';
 import { ACID, FLOWER } from './config.js';
+import { ecoCharcoal } from './ecology.js';
 import { AIR_CAP, BCAP, LCAP } from './matter.js';
 import { puff } from './particles.js';
 import { CORRODE_AT } from './solutes.js';
@@ -110,6 +111,7 @@ function emitGas(k, t, amount) {
 }
 // Turns block tile k into `to`: a block, nothing, or a melt.
 function become(k, to) {
+  if (to === CHARCOAL) ecoCharcoal(k);
   if (typeof to === 'object') {
     const t = Math.random() < (to.slag || 0) ? MSLAG : to.liquid;
     solid[k] = AIR; held[k] = 0; liq[k] = 255; typ[k] = t; temp[k] = to.temp; sol.fill(0, k * NSOL, k * NSOL + NSOL); wake(k);

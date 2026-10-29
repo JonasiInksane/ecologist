@@ -1,0 +1,26 @@
+
+a boiler boils water only while powered  (15.7 s)
+  PROBE {"active":true,"heat":178.5267333984375,"liq":255,"type":1,"sol":[0,0,0,0,0,0,0,0,0,0.00018611912969122656,0,0,2.900983550790279,0,0,8.854938091521679e-8,0,0,2.044872481211425,0.000018620767907214184,0]}
+  FAIL  a powered boiler boils the water on it  (0 steam tiles at peak)
+
+mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds  (did not finish)
+  PASS  running water washes mud away as silt  (200 silty tiles at peak)
+  PASS  the sun dries mud into dirt  (46 dirt)
+
+fine powders, gases that don’t shove, warm honey, planks, and pressure on by default  (58.4 s)
+  PROBE {"salt":20,"gem":0,"crystals":[],"liq":0,"temp":212.83010864257812,"sol":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}
+  PASS  boiling brine with 20 salt leaves exactly that much as grains  (20.000000 grains, 0.000000 dissolved)
+  PROBE {"salt":200,"gem":48,"crystals":[[40,59,48]],"liq":24,"temp":227.07705688476562,"sol":[1615,0,0,0,0,0,0,0,0,0,0,0,124.73283335426986,0,0,0,0,0,8.029807728637715,0,0]}
+  FAIL  boiling brine with 200 salt leaves exactly that much as grains  (0.000000 grains, 152.000000 dissolved)
+  PASS  boiling syrup preserves its sugar as grains, which caramelise when hot  (120.000000 dry sugar, 120.000000 caramel grains)
+  PASS  thin layers fall and settle into a pile  (2 tiles holding 320 grains)
+  PASS  a body comes to rest on the floor, not on top of a thin layer  (crate bottom at 488.0, floor at 488)
+  PASS  water dissolves salt a little at a time
+  PASS  a gas doesn’t carry or lift the explorer  (moved 0.00 px)
+  PASS  warm honey spreads faster than cold honey  (113 tiles warm, 56 cold)
+  PASS  blasted wood flies out as planks  (42 planks)
+  PASS  pressure is on by default: shafts joined by a long tunnel level out  (left arm at row 67, right at 69)
+
+worker crashed (exit 1); unfinished: mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds
+
+2 check(s) failed, 1 worker(s) crashed · matching a boiler, mud: washed, fine powders, gases run, 3 scenes, 61.4 s

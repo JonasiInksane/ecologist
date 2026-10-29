@@ -9,11 +9,17 @@ ES modules need a web server, not `file://`:
 
 ```
 npm run serve        # then open http://localhost:8765/tidepool.html
-npm test             # quick headless checks (about 30 s), one or two per system: run after every change
+npm test             # quick headless checks (about a minute), one or two per system: run after every change
 npm test -- pipes    # only the scenes whose name contains a word, e.g. while working on pipes
-npm run test:full    # every scene (about 8 minutes): run before publishing or sharing
+npm run test:full    # every scene, including long ecosystem runs: run before publishing or sharing
 npm test -- --list   # list the scenes; the quick ones are marked
 npm run build        # bundle everything into dist/tidepool.html, one self-contained page for sharing
+node tools/check-accounting.mjs  # fractional transfers, pumps, gas quantities and legacy saves
+node tools/check-oxygen.mjs      # finite air/water exchange, roots, porewater and evaporation
+node tools/check-thermal.mjs     # distillation, combustion and retained residues
+node tools/check-life.mjs        # mortality causes, crowding and nighttime oxygen controls
+node tools/check-ecology.mjs     # finite food, C/N/P transfers, growth, decay and save migration
+node tools/check-devices.mjs     # machine transfers, salt separation and boundary quantities
 node tools/profile.mjs 400 --hot   # time the simulation and the drawing on the default world, and list the slowest functions
 node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render one frame headlessly and save it as a PNG (--level N for a puzzle, --day D to move the season on)
 ```
@@ -34,12 +40,13 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `js/solutes.js` | Dissolved contents (salt, sugar, essence, inks, acid, alkali, fertiliser, algae): carried with the flow, diffused, dissolved from salt blocks, brewed by the recipe table; acid and alkali neutralising and corroding, fizzing, salt crystals growing, metal rusting under water; algae growing in the light and dying back in the dark; pH; tint colours |
 | `js/powders.js` | Sand, salt, sugar, baking soda and snow: amounts per tile (in `held`), falling and settling into piles, slopes, sinking through lighter liquids; sand into mud and glass |
 | `js/heat.js`, `js/fire.js`, `js/pressure.js` | Conserved heat flow by conductivity and capacity (settled chunks sleep), latent heat, and phase changes (including smelting ore and rust, and nitro freezing), burning (methane and hydrogen flashes, explosive mixtures with oxygen), optional communicating vessels |
-| `js/gases.js`, `js/blast.js` | Smoke, poison and carbon dioxide fading, gases escaping into the sky; nitro explosions |
+| `js/gases.js`, `js/blast.js` | Finite gas clouds, oxygen/CO₂ joining available headspace, gases escaping into the sky; nitro explosions |
 | `js/pumps.js`, `js/devices.js` | Pumps; switches (lever, plate, liquid, temperature and depth sensors, timer), generators (turbine, water wheel, windmill, solar panel), batteries, logic (AND, OR, NOT, counter) and targets (gate, spring, drain, valve, boiler, separator, lamp, pixel, motor, electromagnet) |
 | `js/power.js` | Power networks: metal, stormwater and brine carry power from the switches touching them to the machines they touch; power fades along them (copper least, liquid most); electrolysis splits the water they touch into hydrogen and oxygen |
 | `js/pipes.js` | Pipe networks: liquid moves from the highest mouth to the lowest, through valves and filters |
 | `js/bodies.js` | Floating bodies: buoyancy, collision, rafts and boats, balloons on ropes, and the explorer's movement, air and health |
 | `js/creatures.js`, `js/plants.js` | Fish (grazing algae and snapping up moths, breathing the water's oxygen), pike that hunt them, salamanders, slimelings, moths that eat leaves, birds that eat moths and bees that carry nectar to their hive as honey, rotting when they die; plants that live on the sugar they make from light and CO₂, drink water to grow, regrow leaves, flower and drop seeds |
+| `js/ecology-core.js`, `js/ecology-data.js`, `js/ecology.js` | Finite carbon/nitrogen/phosphorus pools, food reserves, paid growth and offspring, organic decay, fermentation and saved biological inventories |
 | `js/levels.js`, `js/editor.js` | Puzzle levels (nine): their scenes, goals, ways to lose and allowed tools; custom levels as data, made in the level editor and shared as level codes |
 | `js/particles.js`, `js/audio.js`, `js/music.js`, `js/daynight.js` | Effects and bubbles, synthesized sound (each liquid its own), generative music, time of day (which the Time of day setting can hold or stop) |
 | `js/climate.js` | Each column's biome, temperature, humidity and wind; seasons (and which of eight looks the leaves and grass show); air colder with height, ground warmer with depth |
@@ -50,7 +57,7 @@ node tools/shot.mjs out.png --seed 7 --at 130,44 --hour 12 --zoom 2   # render o
 | `js/generate.js` | World generation from the biomes, and `resetWorld` |
 | `js/util.js`, `js/canvas.js` | Seeded hashing, noise and colour helpers; the canvas, its pixel buffers and blending |
 | `js/render/*` | Drawing: terrain, the scrolling background (`backdrop.js`), liquids (with reflections and caustics), devices, lighting, sky, camera and frame composition |
-| `js/snapshot.js`, `js/history.js` | Snapshots of the whole world and world codes (binary, with temperatures rounded to 1/4°: about 70 KB); undo |
+| `js/snapshot.js`, `js/history.js` | Schema-3 snapshots and world codes (exact fractional ingredients and biological pools; temperatures rounded to 1/4° in codes); twelve undo entries. The reference world code is about 475 KiB; snapshot arrays use 14.4 MiB per entry, plus object pools. |
 | `js/worldmenu.js` | The Save & share menu: undo, save slots, world codes and files, seeds |
 | `js/materials.js` | Sponges and soil soaking water up and giving it back (groundwater: a water table, springs and wells), floating lake ice, porous rock seeping, coral growing and bleaching, magnets pulling ferrofluid |
 | `js/explorer.js`, `js/hud.js` | The explorer's bucket, pickaxe and bag; the corner panel with health, air, bucket and bag |
@@ -65,12 +72,27 @@ The simulation modules never import from `js/render/` or `js/input.js`, so the s
 
 Planned features are listed in [ROADMAP.md](ROADMAP.md).
 
+Phase 22 is still in progress. The [living-world audit](reports/Tidepool%20living%20world%20audit.md)
+separates existing behavior from missing science; [Phase 22A](docs/design/phase22a-accounting.md)
+repairs quantity accounting in existing systems. [Phase 22B](docs/design/phase22b-life-cycles.md)
+adds finite food, biomass, phosphorus and recycling. Carrier and ingredient units are game units;
+full chemical closure and long-term ecosystem checks remain later milestones.
+Run a subset with `npm test -- oxygen`, or use `--jobs=4 --progress`
+to limit concurrent test workers and see long scenes advance.
+
+To experiment with life cycles, use the Algae, Yeast, Nitrogen and Phosphate tools. Plants and
+algae need carbon, light and mineral nutrients; animals need replenished food. Hover over animals
+to inspect their reserves, or over soil/water to inspect nutrients and organic matter. An empty
+hive supplies no food. Death returns stored material, so overfeeding can create oxygen demand.
+Generated worlds receive finite starting nutrients and separate finite algae/yeast inoculum banks.
+Saved games retain these pools; old saves receive explicit recorded starting endowments.
+
 New per-tile or per-column state must be added to `ARRAYS` (or `LISTS`) in `js/snapshot.js`, or undo, saves and
 world codes will silently leave it out.
 
 ## Adding a liquid
 
-1. Add an id in `js/config.js`. Liquid ids 1–31 are all taken, so a new liquid has to raise `NLIQ` first; block ids 67–95 are free.
+1. Add an id in `js/config.js`. Liquid ids 1–34 are taken; ids 35–39 fit the current `NLIQ` table size of 40. Raise `NLIQ` for ids 40 or above. Block ids 80–95 are free.
 2. Add a row to `LIQ` in `js/liquids.js`, plus its `HEAT` (pouring temperature) and `DRAG` entries, and its real properties in `LIQUID_MATTER` (or `GAS_MATTER`) in `js/matter.js`.
 3. Add its reactions in `js/reactions.js` (`setR`) and any effect on touching blocks in `blockEffects`. A reaction `fn` gets
    `(k, o, t, above)` and returns true if tile `k` was used up.
@@ -83,4 +105,6 @@ that melts a block back should use `meltAmount(k)`, so freezing and thawing neit
 
 A solute is a channel id (`SOL_*`, raise `NSOL`) in `js/config.js` plus its name, diffusion rate and tint in `js/solutes.js`.
 A recipe is one row in `RECIPES`: the minimum of each solute, a temperature range, and the liquid it becomes.
-Solutes are concentrations (0–255 per tile), so the amount of a solute in a tile is its concentration × the liquid / 255.
+Solutes are fractional concentrations, so an ingredient amount is its concentration × the carrier amount / 255.
+Concentrating a solution can raise a channel above 255. Oxygen uses a signed reference deficit; use the amount
+helpers in `js/solutes.js` when adding or removing actual oxygen.

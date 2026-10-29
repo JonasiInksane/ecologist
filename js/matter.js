@@ -11,6 +11,7 @@
 //   can follow; steam counts as the water it holds;
 // - latent heats are scaled by LATENT, so boiling a pot takes seconds, not minutes.
 import { FLOWER, EMULSION, ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, PATINA, QUICKLIME, ZINC } from './config.js';
+import { SOL_SALT, SOL_SUGAR } from './config.js';
 import { AETHER, ACID, AND, BASALT, BATTERY, BLEACHED, BLOOM, BOILER, BRICK, CLAY, CO2, COMB, COOLANT, COPPER, CORAL, COUNTER, CRISP, CRYSTAL, DEPTH, DIRT, DRAIN, EMAGNET, FERRO, FERT, FILTER, FNITRO, FOAM, FROST, FUSE, GATE, GEM, GEYSER, GLASS, HONEY, HYDROGEN, ICE, LAMP, LAVA, LEAF, LEVER, LIGHT, LYE, MAGNET, MEMBRANE, METAL, METHANE, MIMIC, MOLTEN, MOSS, MOTOR, MSLAG, MUD, NBLOCK, NITRO, NLIQ, NOT, OBSIDIAN, OIL, OR, ORE, OXYGEN, PERMAFROST, PIPE, PIXEL, PLANT, PLATE, POISON, POROUS, PUMP_IN, PUMP_OUT, QUICK, RUST, SALT, SAND, SENSOR, SEPARATOR, SLAG, SLIME, SMOKE, SNOW, SODA, SOLAR, SPONGE, SPRING, STEAM, STONE, STORM, SUGAR, THERMO, TIMER, TONIC, TURBINE, VALVE, VENT, VOID, WATER, WETDIRT, WETSPONGE, WHEEL, WINDMILL, WOOD, WOOL } from './config.js';
 
 // [density g/cm³, specific heat J/g·K, thermal conductivity W/m·K, what it stands for]
@@ -82,4 +83,17 @@ for (const t in GAS_MATTER) {
 // The fraction of the gap to its neighbours a full tile of this material closes each heat tick, surrounded by itself.
 const rateOf = (cap, cond) => HEAT_SPEED * 4 * cond / cap;
 
-export { BLOCK_MATTER, LIQUID_MATTER, GAS_MATTER, MACHINE, AIR_K, CONVECTS, GAS_CONVECT, CAP_GAS, STEAM_CAP, HEAT_SPEED, LATENT, L_FUSION_WATER, L_BOIL_WATER, L_FUSION_ROCK, L_FUSION_IRON, BCAP, BCOND, LRHO, LCAP, LCOND, AIR_CAP, AIR_COND, rateOf };
+// Approximate additive heat capacity in the game's quantity units. Supported dissolved salt/sugar keep the same
+// sensible-energy inventory when concentrated, trapped in ice, or deposited as dry grains. This is not a measured
+// solution-property model: mixing enthalpy, concentration-dependent heat capacity and other solutes remain deferred.
+// `amount` is carrier units; `contents` holds concentrations (quantity = concentration * amount / 255).
+function dissolvedHeatCapacity(amount, contents, offset = 0) {
+  return amount / (255 * 255) * (BCAP[SALT] * Math.max(0, contents[offset + SOL_SALT] || 0)
+    + BCAP[SUGAR] * Math.max(0, contents[offset + SOL_SUGAR] || 0));
+}
+function poreHeatCapacity(block, amount, contents, offset = 0) {
+  const matrix = block === DIRT || block === WETDIRT ? DIRT : SPONGE;
+  return BCAP[matrix] + LCAP[WATER] * amount / 255 + dissolvedHeatCapacity(amount, contents, offset);
+}
+
+export { BLOCK_MATTER, LIQUID_MATTER, GAS_MATTER, MACHINE, AIR_K, CONVECTS, GAS_CONVECT, CAP_GAS, STEAM_CAP, HEAT_SPEED, LATENT, L_FUSION_WATER, L_BOIL_WATER, L_FUSION_ROCK, L_FUSION_IRON, BCAP, BCOND, LRHO, LCAP, LCOND, AIR_CAP, AIR_COND, rateOf, dissolvedHeatCapacity, poreHeatCapacity };

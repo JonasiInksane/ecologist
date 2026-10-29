@@ -1,5 +1,5 @@
 // Undo: snapshots taken before each edit and every few seconds of play; Ctrl+Z steps back through them.
-// A snapshot is about 2.5 MB, so the history keeps the last HISTORY_MAX (about 30 MB).
+// Phase 22A's fractional arrays occupy about 13.4 MiB per snapshot; twelve entries use about 161 MiB plus object state.
 import { capture, restore } from './snapshot.js';
 import { S } from './world.js';
 

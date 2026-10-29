@@ -1,0 +1,14 @@
+
+mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds  (72.7 s)
+  PASS  running water washes mud away as silt  (200 silty tiles at peak)
+  PASS  the sun dries mud into dirt  (46 dirt)
+  FAIL  mud under still water bubbles up swamp gas  (0 methane tiles)
+  PASS  oil hot enough to smoke but not burn gives off smoke  (16 smoke tiles)
+  PASS  steam scalds the explorer
+
+plants drink, grow, wilt and burn  (118.2 s)
+  PASS  a plant beside water grows tall  (height 7)
+  PASS  without water the original plant wilts  (height 6)
+  PASS  plants burn
+
+1 check(s) failed · matching plants drink, mud: washed run, 2 scenes, 118.6 s

@@ -1,0 +1,361 @@
+diff --git a/js/creatures.js b/js/creatures.js
+index 1e5393a..73c0210 100644
+--- a/js/creatures.js
++++ b/js/creatures.js
+@@ -25,6 +25,7 @@ import { S, markDirty } from './world.js';
+ 
+ const MAX_OF_KIND = 30, STRANDED = 400, COLD = 900, SPLIT_MASS = 255;
+ const WELL_FED = 1200, BITE = 2, ROT = 60;
++const SHOAL = 24, SHOAL_Y = 16, CROWDED = 4, CROWD_X = 64, CROWD_Y = 32;   // pixels: a fish breeds with another this close by, unless this many fish already swim within CROWD_X by CROWD_Y of it
+ const FISH_BREATH = 0.001, SUFFOCATE = 300, AIR_GONE = 300, AMMONIA_KILLS = 80;   // mg/L of oxygen a fish uses a tick; ticks it lasts without enough
+ const PIKE_MAX = 6, PIKE_STARVE = 7200, PIKE_DIGEST = 1200, HUNT_RANGE = 48, FLEE_RANGE = 32;   // ticks; pixels
+ const BIRD_MAX = 8, BIRD_STARVE = 14400, BIRD_SEEK = 120, BIRD_COLD = -25, BIRD_FROZEN = 1800;   // BIRD_SEEK in pixels
+@@ -79,7 +80,7 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
+       if (pike) { hunt(b, sub, addBody); return true; }
+       if (!chasing) swim(b, sub);
+       flee(b);
+-      if (b.grazed && b.hunger < WELL_FED && Math.random() < 0.0004 && howMany('fish') < MAX_OF_KIND && bodies.some(o => o !== b && o.kind === 'fish' && Math.abs(o.x - b.x) < 24 && Math.abs(o.y - b.y) < 16)) addBody('fish', b.x, b.y);
++      if (b.grazed && b.hunger < WELL_FED && Math.random() < 0.0004 && howMany('fish') < MAX_OF_KIND && shoal(b)) addBody('fish', b.x, b.y);
+     } else {
+       b.air = (b.air || 0) + 1;
+       if (b.air > STRANDED) return die(b, k, 'fizz');
+@@ -108,6 +109,18 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
+   }
+   return true;
+ }
++// Whether fish b has a mate close by and room to breed: another fish within SHOAL, and fewer than CROWDED fish within
++// CROWD_X by CROWD_Y, so a small pool's fish stop at a few instead of filling it to the world's limit.
++function shoal(b) {
++  let mate = false, near = 0;
++  for (const o of bodies) {
++    if (o === b || o.kind !== 'fish' || o.eaten) continue;
++    const dx = Math.abs(o.x - b.x), dy = Math.abs(o.y - b.y);
++    if (dx < CROWD_X && dy < CROWD_Y && ++near >= CROWDED) return false;
++    if (dx < SHOAL && dy < SHOAL_Y) mate = true;
++  }
++  return mate;
++}
+ // The nearest live body of a kind within range pixels of b (centre to centre), or null.
+ function nearest(b, kind, range) {
+   let best = null, bd = range * range;
+@@ -310,4 +323,4 @@ function absorb(b) {
+   }
+ }
+ 
+-export { BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
++export { CROWDED, CROWD_X, CROWD_Y, shoal, BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
+diff --git a/js/fire.js b/js/fire.js
+index 94ec9f3..79fa8a8 100644
+--- a/js/fire.js
++++ b/js/fire.js
+@@ -11,6 +11,8 @@ import { fire, held, liq, markDirty, solid, temp, typ, wake } from './world.js';
+ import { COOLANT, FUSE, WOOL } from './config.js';
+ import { FLOWER, ASH, CHARCOAL, CHLORINE, HYDROGEN, OXYGEN, STEAM } from './config.js';
+ import { breatheAir, burnable } from './oxygen.js';
++import { NSOL, SOL_ETHANOL } from './config.js';
++import { sol } from './world.js';
+ 
+ 
+ 
+@@ -32,6 +34,9 @@ const CHARCOAL_FLAME = 1300, ASH_LEFT = 0.4, ASH_PINCH = 48;   // burnt wood lea
+ const OIL_IGNITE = 250, OIL_SMOKE = 200, METHANE_IGNITE = 537, HYDROGEN_IGNITE = 500, FLAME_TEMP = 1000, RADIANT = 0.04, FLASH = 0.6;   // a flash heats the gas beside it past its ignition point, so the flame runs on
+ const FED = 4;   // oxygen a fire uses up per tick from each oxygen tile it touches, burning hotter for it
+ const DOUSERS = new Set([WATER, FROST, BLOOM, COOLANT]);
++const SPIRIT = 100, SPIRIT_IGNITE = 365, SPIRIT_HOLD = 78, SPIRIT_BURN = 0.5;   // alcohol strong enough to burn (about 40%); ethanol's ignition temperature; a burning spirit stays at its boiling point; alcohol burnt off per tick
++// Water with enough alcohol in it to burn (js/solutes.js makes it, js/heat.js distils it).
++const spirit = n => liq[n] && typ[n] === WATER && sol[n * NSOL + SOL_ETHANOL] >= SPIRIT;
+ 
+ // Air with enough oxygen to burn in next to the tile (15% or more), or oxygen gas.
+ function exposed(x, y) {
+@@ -45,18 +50,18 @@ function oxygenBeside(x, y, h) {
+   for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] >= 16 && (typ[n] === OXYGEN || (h && typ[n] === CHLORINE))) return n; }
+   return -1;
+ }
+-// Water above or beside the tile. Water below doesn't count, so oil keeps burning on top of a lake.
++// Water above or beside the tile. Water below doesn't count, so oil keeps burning on top of a lake; burning spirit doesn't douse.
+ function doused(x, y) {
+-  for (let d = 0; d < 3; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] >= 32 && DOUSERS.has(typ[n])) return true; }
++  for (let d = 0; d < 3; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] >= 32 && DOUSERS.has(typ[n]) && !spirit(n)) return true; }
+   return false;
+ }
+-function burn(k, x, y) {
++function burn(k, x, y, clean) {
+   draw(x, y, BURN_DRAW);
+   temp[k] = Math.max(temp[k], solid[k] === CHARCOAL ? CHARCOAL_FLAME : FLAME_TEMP);
+   wake(k);
+   for (let d = 0; d < 3; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * RADIANT; }   // flames heat up and sideways
+   if (solid[k] === FUSE) for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0) temp[n] = Math.max(temp[n], 300); }   // a burning fuse lights what it touches, even below it
+-  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] && (typ[n] === METHANE || typ[n] === HYDROGEN)) temp[n] = Math.max(temp[n], FLAME_TEMP); }   // a flame lights a burnable gas it touches
++  for (let d = 0; d < 4; d++) { const n = nbr(x, y, d); if (n >= 0 && liq[n] && (typ[n] === METHANE || typ[n] === HYDROGEN)) temp[n] = Math.max(temp[n], FLAME_TEMP); else if (n >= 0 && spirit(n)) fire[n] = 1; }   // a flame lights a burnable gas, or spirit, it touches
+   const w = windAt(x, y);   // and the wind fans them downwind
+   if (Math.abs(w) > 0.1) { const n = nbr(x, y, w > 0 ? 2 : 1); if (n >= 0) temp[n] += (FLAME_TEMP - temp[n]) * RADIANT * 3 * Math.abs(w); }
+   const o = oxygenBeside(x, y);   // oxygen feeds the fire: it burns hotter and uses the oxygen up
+@@ -65,7 +70,7 @@ function burn(k, x, y) {
+     liq[o] = Math.max(0, liq[o] - FED); if (!liq[o]) typ[o] = 0; wake(o);
+   }
+   if (Math.random() < 0.2) puff(k, 'flame');
+-  if (Math.random() < 0.06) smokeAbove(k);
++  if (!clean && Math.random() < 0.06) smokeAbove(k);
+ }
+ // Puts a little smoke into the open tile above k.
+ function smokeAbove(k) {
+@@ -119,6 +124,15 @@ function fireTick() {
+       }
+       continue;
+     }
++    if (!b && spirit(k)) {
++      // strong alcohol burns on the water it's in with a clean flame: the spirit burns off while the water under the
++      // flame stays below boiling, and once it's too weak to burn the flame dies
++      if ((fire[k] || temp[k] > SPIRIT_IGNITE) && exposed(x, y) && !doused(x, y)) {
++        fire[k] = 1; burn(k, x, y, true); temp[k] = Math.min(temp[k], SPIRIT_HOLD);
++        if (Math.random() < SPIRIT_BURN) { sol[k * NSOL + SOL_ETHANOL]--; if (liq[k] > 1 && Math.random() < 0.1) liq[k]--; }
++      } else { if (fire[k] && doused(x, y)) puff(k, 'steam'); fire[k] = 0; }
++      continue;
++    }
+     if (!IGNITE_BLOCK[b]) { fire[k] = 0; continue; }
+     if (!fire[k]) { if (temp[k] > IGNITE_BLOCK[b] && exposed(x, y)) fire[k] = BURN_TIME[b]; continue; }
+     if (doused(x, y)) { fire[k] = 0; temp[k] = Math.min(temp[k], 90); puff(k, 'steam'); continue; }
+@@ -131,4 +145,4 @@ function fireTick() {
+   }
+ }
+ 
+-export { HYDROGEN_IGNITE, FED, oxygenBeside, IGNITE_BLOCK, BURN_TIME, OIL_IGNITE, OIL_SMOKE, METHANE_IGNITE, FLAME_TEMP, RADIANT, FLASH, smokeAbove, DOUSERS, exposed, doused, burn, fireTick };
++export { SPIRIT, SPIRIT_IGNITE, spirit, HYDROGEN_IGNITE, FED, oxygenBeside, IGNITE_BLOCK, BURN_TIME, OIL_IGNITE, OIL_SMOKE, METHANE_IGNITE, FLAME_TEMP, RADIANT, FLASH, smokeAbove, DOUSERS, exposed, doused, burn, fireTick };
+diff --git a/js/heat.js b/js/heat.js
+index 04a2d6d..7fa9361 100644
+--- a/js/heat.js
++++ b/js/heat.js
+@@ -9,6 +9,7 @@ import { clearSol } from './solutes.js';
+ import { CHH, CW, HEAT_AWAKE, S, afloat, deco, drop, heatAwake, held, latent, liq, markDirty, meltAmount, sol, solid, temp, temp2, typ, under, wake } from './world.js';
+ import { COPPER, LIMESTONE, POROUS, SAND, STONE, WETDIRT, WOOL } from './config.js';
+ import { FNITRO, MSLAG, ORE, RUST, SLAG, SUGAR, THERMO } from './config.js';
++import { SOL_ETHANOL } from './config.js';
+ import { vapour } from './air.js';
+ import { AIR_CAP, AIR_COND, BCAP, BCOND, HEAT_SPEED, LATENT, LCAP, LCOND, L_BOIL_WATER, L_FUSION_IRON, L_FUSION_ROCK, L_FUSION_WATER } from './matter.js';
+ 
+@@ -30,6 +31,7 @@ const NITRO_FREEZE = 12, NITRO_THAW = 14;   // nitroglycerin melts at 13°; it f
+ const NITRO_HEAT = 218, QUICK_BOIL = 357, WAX_MELT = 64, METAL_MELT = IRON_MELTS, SNOW_MELT = MELT_ICE, SNOW_WATER = 64, CLAY_BAKE = 900;
+ const ACID_BOIL = 300, SUGAR_BURNS = 170, HONEY_BURNS = 160, MUD_DRIES = 100;
+ const SALT_FREEZE = 0.085, SOLUTE_BOIL = 0.035;   // degrees lower freezing, higher boiling, per unit of dissolved salt (and sugar)
++const ETHANOL_BOILS = 78, DISTIL = 0.1, DISTIL_TAKE = 8, ETHANOL_DEW = (BOIL_WATER - ETHANOL_BOILS) / 255;   // alcohol boils out of water from 78°, before the water does; vapour that's all alcohol condenses at 78°, steam at 100°
+ const ALIVE = new Uint8Array(NLIQ);
+ [ACID, LAVA, FROST, AETHER, SLIME, BLOOM, TONIC, FOAM, MOLTEN, MSLAG, NITRO].forEach(t => { ALIVE[t] = 1; });
+ // Natural ground: it rests at the climate's temperature for its depth (js/climate.js), standing in for the earth
+@@ -167,16 +169,19 @@ function phaseChanges(c, m) {
+         // salt and sugar raise the boiling point and salt lowers the freezing point; boiling leaves them behind.
+         // Falling water doesn't freeze, so cold rain lands as water.
+         const p = k * NSOL, boils = BOIL_WATER + (sol[p + SOL_SALT] + sol[p + SOL_SUGAR]) * SOLUTE_BOIL, freezes = MELT_ICE - sol[p + SOL_SALT] * SALT_FREEZE;
++        if (sol[p + SOL_ETHANOL] && Tk > ETHANOL_BOILS && Math.random() < DISTIL) distil(k, p);
+         const d = balance(k, restsOn(k) ? freezes : -Infinity, boils, needOf(L_FUSION_WATER, 1, a), needOf(L_BOIL_WATER, 1, a));
+         if (d > 0 && !leaveResidue(k)) {
+-          typ[k] = STEAM; clearSol(k); afterChange(k, boils, spare, LCAP[STEAM] * a / 255 + AIR_CAP * (1 - a / 255), true); wake(k); if (Math.random() < 0.3) puff(k, 'steam');
++          const e = sol[p + SOL_ETHANOL];   // boiling carries the alcohol up with the steam
++          typ[k] = STEAM; clearSol(k); sol[p + SOL_ETHANOL] = e; afterChange(k, boils, spare, LCAP[STEAM] * a / 255 + AIR_CAP * (1 - a / 255), true); wake(k); if (Math.random() < 0.3) puff(k, 'steam');
+         } else if (d < 0) {
+           afloat[k] = k < W * H - W && !solid[k + W] ? 1 : 0;   // frozen on water: lake ice, which floats
+           solidify(k, ICE); afterChange(k, freezes, spare, BCAP[ICE], false);
+         }
+       }
+       else if (t === STEAM) {   // condensing gives back the heat boiling took: steam scalds and warms what it touches
+-        if (balance(k, BOIL_WATER, Infinity, needOf(L_BOIL_WATER, 1, a), 0) < 0) { typ[k] = WATER; afterChange(k, BOIL_WATER, spare, LCAP[WATER] * a / 255 + AIR_CAP * (1 - a / 255), false); wake(k); }
++        const dew = BOIL_WATER - sol[k * NSOL + SOL_ETHANOL] * ETHANOL_DEW;   // alcohol vapour condenses cooler
++        if (balance(k, dew, Infinity, needOf(L_BOIL_WATER, 1, a), 0) < 0) { typ[k] = WATER; afterChange(k, dew, spare, LCAP[WATER] * a / 255 + AIR_CAP * (1 - a / 255), false); wake(k); }
+       }
+       else if (t === HONEY) { if (Tk > HONEY_BURNS) { solidify(k, CRISP); puff(k, 'smoke'); } }
+       else if (t === ACID) { if (Tk > ACID_BOIL) { liq[k] = 0; typ[k] = 0; wake(k); puff(k, 'smoke'); } }
+@@ -248,6 +253,19 @@ function warmWater(k) {
+   }
+   return false;
+ }
++// Distilling: alcohol evaporates out of hot water before the water boils. A few units at a time go up into the tile
++// above as vapour (steam carrying alcohol, pure alcohol when it starts from empty air), which rises and condenses
++// again as spirit wherever it cools below its dew point. A still is a gently heated pot and something cold to catch it.
++function distil(k, p) {
++  const up = k - W;
++  if (up < 0 || solid[up] || (liq[up] && typ[up] !== STEAM) || liq[up] >= 255) return;
++  const n = Math.min(sol[p + SOL_ETHANOL], DISTIL_TAKE), mv = Math.min(Math.max(1, Math.round(n * liq[k] / 255)), liq[k] - 1, 255 - liq[up]);
++  if (mv <= 0) return;
++  const was = liq[up], e = was ? sol[up * NSOL + SOL_ETHANOL] : 0;
++  if (!was) { clearSol(up); temp[up] = temp[k]; }
++  sol[p + SOL_ETHANOL] -= n; liq[k] -= mv;
++  liq[up] = was + mv; typ[up] = STEAM; sol[up * NSOL + SOL_ETHANOL] = Math.round((e * was + 255 * mv) / (was + mv)); wake(up);
++}
+ // Boiling water leaves what was dissolved in it: salt or sugar as fine grains (exactly as much as there was: a pinch
+ // from weak brine, nearly a full tile from strong), its water going up as steam into the tile above (into the air
+ // if there's no room). Very muddy water can still crust over into a dirt block. Returns whether it left anything.
+@@ -274,4 +292,4 @@ function leaveResidue(k) {
+   return true;
+ }
+ 
+-export { GROUND, MELT_ICE, BOIL_WATER, LAVA_SETS, IRON_MELTS, SLAG_SETS, LAVA_HEAT, LAVA_KEEP, ACID_BOIL, SUGAR_BURNS, HONEY_BURNS, MUD_DRIES, SALT_FREEZE, SOLUTE_BOIL, cap, cond, fillMatter, balance, NITRO_FREEZE, NITRO_THAW, CAST_IRON_SETS, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, ALIVE, heatTick, warmWater, leaveResidue };
++export { ETHANOL_BOILS, DISTIL, distil, GROUND, MELT_ICE, BOIL_WATER, LAVA_SETS, IRON_MELTS, SLAG_SETS, LAVA_HEAT, LAVA_KEEP, ACID_BOIL, SUGAR_BURNS, HONEY_BURNS, MUD_DRIES, SALT_FREEZE, SOLUTE_BOIL, cap, cond, fillMatter, balance, NITRO_FREEZE, NITRO_THAW, CAST_IRON_SETS, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, ALIVE, heatTick, warmWater, leaveResidue };
+diff --git a/js/materials.js b/js/materials.js
+index 36ebdf6..c359a1e 100644
+--- a/js/materials.js
++++ b/js/materials.js
+@@ -1,6 +1,6 @@
+ // Blocks that work with liquid over time: sponges and soil soak water up and give it back, porous rock lets liquid
+ // seep through, coral grows in warm salt water and bleaches when it's too hot, magnets pull ferrofluid (and iron
+-// weights) towards them, lake ice floats, and trees regrow the leaves moths eat. Runs every 4 ticks.
++// weights) towards them, lake ice floats, trees regrow the leaves moths eat, and moss breathes. Runs every 4 ticks.
+ // Groundwater: wet soil holds up to SOIL_CAP, soaks up water lying on or beside it (rain), sinks into the soil below,
+ // and evens out sideways, so water collects into a saturated zone over the rock: a water table. Soaked soil seeps
+ // water out wherever it meets open space, so hillsides grow springs and a pit dug down into it fills up like a well.
+@@ -17,6 +17,9 @@ import { EMAGNET, ICE, LEAF, WOOD } from './config.js';
+ import { windAt } from './air.js';
+ import { afloat, under, vel } from './world.js';
+ import { vapour } from './air.js';
++import { MOSS } from './config.js';
++import { sunHeight } from './daynight.js';
++import { fixCarbon, respire, skyAbove } from './oxygen.js';
+ 
+ const SOAK = 32, SQUEEZE = 32, SPONGE_HOT = 60, SOIL_HOLDS = 32, SEEP = 8, MAGNET_REACH = 8, PULL = 24;
+ const SOIL_CAP = 96, SOAKED = 86, SINK = 32, LEVEL = 0.25, SPRING_OUT = 8, SPRING_CHANCE = 0.1;   // soil holds about 38% water
+@@ -222,6 +225,7 @@ function materialsTick() {
+     else if (b === DIRT || b === WETDIRT) soil(k, x, y);
+     else if (b === POROUS) seep(k, x, y);
+     else if (b === CORAL) coral(k, x, y);
++    else if (b === MOSS) moss(k, x, y);
+     else if (b === MAGNET) magnets.push(k);
+     else if (b === ICE && afloat[k]) floe(k, x, y);
+     else if (b === LEAF) regrow(x, y);
+@@ -230,4 +234,18 @@ function materialsTick() {
+   if (magnets.length) pullFerro();
+ }
+ 
+-export { REGROW, regrow, SOIL_CAP, SOAKED, SINK, LEVEL, SPRING_OUT, SPRING_CHANCE, DRIFT, groundwater, floated, moveIce, swapIce, floe, SOAK, SQUEEZE, SPONGE_HOT, SOIL_HOLDS, SEEP, MAGNET_REACH, PULL, magnets, flowInto, squeezed, sponge, soil, seep, coral, pullFerro, materialsTick };
++// Moss photosynthesises a little, like a plant's stem but with no sugar store to show for it: in daylight it takes CO2
++// from the air beside it and gives back oxygen, half as fast per tile as a plant (MOSS_PHOTO per 16 ticks); day and
++// night it breathes a quarter of that back. So a mossy cave open to the day freshens its air, and a sealed, dark one
++// goes slowly stale.
++const MOSS_PHOTO = 0.5, MOSS_RESPIRE = 0.125;
++function moss(k, x, y) {
++  if (Math.random() >= MOSS_PHOTO / 4) return;   // one materials tick in eight
++  let air = -1;
++  for (let d = 0; d < 4 && air < 0; d++) { const n = nbr(x, y, d); if (n >= 0 && !solid[n] && !liq[n]) air = n; }
++  if (air < 0) return;
++  if (sunHeight() > 0 && skyAbove(k)) fixCarbon(air, 1);
++  if (Math.random() < MOSS_RESPIRE / MOSS_PHOTO) respire(air, 1);
++}
++
++export { MOSS_PHOTO, MOSS_RESPIRE, moss, REGROW, regrow, SOIL_CAP, SOAKED, SINK, LEVEL, SPRING_OUT, SPRING_CHANCE, DRIFT, groundwater, floated, moveIce, swapIce, floe, SOAK, SQUEEZE, SPONGE_HOT, SOIL_HOLDS, SEEP, MAGNET_REACH, PULL, magnets, flowInto, squeezed, sponge, soil, seep, coral, pullFerro, materialsTick };
+diff --git a/js/plants.js b/js/plants.js
+index d2ca13d..13495c1 100644
+--- a/js/plants.js
++++ b/js/plants.js
+@@ -7,10 +7,11 @@
+ // its top and gives back oxygen (photosynthesis), storing sugar; day and night it burns some of that sugar to live,
+ // using oxygen and giving back CO2 (respiration). Growing a tile costs sugar, so a plant in the dark or in air with no
+ // CO2 left stops growing and, once its sugar runs out, wilts. A grown plant with sugar to spare flowers, and its flower
+-// fills with nectar, which bees carry off (js/creatures.js).
++// fills with nectar, which bees carry off (js/creatures.js). Roots take up the nitrate (fertiliser) and ammonium in the
++// water they drink, even traces, which is what keeps a sealed jar's water from going green.
+ import { DIRT, H, LEAF, MOSS, MUD, PLANT, TONIC, W, WATER, WETDIRT } from './config.js';
+ import { liq, markDirty, solid, temp, typ, wake } from './world.js';
+-import { NSOL, SOL_FERT } from './config.js';
++import { NSOL, SOL_AMMONIA, SOL_FERT } from './config.js';
+ import { sol } from './world.js';
+ import { FERT } from './config.js';
+ import { vapour } from './air.js';
+@@ -48,8 +49,9 @@ function drink(root) {
+       return 1;
+     }
+     if (!liq[k] || (t !== WATER && t !== TONIC && t !== MUD)) continue;
+-    const fed = t === WATER && sol[k * NSOL + SOL_FERT] >= 30;
+-    if (fed) sol[k * NSOL + SOL_FERT] -= 5;
++    const p = k * NSOL, fert = t === WATER ? sol[p + SOL_FERT] : 0, fed = fert >= 30;
++    if (fert) sol[p + SOL_FERT] = fert - Math.min(fert, fed ? 5 : 1);   // the roots take up nitrate, and ammonium too
++    else if (t === WATER && sol[p + SOL_AMMONIA]) sol[p + SOL_AMMONIA]--;
+     const sip = Math.min(liq[k], SIP);
+     if (skyAir(root)) {   // breathed out into the open air; under a roof it condenses and runs back where it came from
+       liq[k] -= sip; if (!liq[k]) typ[k] = 0;
+diff --git a/js/solutes.js b/js/solutes.js
+index 2a8c55a..27346d4 100644
+--- a/js/solutes.js
++++ b/js/solutes.js
+@@ -69,9 +69,10 @@ function nitrogen(k, p) {
+ }
+ // Yeast and the bacteria after it. Sugar water open to the air catches wild yeast now and then. With oxygen, yeast
+ // burns sugar and multiplies; without it, it ferments sugar into alcohol and carbon dioxide (which bubbles out at the
+-// surface), warming the brew a little, until there's about 14% alcohol. Yeast lives between 10° and 40° and dies past
+-// 45°. With oxygen, alcohol slowly turns to vinegar (weak acid).
+-const YEAST_SPORE = 0.002, YEAST_MAX = 200, STRONGEST = 150, VINEGAR = 0.004;
++// surface), warming the brew a little, until there's about 14% alcohol (SOL_ETHANOL counts alcohol in 255ths of the
++// liquid, so 255 is pure spirit: that takes distilling, js/heat.js, and from 100 it burns, js/fire.js). Yeast lives
++// between 10° and 40° and dies past 45°. With oxygen, alcohol slowly turns to vinegar (weak acid).
++const YEAST_SPORE = 0.002, YEAST_MAX = 200, STRONGEST = 36, VINEGAR = 0.004;
+ function ferment(k, p) {
+   const sugar = sol[p + SOL_SUGAR], y = sol[p + SOL_YEAST], T = temp[k];
+   if (!y) { if (sugar >= 20 && k >= W && !solid[k - W] && !liq[k - W] && Math.random() < YEAST_SPORE) sol[p + SOL_YEAST] = 2; }
+diff --git a/tools/simtest.mjs b/tools/simtest.mjs
+index 42bf25f..95c2779 100644
+--- a/tools/simtest.mjs
++++ b/tools/simtest.mjs
+@@ -2072,18 +2072,57 @@ scene('life: plants make sugar from light, rot and the nitrogen cycle, yeast, be
+   check('with air, alcohol slowly turns to vinegar', avgSol(41, 49, 49, 50, C.SOL_ACID) > 0 && avgSol(41, 49, 49, 50, C.SOL_ETHANOL) < 100, `acid ${avgSol(41, 49, 49, 50, C.SOL_ACID).toFixed(1)}`);
+   // a sealed jar: soil, a pool with a little algae and two fish, and a plant, under the sun for two days. Plant and fish
+   // trade oxygen and CO2 through the jar's air; the algae feed the fish; the fish's ammonium feeds the plant
+-  clear(); devices.clear(); plants.length = 0; glassBox(30, 30, 60, 56);
+-  box(31, 54, 59, 55, C.STONE); box(41, 50, 59, 53, C.STONE);
+-  for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) { solid[at(x, y)] = 0; liq[at(x, y)] = 255; typ[at(x, y)] = C.WATER; }
+-  for (let y = 46; y <= 49; y++) for (let x = 41; x <= 59; x++) solid[at(x, y)] = y === 49 ? C.DIRT : 0;
+-  setSol(31, 46, 40, 53, C.SOL_ALGAE, 20); setSol(31, 46, 40, 53, C.SOL_FERT, 10);
+-  box(41, 46, 41, 48, C.STONE);   // the pool's wall
+-  plantSeed(at(42, 48)); plantSeed(at(44, 48));
+-  const jarFish = [Bd.addBody('fish', 33 * C.T, 50 * C.T), Bd.addBody('fish', 37 * C.T, 51 * C.T)];
+-  setClock(0.3); Wd.wakeAll();
++  const jar = fert => {
++    clear(); devices.clear(); plants.length = 0; glassBox(30, 30, 60, 56);
++    box(31, 54, 59, 55, C.STONE); box(41, 50, 59, 53, C.STONE);
++    for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) { solid[at(x, y)] = 0; liq[at(x, y)] = 255; typ[at(x, y)] = C.WATER; }
++    for (let y = 46; y <= 49; y++) for (let x = 41; x <= 59; x++) solid[at(x, y)] = y === 49 ? C.DIRT : 0;
++    setSol(31, 46, 40, 53, C.SOL_ALGAE, 20); setSol(31, 46, 40, 53, C.SOL_FERT, fert);
++    box(41, 46, 41, 48, C.STONE);   // the pool's wall
++    plantSeed(at(42, 48)); plantSeed(at(44, 48));
++    const fish = [Bd.addBody('fish', 33 * C.T, 50 * C.T), Bd.addBody('fish', 37 * C.T, 51 * C.T)];
++    setClock(0.3); Wd.wakeAll();
++    return fish;
++  };
++  const jarFish = jar(10);
+   run(Math.round(2 * DAY_TICKS));
+-  const alive = jarFish.filter(b => bodies.includes(b)).length + count(k => false), green = plants.filter(p => solid[p.root] === C.PLANT).length;
++  const alive = jarFish.filter(b => bodies.includes(b)).length, green = plants.filter(p => solid[p.root] === C.PLANT).length;
+   check('a sealed jar with a plant, algae and fish lives through two days', alive >= 1 && green >= 1, `${alive} of 2 fish, ${green} plants, water oxygen ${Oxy.oxygenIn(at(35, 50)).toFixed(1)} mg/L, air oxygen ${(airIn(31, 31, 59, 45, Wd.airOx) / 10).toFixed(1)}%`);
++  // the same jar overfed: the algae bloom by day and use up the water's oxygen at night, and the fish die
++  const fedFish = jar(200);
++  let thickest = 0;
++  for (let i = 0; i < 2 * DAY_TICKS / 100; i++) { run(100); thickest = Math.max(thickest, avgSol(31, 46, 40, 53, C.SOL_ALGAE)); }
++  const fedAlive = fedFish.filter(b => bodies.includes(b)).length;
++  check('an overfed jar blooms green and its fish die in the night', thickest > 100 && fedAlive < 2, `algae ${thickest.toFixed(0)} at thickest, ${fedAlive} of 2 fish alive, water oxygen ${Oxy.oxygenIn(at(35, 50)).toFixed(1)} mg/L`);
++  // moss breathes like a plant: a mossy floor in a sealed glass box takes CO2 from the air by day and gives oxygen
++  clear(); devices.clear(); glassBox(40, 30, 56, 52); box(41, 51, 55, 51, C.MOSS);
++  for (let y = 31; y <= 50; y++) for (let x = 41; x <= 55; x++) Wd.airCarb[at(x, y)] = 60;
++  setClock(0.45); Wd.wakeAll();
++  const mc0 = airIn(41, 31, 55, 50, Wd.airCarb), mo0 = airIn(41, 31, 55, 50, Wd.airOx);
++  run(2400);
++  check('moss in daylight takes up CO2 and gives off oxygen', airIn(41, 31, 55, 50, Wd.airCarb) < mc0 - 1 && airIn(41, 31, 55, 50, Wd.airOx) > mo0, `CO₂ ${(mc0 / 100).toFixed(2)}% → ${(airIn(41, 31, 55, 50, Wd.airCarb) / 100).toFixed(2)}%`);
++  // fish in a small pool with plenty to eat breed, but stop once it's crowded
++  clear(); devices.clear(); tank(40, 40, 52, 46); fill(41, 42, 51, 46, C.WATER, 20); setSol(41, 42, 51, 46, C.SOL_ALGAE, 150);
++  for (let y = 40; y <= 46; y++) for (let x = 40; x <= 52; x++) Wd.under[at(x, y)] = 0;
++  setClock(0.5);
++  for (let i = 0; i < 4; i++) Bd.addBody('fish', (42 + i * 2) * C.T, 44 * C.T);
++  run(6000);
++  const shoal = bodies.filter(b => b.kind === 'fish').length;
++  check('fish in a small pool stop breeding once it’s crowded', shoal > 4 && shoal <= 8, `${shoal} fish from 4`);
++  // spirit: strong alcohol burns off the water it's in when a flame touches it, and the water stays
++  clear(); devices.clear(); fire.fill(0); Wd.under.fill(1); tank(40, 40, 50, 50); fill(41, 49, 49, 50, C.WATER, 20); setSol(41, 49, 49, 50, C.SOL_ETHANOL, 200);
++  box(45, 48, 45, 48, C.WOOD); temp[at(45, 48)] = 400;   // a burning stick laid on the spirit
++  let flamed = false;
++  for (let i = 0; i < 30; i++) { run(50); if (fire[at(43, 49)] || fire[at(47, 49)]) flamed = true; }
++  check('strong spirit catches from a flame and burns off, leaving the water', flamed && avgSol(41, 49, 49, 50, C.SOL_ETHANOL) < 100 && count(k => liq[k] && typ[k] === C.WATER) > 12, `alcohol ${avgSol(41, 49, 49, 50, C.SOL_ETHANOL).toFixed(0)} from 200, ${count(k => liq[k] && typ[k] === C.WATER)} of 18 water tiles`);
++  // a still: wine warmed to 90° under a cold roof sends its alcohol up first; the drops that run off the roof into the
++  // basin beside the pot are far stronger than the wine
++  clear(); devices.clear(); room2(40, 40, 60, 52); box(50, 46, 50, 51, C.STONE);   // the wall between the pot (right) and the basin (left)
++  fill(51, 48, 59, 51, C.WATER, 90); setSol(51, 48, 59, 51, C.SOL_ETHANOL, 36);
++  const still = () => { for (let y = 48; y <= 51; y++) for (let x = 51; x <= 59; x++) if (liq[at(x, y)] && typ[at(x, y)] === C.WATER) temp[at(x, y)] = 90; for (let x = 40; x <= 60; x++) temp[at(x, 40)] = 5; };
++  for (let i = 0; i < 3000; i++) { still(); step(); }
++  const basin = avgSol(41, 46, 49, 51, C.SOL_ETHANOL), pot = avgSol(51, 48, 59, 51, C.SOL_ETHANOL), caught = count(k => k >= at(41, 46) && k <= at(49, 51) && k % W >= 41 && k % W <= 49 && liq[k] && typ[k] === C.WATER);
++  check('a gently heated still sends the alcohol up before the water: what it catches is spirit', caught > 0 && basin > pot + 40, `${caught} tiles caught at ${basin.toFixed(0)}, the wine at ${pot.toFixed(0)} (from 36)`);
+ });
+ 
+ scene('air and water: oxygen, fire that needs it, stratified water, soap and emulsions', async () => {

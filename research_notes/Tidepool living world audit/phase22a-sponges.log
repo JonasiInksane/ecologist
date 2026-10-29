@@ -1,0 +1,16 @@
+
+sponges, soil, porous rock, wool and copper, membranes, coral, fuses  (60.2 s)
+  PASS  a sponge soaks up water  (holds 255)
+  PASS  the water it holds isn’t lost
+  PASS  heat releases sponge water as steam, which can condense without losing water  (steam peaked at 199; 0 held + 0 steam + 200 water; conserved every tick)
+  PASS  dirt soaks up water as wet soil  (21 wet soil tiles)
+  PASS  wet soil drips into the cave below  (278 dripped)
+  PASS  water seeps down through porous rock  (5400 seeped through)
+  PASS  copper carries heat fast; wool barely lets it through  (water behind copper 91°, behind wool 29°)
+  PASS  a membrane lets its liquid through and stops the rest  (4349 water through, 18 tiles below)
+  PASS  coral grows in warm salt water  (46 coral)
+  PASS  too hot, it bleaches
+  PASS  a fuse burns along its length, turning corners and climbing  (0 fuse tiles left)
+  PASS  and sets off nitro at its end
+
+all checks passed · matching sponges, soil run, 1 scenes, 61.2 s

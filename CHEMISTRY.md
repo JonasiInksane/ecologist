@@ -248,7 +248,7 @@ fantasy in the notes and tool palette.
 | 19. Matter (built) | The material table; one density everywhere; conserved heat with latent heat; real thresholds | Tests: ice holds a drink at 0°, hot iron in water warms it by the right amount, boiling holds at 100°; every existing scene passes or is re-tuned with a note |
 | 20. Reactions (built) | The reaction engine; existing reactions moved into it; the inorganic set (acid + metals/carbonates, lime cycle, chlorine and bleach, rust with oxygen, patina, charcoal, glass, smelting with carbon, thermite) and new materials | Every reaction in section 3's inorganic list has a test and conserves mass |
 | 21. Air and water (built) | Oxygen and CO₂ in the air grid; dissolved oxygen and CO₂ in water; combustion that needs oxygen; layering by concentration and temperature; emulsions and soap | A sealed fire goes out; a stratified pond's bottom goes anoxic; brine stays under fresh water |
-| 22. Life cycles (built) | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey | A sealed jar with water, plants, algae and fish stays alive for days; overfeeding it causes a bloom and a fish kill at night |
+| 22. Life cycles (in progress) | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey; 22A quantity repairs and 22B finite inventories below | Controlled survival, cause-of-death and C/N/P transfer checks; the multi-seed ten-day ecosystem gate remains pending |
 | 23. Showcase | The fantasy pass; a sealed-jar "terrarium" mode; puzzles about the new chemistry | |
 
 Each phase is about the size of Phase 17. Phase 19 changes how everything feels, so the puzzles will need re-tuning.
@@ -378,7 +378,12 @@ Each phase is about the size of Phase 17. Phase 19 changes how everything feels,
 - Left for later: oxygen and CO₂ don't drift with the weather's wind; plants and the explorer's respiration are
   token; insects standing on clean water (surface tension) aren't modelled.
 
-### Phase 22: Life cycles (built)
+### Phase 22: Life cycles (initial implementation; completion pending)
+
+The notes below describe the original implementation. The October 2026 audit found three failing
+checks and several quantity defects; the 22A correction below supersedes its oxygen storage,
+alcohol percentage, conservation and completion claims. A two-day jar does not establish a
+self-sustaining ecosystem.
 
 - **CO₂ in finer steps**: the air's CO₂ is now hundredths of a percent (normal 4, the real 0.04%; stored as 16-bit),
   so plants can live on it. A breath or a flame trades oxygen and CO₂ one for one.
@@ -412,6 +417,67 @@ Each phase is about the size of Phase 17. Phase 19 changes how everything feels,
 - Cost: a tick about 4 ms.
 - Left for later: alcohol doesn't burn or distil; plants don't take nitrate from the air; moss doesn't photosynthesise;
   a generated world's fish multiply quickly in the cave lake (they did before this phase too).
+
+### Phase 22A: quantity corrections (October 2026)
+
+- Dissolved channels, porewater/powder amounts, air fractions and latent energy retain fractional
+  values. An ingredient amount is its concentration times carrier fullness divided by 255.
+  `SOL_O2` is an exception in storage: it is a signed deficit from a fixed 9.1 mg/L reference;
+  the amount helpers expose actual oxygen. Cooling changes equilibrium without creating oxygen.
+- Surface gas exchange and respiration debit the available source and credit the receiver.
+  The air/water conversion uses explicit one-litre reference cells at 20°C/one atmosphere;
+  dissolved CO₂ is tracked in equal-mole oxygen equivalents. Open-sky replenishment has a ledger.
+  This does not yet model displaced air pressure or every atmospheric species.
+- Flow, pumps, buckets, membranes, motors, geysers and porewater retain transported contents;
+  carrier-only evaporation concentrates nonvolatile ingredients. Springs/rain dilute existing
+  contents. Salt separation retains other ingredients and stops when its storage is full.
+- Distillation spends available thermal energy and preserves carrier, ethanol and residues.
+  Its bounded enrichment and composition-dependent boiling curve are a game approximation,
+  not an ABV calibration or full vapor–liquid equilibrium solver. Blocked residue output waits.
+  Dissolved salt/sugar retain an approximate additive heat capacity through liquid transfers,
+  freezing and drying; wet soil/sponges include dry matrix plus porewater capacity. These are
+  consistent game quantities, not measured solution properties. Legacy dissolution/diffusion,
+  other chemical reactions and displaced sub-tile air still have simplified heat accounting.
+  Unsupported organic/silt residues retain the last carrier unit until a residue representation
+  exists; a sterile water film can evaporate completely. Salt crystals remain stable in saturated
+  brine and dissolve again in fresh water.
+  Ordinary spirit burning requires measured oxygen and debits ethanol; named counters retain
+  the model's reaction products. Legacy explosive reactions remain separately simplified.
+- Death records distinguish hypoxia, ammonia, heat and other causes. A controlled crowded tank
+  tests reproduction separately from a nighttime algae-respiration experiment and aerated control.
+  The overfed jar's observed losses were ammonia deaths; they are no longer labelled night hypoxia.
+- Snapshot schema 2 stores the new array types. Legacy byte-array saves migrate dissolved oxygen
+  to retain its prior actual concentration; undo/reset also reset transient air mixing state.
+
+These are corrections to existing systems. Phase 22B adds biological C/N/P inventories below;
+calibrated chemical yields, further powder processing and the ten-day ecosystem gate remain pending. The scope and
+acceptance checks are in `docs/design/phase22a-accounting.md`; scientific sources and limitations
+are collected in `reports/Tidepool living world audit.md` and its linked research notes.
+
+### Phase 22B: finite life cycles (October 2026)
+
+Ordinary animals now spend finite food reserves. Feeding, grazing and predation transfer measured
+contents; offspring require parental carbon, nitrogen and phosphorus. Plants pay for stems,
+leaves, flowers, nectar and seeds. Algae require actual dissolved CO₂ and both mineral nutrients.
+Generated soil and water receive finite recorded initial nutrient stores, and microbial starter
+banks are finite and separate for algae and yeast. Fantasy creatures keep their fantasy rules.
+
+All ordinary mortality routes retain biomass and carried food. Aerobic decay spends organic
+carbon and oxygen, returning CO₂, ammonium and phosphate. Anoxic methane production spends
+substrate too; sterile mineral mud cannot make gas. Nitrification spends oxygen, and
+denitrification spends an organic donor and retains nitrogen gas in the inventory.
+
+Fermentation partitions available glucose-equivalent carbon into yeast, ethanol and CO₂;
+nitrogen/phosphorus shortages limit new yeast biomass. Acetate retains oxidized ethanol carbon
+separately from the legacy acidity indicator. Honey, nectar, wax and charcoal retain finite
+stores through harvesting, melting, burning and transport. Empty comb cannot refill itself.
+Schema 3 preserves pools and migrates older saves with recorded introductions.
+
+These are game-scale quotas and reference quantities, not universal species composition or an
+ABV calibration. Hydrogen/oxygen atoms, reaction water volumes, every industrial/mineral reaction,
+smoke composition and displaced gas pressure are not fully closed. Sediment transport and soil
+adsorption remain simplified. The approved rules, tunables and verification limits are in
+`docs/design/phase22b-life-cycles.md`; ecosystem balance and the ten-day gate belong to 22C.
 
 ## Sources
 

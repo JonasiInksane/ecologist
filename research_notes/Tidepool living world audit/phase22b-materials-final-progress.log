@@ -1,0 +1,6 @@
+START sponges, soil, porous rock, wool and copper, membranes, coral, fuses
+START solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers
+START matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density
+DONE  solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers (33.7 s)
+DONE  sponges, soil, porous rock, wool and copper, membranes, coral, fuses (54.9 s)
+DONE  matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density (55.5 s)

@@ -1,0 +1,40 @@
+
+a boiler boils water only while powered  (20.0 s)
+  PASS  a powered boiler boils the water on it  (52 steam tiles at peak)
+
+mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds  (73.4 s)
+  PASS  running water washes mud away as silt  (200 silty tiles at peak)
+  PASS  the sun dries mud into dirt  (46 dirt)
+  FAIL  mud under still water bubbles up swamp gas  (0 methane tiles)
+  PASS  oil hot enough to smoke but not burn gives off smoke  (16 smoke tiles)
+  PASS  steam scalds the explorer
+
+puzzle levels can be solved, and fail when they should  (83.9 s)
+  PASS  there are nine levels
+  PASS  1. Glassworks: opening the hopper over the lava makes enough glass  (glass 15/15)
+  PASS  2. The cauldron: water, heat, honey and bloomwater brew tonic  (tonic in the cauldron 10/10 · levers: water, boiler, honey, bloomwater)
+  PASS  3. The lower chamber: the valve route fills it safely  (water in the chamber 60/60)
+  PASS  3. The lower chamber: the floodgate route fails  (The water touched the lava.)
+  PASS  4. Save the fish: a shaft dug down from the pond drops them into the lake  (fish in the lake 4/4)
+  PASS  5. Steam power: opening the valve opens the vault  (the vault is open)
+  PASS  6. Two shafts: digging out the plug fills the high basin  (water in the basin 20/20)
+  PASS  7. Thunder dome: splitting the brine, then lighting the fuse, blows the vault open  (the vault is open)
+  PASS  7. Thunder dome: the fuse alone, with no gas made, leaves the wall standing  (the vault wall stands)
+  PASS  8. Depth gauge: filling to the mark and shutting the spring  (the gauge reads full and the spring is shut)
+  PASS  8. Depth gauge: leaving the spring running overflows the tank  (The tank overflowed.)
+  PASS  9. Furnace: lighting the wood casts metal in the mould  (metal in the mould 3/3)
+
+fine powders, gases that don’t shove, warm honey, planks, and pressure on by default  (67.5 s)
+  PASS  boiling brine with 20 salt leaves exactly that much as grains or crystals  (20.000000 grains/crystals, 0.000000 dissolved)
+  PASS  a crystallized salt crust blocks the narrow vapor outlet without losing salt
+  PASS  boiling brine with 200 salt leaves exactly that much as grains or crystals  (200.000000 grains/crystals, 0.000000 dissolved)
+  PASS  boiling syrup preserves its sugar as grains, which caramelise when hot  (120.000000 dry sugar, 120.000000 caramel grains)
+  PASS  thin layers fall and settle into a pile  (2 tiles holding 320 grains)
+  PASS  a body comes to rest on the floor, not on top of a thin layer  (crate bottom at 488.0, floor at 488)
+  PASS  water dissolves salt a little at a time
+  PASS  a gas doesn’t carry or lift the explorer  (moved 0.00 px)
+  PASS  warm honey spreads faster than cold honey  (114 tiles warm, 57 cold)
+  PASS  blasted wood flies out as planks  (29 planks)
+  PASS  pressure is on by default: shafts joined by a long tunnel level out  (left arm at row 67, right at 69)
+
+1 check(s) failed · matching a boiler, mud: washed, fine powders, gases, puzzle levels run, 4 scenes, 84.4 s

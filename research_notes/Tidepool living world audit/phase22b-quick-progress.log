@@ -1,0 +1,50 @@
+START a timer switches a spring on and off
+START a sensor opens a floodgate when the water reaches it
+START a crate on a pressure plate holds a gate open; a drain empties a pool
+START settled chunks sleep and wake when disturbed
+DONE  a timer switches a spring on and off (3.3 s)
+START brine freezes colder, and boiling it away leaves salt
+DONE  a sensor opens a floodgate when the water reaches it (7.7 s)
+START inks swirl together
+DONE  brine freezes colder, and boiling it away leaves salt (6.6 s)
+START a sensor set to one liquid ignores the others
+DONE  a sensor set to one liquid ignores the others (0.3 s)
+START momentum: pump jets, waterfalls and whirlpools push things
+DONE  settled chunks sleep and wake when disturbed (10.8 s)
+START logic gates and counters
+DONE  a crate on a pressure plate holds a gate open; a drain empties a pool (10.8 s)
+START stormwater, brine and metal carry a lever to a floodgate
+DONE  stormwater, brine and metal carry a lever to a floodgate (1.0 s)
+START methane burns in a flash
+DONE  inks swirl together (5.1 s)
+START a separator splits foam and takes the salt out of brine
+DONE  methane burns in a flash (1.1 s)
+START climate: height, depth and seasons
+DONE  logic gates and counters (4.0 s)
+START nitro explodes from heat, hard landings and power, and sets off more nitro
+DONE  climate: height, depth and seasons (2.9 s)
+START the explorer scoops, pours, digs and places
+DONE  momentum: pump jets, waterfalls and whirlpools push things (6.5 s)
+START freezing, melting and dissolving keep mass
+DONE  the explorer scoops, pours, digs and places (2.6 s)
+START temperature and depth sensors, pixels, and power fading along long lines
+DONE  nitro explodes from heat, hard landings and power, and sets off more nitro (7.0 s)
+START generated worlds have their biomes and layers
+DONE  temperature and depth sensors, pixels, and power fading along long lines (18.2 s)
+DONE  freezing, melting and dissolving keep mass (28.4 s)
+START void ink, mimic, coolant, ferrofluid, fertiliser
+DONE  generated worlds have their biomes and layers (29.4 s)
+START rafts, boats and balloons; air and health
+DONE  a separator splits foam and takes the salt out of brine (41.1 s)
+START heat: quicksilver boils, foam breaks, wax and metal melt
+DONE  heat: quicksilver boils, foam breaks, wax and metal melt (2.0 s)
+START snapshots: exact restore, world codes, seeds and undo
+DONE  rafts, boats and balloons; air and health (13.9 s)
+START every kind of block draws without errors
+DONE  every kind of block draws without errors (0.0 s)
+DONE  snapshots: exact restore, world codes, seeds and undo (18.4 s)
+START hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode
+DONE  hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode (4.0 s)
+DONE  void ink, mimic, coolant, ferrofluid, fertiliser (45.0 s)
+START life: local fish capacity and causal oxygen stress
+DONE  life: local fish capacity and causal oxygen stress (0.1 s)

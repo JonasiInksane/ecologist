@@ -8,7 +8,7 @@ import { GLASS, H, LAVA, MUD, NBLOCK, SALT, SAND, SNOW, T, W, WATER } from './co
 import { RHO } from './liquids.js';
 import { puff } from './particles.js';
 import { clearSol, copySol } from './solutes.js';
-import { S, bodies, held, liq, markDirty, solid, temp, typ, wake } from './world.js';
+import { S, bodies, held, latent, liq, markDirty, solid, temp, typ, wake } from './world.js';
 import { ASH, QUICKLIME, SODA, SUGAR } from './config.js';
 
 const POWDER = new Uint8Array(NBLOCK), POWDER_RHO = new Float32Array(NBLOCK);
@@ -41,6 +41,7 @@ function hasBody(k) {
 function canEnter(k, b) { return !solid[k] && (!liq[k] || RHO[typ[k]] < POWDER_RHO[b]) && !hasBody(k); }
 function move(k, n) {
   const b = solid[k], tk = temp[k];
+  const energy = latent[k]; latent[k] = latent[n]; latent[n] = energy;
   solid[n] = b; solid[k] = 0; held[n] = held[k]; held[k] = 0;
   liq[k] = liq[n]; typ[k] = typ[n]; temp[k] = liq[n] ? temp[n] : temp[k];
   if (liq[n]) copySol(n, k);

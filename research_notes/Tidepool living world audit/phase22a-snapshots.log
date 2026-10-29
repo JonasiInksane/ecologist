@@ -1,0 +1,13 @@
+
+snapshots: exact restore, world codes, seeds and undo  (22.2 s)
+  PASS  generated state contains no non-finite quantities
+  PASS  restoring a snapshot puts every tile, column and air cell back
+  PASS  a world code unpacks to the same world (temperatures to within 1/8°)
+  PASS  the reference fractional world code stays within 512 KiB  (code is 413 KiB)
+  PASS  an older (version 1) world code still loads
+  PASS  text that is not a world code is refused with a reason  (That isn't a Tidepool world code; it should start with TIDEPOOL2:)
+  PASS  the same seed builds the same world
+  PASS  undo takes back the last edit  (stepped back 0.5 s)
+  PASS  undo with no history does nothing
+
+all checks passed · matching snapshots run, 1 scenes, 22.9 s

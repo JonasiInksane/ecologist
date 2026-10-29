@@ -3,11 +3,13 @@
 import { cellT, cloud, drifted, hum, open, u, v, bolts, strikes } from './air.js';
 import { regions, rivers, setTideState, tideState } from './biomes.js';
 import { ambient, ambientFrom, colBiome, colHum, colSwing, colTemp, colWind, drought, shade, surface } from './climate.js';
-import { H, NSOL, W } from './config.js';
+import { H, NSOL, SOL_O2, SOL_SALT, W, WATER } from './config.js';
+import { MG_PER_UNIT, OXYGEN_REFERENCE, saturation, wakeAir } from './oxygen.js';
 import { moved } from './momentum.js';
 import { parts } from './particles.js';
 import { pipeShow, pipeTick } from './pipes.js';
 import { plants } from './plants.js';
+import { ecoEnsureBody, ecoInitializeWorld, ecoIntroduce, ecoMigrateBag, ecoOwnLegacyPlant, ecoPlantPool } from './ecology.js';
 import { resetPressure } from './pressure.js';
 import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, AIR_OX, AIR_CARB, airOx, airCarb, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
 
@@ -18,7 +20,9 @@ const ARRAYS = {
 const LISTS = { pumps, bodies, plants, regions, rivers };   // arrays of plain objects, refilled in place
 // Settings that belong to the viewer rather than the world, so undo and loading leave them alone.
 const VIEW_KEYS = new Set(['follow', 'zoom', 'sound', 'music', 'showHud', 'showChunks', 'lighting', 'heatView', 'dirtyAll', 'pendingIn', 'pendingLink', 'sandboxWeather', 'sandboxPressure']);
-const FORMAT = 'tidepool-world', VERSION = 1, CODE_PREFIX = 'TIDEPOOL2:', OLD_PREFIX = 'TIDEPOOL1:';
+const FORMAT = 'tidepool-world', VERSION = 3, CODE_PREFIX = 'TIDEPOOL2:', OLD_PREFIX = 'TIDEPOOL1:';
+const LEGACY_TYPES = { sol: Uint8Array, held: Uint8Array, latent: Float32Array, airOx: Uint8Array, airCarb: Uint16Array };
+const ARRAY_TYPES = { Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array, Float32Array, Float64Array };
 
 function capture() {
   const arrays = {}, lists = {}, state = {};
@@ -31,7 +35,7 @@ function restore(snap) {
   if (!snap || snap.format !== FORMAT) throw new Error('That isn\'t a Tidepool world.');
   if (snap.W !== W || snap.H !== H) throw new Error(`That world is ${snap.W} × ${snap.H} tiles, made by a different version of Tidepool; this one is ${W} × ${H}.`);
   if (snap.NSOL !== NSOL && snap.arrays.sol) {   // an older save with fewer dissolved channels: copy the ones it has
-    const old = snap.arrays.sol, n = Math.min(snap.NSOL, NSOL), fresh = new Uint8Array(W * H * NSOL);
+    const old = snap.arrays.sol, n = Math.min(snap.NSOL, NSOL), fresh = new Float64Array(W * H * NSOL);
     for (let k = 0; k < W * H; k++) for (let i = 0; i < n; i++) fresh[k * NSOL + i] = old[k * snap.NSOL + i];
     snap = { ...snap, NSOL, arrays: { ...snap.arrays, sol: fresh } };
   }
@@ -40,15 +44,50 @@ function restore(snap) {
   if (!snap.arrays.latent) latent.fill(0);   // saved before latent heat
   if (!snap.arrays.airOx) airOx.fill(AIR_OX);   // saved before the air had oxygen in it
   if (!snap.arrays.airCarb || snap.arrays.airCarb.length !== W * H) airCarb.fill(AIR_CARB);   // or before CO2 was counted finely
+  if ((snap.version || 1) < 2) {
+    // Old SOL_O2 meant a deficit from temperature-dependent saturation. Retain its actual dissolved oxygen.
+    for (let k = 0; k < W * H; k++) if (liq[k] && typ[k] === WATER) {
+      const p = k * NSOL, actual = Math.max(0, saturation(temp[k], sol[p + SOL_SALT]) - sol[p + SOL_O2] * MG_PER_UNIT);
+      sol[p + SOL_O2] = (OXYGEN_REFERENCE - actual) / MG_PER_UNIT;
+    }
+  }
   for (const [name, l] of Object.entries(LISTS)) l.splice(0, l.length, ...structuredClone(snap.lists[name] || []));
+  for (const pp of pumps) {
+    pp.sol = Array.from({ length: NSOL }, (_, i) => pp.sol ? pp.sol[i] || 0 : 0);
+    if ((snap.version || 1) < 2 && pp.t === WATER) migrateStoredOxygen(pp.sol, pp.temp ?? 20);
+  }
+  for (const b of bodies) {
+    const bucket = b.inv && b.inv.bucket;
+    if (!bucket) continue;
+    bucket.sol = Array.from({ length: NSOL }, (_, i) => bucket.sol ? bucket.sol[i] || 0 : 0);
+    if ((snap.version || 1) < 2 && bucket.t === WATER) migrateStoredOxygen(bucket.sol, bucket.temp ?? 20);
+  }
   devices.clear();
   for (const [k, d] of structuredClone(snap.devices)) devices.set(k, d);
   setTideState(structuredClone(snap.tide));
+  S.ecology = null;
+  S.nextPlantId = 0;
+  S.mossSugar = {}; S.accounting = {}; S.diagnostics = { deaths: [], deathCounts: {}, births: {} };
   Object.assign(S, structuredClone(snap.state));
+  S.nextPlantId = Math.max(S.nextPlantId || 0, ...plants.map(p => p.id || 0));
+  const oldPlantIds = plants.filter(p => !p.id);
+  for (const p of oldPlantIds) p.id = ++S.nextPlantId;
+  if ((snap.version || 1) < 3) {
+    S.ecology = null;
+    for (const b of bodies) { ecoEnsureBody(b); ecoMigrateBag(b.inv); }
+    for (const p of plants) { p.sugar = p.sugar ?? 48; p.nitrogen = p.nitrogen || 0; p.phosphorus = p.phosphorus || 0.06; ecoIntroduce(ecoPlantPool(p)); }
+    ecoInitializeWorld();
+    for (const p of plants) ecoOwnLegacyPlant(p);
+  }
+  if (S.ecology) for (const p of oldPlantIds) ecoOwnLegacyPlant(p, true);
   // per-tick stamps compare against the clock, which may have gone backwards; effects in flight are dropped
   stamp.fill(0); moved.fill(0); drifted.fill(0); parts.length = 0; bolts.length = 0; strikes.length = 0; resetPressure();
   S.dirtyAll = true;
-  wakeAll();
+  wakeAll(); wakeAir();
+}
+function migrateStoredOxygen(contents, temperature) {
+  const actual = Math.max(0, saturation(temperature, contents[SOL_SALT] || 0) - (contents[SOL_O2] || 0) * MG_PER_UNIT);
+  contents[SOL_O2] = (OXYGEN_REFERENCE - actual) / MG_PER_UNIT;
 }
 
 // The world as the modules first set it up, before any generation: a new world starts from here, so nothing from the
@@ -89,7 +128,7 @@ function encode(snap) {
   for (const [name, a] of Object.entries(snap.arrays)) {
     if (name === 'ambient' && fromClimate) continue;
     const b = PACKED[name] ? PACKED[name].pack(a, tick) : a;
-    parts.push(new Uint8Array(b.buffer, b.byteOffset, b.byteLength)); index.push([name, b.byteLength]);
+    parts.push(new Uint8Array(b.buffer, b.byteOffset, b.byteLength)); index.push([name, b.byteLength, b.constructor.name]);
   }
   const head = new TextEncoder().encode(JSON.stringify({ ...snap, arrays: index, packed: Object.keys(PACKED), fromClimate }));
   const out = new Uint8Array(4 + head.length + parts.reduce((n, p) => n + p.length, 0));
@@ -103,10 +142,12 @@ function decode(bytes) {
   const n = new DataView(bytes.buffer, bytes.byteOffset).getUint32(0), snap = JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + n)));
   const packed = new Set(snap.packed || []), tick = (snap.state && snap.state.tick) || 0, arrays = {};
   let at = 4 + n;
-  for (const [name, len] of snap.arrays) {
+  for (const [name, len, dtype] of snap.arrays) {
     const chunk = bytes.slice(at, at + len); at += len;   // a copy, so typed arrays of any width line up
     if (!ARRAYS[name]) continue;   // a field from a newer version: ignore it
-    const P = packed.has(name) && PACKED[name], Ctor = P ? P.type : ARRAYS[name].constructor;
+    const P = packed.has(name) && PACKED[name];
+    const Ctor = dtype ? ARRAY_TYPES[dtype] : P ? P.type : (snap.version || 1) < 2 && LEGACY_TYPES[name] || ARRAYS[name].constructor;
+    if (!Ctor || len % Ctor.BYTES_PER_ELEMENT) throw new Error('That world has an invalid array format.');
     const a = new Ctor(chunk.buffer, 0, len / Ctor.BYTES_PER_ELEMENT);
     arrays[name] = P ? P.unpack(a, tick) : a;
   }
@@ -120,7 +161,7 @@ function deserialize(json) {
   const snap = JSON.parse(json), arrays = {};
   for (const [name, text] of Object.entries(snap.arrays || {})) {
     if (!ARRAYS[name]) continue;   // a field from a newer version: ignore it
-    const bytes = fromBase64(text), Ctor = ARRAYS[name].constructor;
+    const bytes = fromBase64(text), Ctor = (snap.version || 1) < 2 && LEGACY_TYPES[name] || ARRAYS[name].constructor;
     arrays[name] = new Ctor(bytes.buffer, 0, bytes.byteLength / Ctor.BYTES_PER_ELEMENT);
   }
   return { ...snap, arrays };

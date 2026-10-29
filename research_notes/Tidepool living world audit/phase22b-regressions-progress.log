@@ -1,0 +1,8 @@
+START a boiler boils water only while powered
+START mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds
+START fine powders, gases that don’t shove, warm honey, planks, and pressure on by default
+START puzzle levels can be solved, and fail when they should
+DONE  a boiler boils water only while powered (20.0 s)
+DONE  fine powders, gases that don’t shove, warm honey, planks, and pressure on by default (67.5 s)
+DONE  mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds (73.4 s)
+DONE  puzzle levels can be solved, and fail when they should (83.9 s)

@@ -13,11 +13,14 @@ import { puff } from './particles.js';
 import { beginNets, conductive, electrolysis, feed, flood, liveFrom, netAt, nets, netsTouching, seed, shockTick, spread } from './power.js';
 import { nbr } from './pumps.js';
 import { deposit } from './powders.js';
-import { carrySol, clearSol } from './solutes.js';
-import { S, bodies, devices, drop, flux, heatWake, liq, markDirty, pumps, sol, solid, temp, typ, under, wake } from './world.js';
+import { clearSol, mixSol, soluteAmount, takeSoluteAmount } from './solutes.js';
+import { carryHeat } from './sim.js';
+import { MG_PER_UNIT, OXYGEN_REFERENCE } from './oxygen.js';
+import { LCAP, dissolvedHeatCapacity } from './matter.js';
+import { S, bodies, devices, drop, flux, heatWake, latent, liq, markDirty, pumps, sol, solid, temp, typ, under, wake } from './world.js';
 import { MEMBRANE } from './config.js';
 import { BATTERY, COOLANT, EMAGNET, LAMP, LIGHT, MOTOR, SOLAR } from './config.js';
-import { DEPTH, PIXEL, THERMO } from './config.js';
+import { DEPTH, PIXEL, SOL_O2, THERMO } from './config.js';
 import { shade } from './climate.js';
 import { sunHeight } from './daynight.js';
 
@@ -47,6 +50,17 @@ const PIXEL_COLOURS = ['#ffb43c', '#5ae07a', '#ff5050', '#5aa0ff', '#f4f4f4'];  
 const WINDMILL_WIND = 0.2;   // wind speed a windmill needs (wind near the ground is about a third of the open-sky wind)
 const BATTERY_CAP = 1200, MOTOR_RATE = 24, SOLAR_SUN = 0.15, SOLAR_CLOUD = 0.6, SOLAR_REACH = 2, COOLANT_DRAW = 2;
 const SALT_OUT = 32, SPRING_RATE = 40, DRAIN_RATE = 64, BOILER_TEMP = 200, SEPARATE_RATE = 24, SEPARATE_LIMIT = 400;
+const SEPARATOR_CAPACITY = 255;
+const sourceSolutes = new Float64Array(NSOL);
+// Device boundaries are explicit external sources/sinks. Carrier and species use game quantities; the heat entry
+// uses the existing compressed material-energy convention. Pumped/geyser water is internal and is not logged here.
+function deviceFlowBudget(name, type, amount, contents, sensible, phase) {
+  const a = S.accounting || (S.accounting = {});
+  const b = a[name] || (a[name] = { carrier: {}, solutes: Array(NSOL).fill(0), sensibleHeat: 0, latentHeat: 0 });
+  b.carrier[type] = (b.carrier[type] || 0) + amount;
+  for (let i = 0; i < NSOL; i++) b.solutes[i] += contents[i];
+  b.sensibleHeat += sensible; b.latentHeat += phase;
+}
 
 function pumpAt(k) { return pumps.find(p => p.in === k || p.out === k); }
 function isTarget(k) { const d = devices.get(k); return d ? TARGETS.has(d.kind) : !!pumpAt(k); }
@@ -134,20 +148,22 @@ function wheelTurns(x, y) {
   return false;
 }
 function setGate(k, d, open) {
-  if (open === d.open) return;
-  d.open = open;
-  sfx('click', (k % W) * T + 4, ((k / W) | 0) * T + 4);
+  if (open === d.open) return true;
   const x = k % W, y = (k / W) | 0;
   if (open) solid[k] = AIR;
   else {
-    if (liq[k]) {   // a closing gate lifts what it can into the tile above and crushes the rest
+    if (liq[k]) {   // a gate waits until all displaced liquid fits; it never crushes the remaining contents away
       const up = k - W;
-      if (y > 0 && !solid[up] && (!liq[up] || typ[up] === typ[k])) { const mv = Math.min(liq[k], 255 - liq[up]); carrySol(k, up, mv, liq[up]); liq[up] += mv; typ[up] = typ[k]; }
-      liq[k] = 0; typ[k] = 0;
+      if (y <= 0 || solid[up] || (liq[up] && typ[up] !== typ[k]) || liq[k] + liq[up] > 255) return false;
+      const mv = liq[k]; carryHeat(k, up, mv, liq[up]); liq[up] += mv; typ[up] = typ[k]; wake(up);
+      liq[k] = 0; typ[k] = 0; clearSol(k);
     }
     solid[k] = GATE;
   }
+  d.open = open;
+  sfx('click', x * T + 4, y * T + 4);
   markDirty(x, y);
+  return true;
 }
 function emit(k, d) {
   const x = k % W, y = (k / W) | 0, t = d.liquid;
@@ -158,43 +174,50 @@ function emit(k, d) {
     const put = Math.min(budget, 255 - liq[n]);
     if (put <= 0) continue;
     if (!liq[n]) { clearSol(n); drop[n] = 0; }
+    const oldCapacity = LCAP[t] * liq[n] / 255 + dissolvedHeatCapacity(liq[n], sol, n * NSOL), incomingCapacity = LCAP[t] * put / 255;
+    sourceSolutes.fill(0);
+    sourceSolutes[SOL_O2] = t === WATER ? 0 : OXYGEN_REFERENCE / MG_PER_UNIT;
+    mixSol(sol, n * NSOL, liq[n], sourceSolutes, 0, put);
     addVel(n, dir === 1 ? -JET : dir === 2 ? JET : 0, liq[n], put);
-    temp[n] = (temp[n] * liq[n] + LIQ[t].paintT * put) / (liq[n] + put);
+    temp[n] = (temp[n] * oldCapacity + LIQ[t].paintT * incomingCapacity) / (oldCapacity + incomingCapacity);
     liq[n] += put; typ[n] = t; budget -= put; wake(n);
+    const contents = new Float64Array(NSOL);
+    if (t === WATER) contents[SOL_O2] = OXYGEN_REFERENCE / MG_PER_UNIT * put / 255;
+    deviceFlowBudget('springInputs', t, put, contents, LCAP[t] * LIQ[t].paintT * put / 255, 0);
     if (!budget) break;
   }
 }
 // A separator works on the liquid body it touches: it splits foam back into oil and water, and pulls dissolved
-// contents out. The salt it collects comes out beside it as salt blocks.
+// salt out. Other dissolved substances remain until the separator has an explicit supported product for them.
 const sepSeen = new Uint32Array(W * H), sepQueue = new Int32Array(SEPARATE_LIMIT + 4);
 let sepPass = 0;
 function separate(k, d) {
   const x = k % W, y = (k / W) | 0;
+  flushSeparatedSalt(k, d);
   sepPass++;
   let head = 0, tail = 0;
   for (let i = 0; i < 4; i++) { const n = nbr(x, y, i); if (n >= 0 && liq[n] && !solid[n]) { sepSeen[n] = sepPass; sepQueue[tail++] = n; } }
   while (head < tail) {
     const n = sepQueue[head++], nx = n % W, ny = (n / W) | 0;
     if (typ[n] === FOAM) { typ[n] = Math.random() < 0.5 ? OIL : WATER; wake(n); }
-    for (let i = 0; i < NSOL; i++) {
-      const p = n * NSOL + i, take = Math.min(sol[p], SEPARATE_RATE);
-      if (!take) continue;
-      sol[p] -= take;
-      if (i === SOL_SALT) d.store += take * liq[n] / 255;
-    }
+    const take = Math.min(SEPARATE_RATE * liq[n] / 255, Math.max(0, SEPARATOR_CAPACITY - d.store));
+    if (take > 0) d.store += takeSoluteAmount(n, SOL_SALT, take);
     for (let i = 0; i < 4 && tail < SEPARATE_LIMIT; i++) {
       const o = nbr(nx, ny, i);
       if (o >= 0 && liq[o] && !solid[o] && sepSeen[o] !== sepPass) { sepSeen[o] = sepPass; sepQueue[tail++] = o; }
     }
   }
-  if (d.store < SALT_OUT) return;   // the salt comes out a little at a time, as grains beside it
+  flushSeparatedSalt(k, d);
+}
+function flushSeparatedSalt(k, d) {
+  if (d.store < SALT_OUT) return;   // smaller/fractional quantities remain safely in the saved device buffer
+  const x = k % W, y = (k / W) | 0;
   for (let i = 0; i < 4; i++) {
-    const n = nbr(x, y, i), out = Math.floor(d.store);
+    const n = nbr(x, y, i), out = d.store;
     if (n < 0 || liq[n] || (solid[n] && solid[n] !== SALT)) continue;
     const left = deposit(n, SALT, out);
     if (left < out) { d.store -= out - left; return; }
   }
-  d.store = Math.min(d.store, 255);
 }
 // A geyser vent sits over a pocket of water heated from below. Once the pocket is hot enough it erupts, throwing water
 // and steam up out of the vent for a few seconds, then rests while the pocket refills and heats again.
@@ -208,14 +231,16 @@ function geyser(k, d) {
     const want = Math.min(48, 255 - liq[n]);
     let took = 0;
     for (let dy = 1; dy <= 6 && took < want; dy++) for (let dx = -3; dx <= 3 && took < want; dx++) {
-      const n = k + dy * W + dx;
-      if (y + dy >= H || x + dx < 0 || x + dx >= W || !liq[n] || typ[n] !== WATER) continue;
-      const m = Math.min(liq[n], want - took);
-      liq[n] -= m; took += m; if (!liq[n]) typ[n] = 0; wake(n);
+      const from = k + dy * W + dx;
+      if (y + dy >= H || x + dx < 0 || x + dx >= W || !liq[from] || typ[from] !== WATER) continue;
+      const m = Math.min(liq[from], want - took);
+      if (!liq[n]) drop[n] = 0;
+      carryHeat(from, n, m, liq[n]);
+      liq[n] += m; typ[n] = WATER;
+      liq[from] -= m; took += m; if (!liq[from]) { typ[from] = 0; clearSol(from); } wake(from);
     }
     if (!took) { if (want) d.erupting = 0; return; }   // an empty pocket ends the eruption; a full spout tile just waits
-    if (!liq[n]) { clearSol(n); drop[n] = 0; }
-    liq[n] += took; typ[n] = WATER; temp[n] = 95; wake(n);
+    wake(n);
     if (Math.random() < 0.3) puff(n, 'steam');
     return;
   }
@@ -240,8 +265,12 @@ function drain(k) {
   for (let dir = 0; dir < 4; dir++) {
     const n = nbr(x, y, dir);
     if (n < 0 || !liq[n]) continue;
-    liq[n] -= Math.min(liq[n], DRAIN_RATE); wake(n);
-    if (!liq[n]) typ[n] = 0;
+    const amount = Math.min(liq[n], DRAIN_RATE), fraction = amount / liq[n], contents = new Float64Array(NSOL);
+    for (let i = 0; i < NSOL; i++) contents[i] = soluteAmount(n, i) * fraction;
+    const phase = latent[n] * fraction;
+    deviceFlowBudget('drainOutputs', typ[n], amount, contents, (LCAP[typ[n]] * amount / 255 + dissolvedHeatCapacity(amount, sol, n * NSOL)) * temp[n], phase);
+    latent[n] -= phase; liq[n] -= amount; wake(n);
+    if (!liq[n]) { typ[n] = 0; clearSol(n); }
   }
 }
 
@@ -258,7 +287,7 @@ function membrane(k, d) {
     if ((a === 1 || a === 2) && liq[to] >= liq[from]) continue;   // sideways only towards the lower side
     const mv = Math.min(MEMBRANE_RATE, liq[from], 255 - liq[to], (a === 1 || a === 2) ? (liq[from] - liq[to]) >> 1 : 255);
     if (mv <= 0) continue;
-    if (!liq[to]) { temp[to] = temp[from]; sol.fill(0, to * NSOL, to * NSOL + NSOL); }
+    carryHeat(from, to, mv, liq[to]);
     liq[to] += mv; typ[to] = t; liq[from] -= mv; if (!liq[from]) typ[from] = 0; wake(from); wake(to);
   }
 }
@@ -277,8 +306,8 @@ function propel(k, d) {
   if (back < 0 || front < 0 || solid[front] || solid[back] || !liq[back] || (liq[front] && typ[front] !== typ[back])) return;
   const mv = Math.min(MOTOR_RATE, liq[back], 255 - liq[front]);
   if (mv <= 0) return;
-  if (!liq[front]) { temp[front] = temp[back]; clearSol(front); drop[front] = 0; }
-  carrySol(back, front, mv, liq[front]);
+  if (!liq[front]) drop[front] = 0;
+  carryHeat(back, front, mv, liq[front]);
   addVel(front, d.dir === 2 ? JET : -JET, liq[front], mv);
   liq[front] += mv; typ[front] = typ[back]; liq[back] -= mv; if (!liq[back]) typ[back] = 0;
   wake(back); wake(front);

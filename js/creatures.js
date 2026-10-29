@@ -22,17 +22,37 @@ import { COMB, FLOWER, SOL_AMMONIA } from './config.js';
 import { held } from './world.js';
 import { ROT_OX } from './solutes.js';
 import { S, markDirty } from './world.js';
+import { ecoAppetite, ecoBirth, ecoComb, ecoDeposit, ecoEatLeaf, ecoEatPrey, ecoFeed, ecoFood, ecoGraze, ecoMaintain, ecoSetComb, ecoSettleBody, ecoTissue, ecoInstallTissue } from './ecology.js';
+import { ECO_C, ECO_COST, ECO_RATE } from './ecology-data.js';
+import { bioPool } from './ecology-core.js';
+import { ecoTakeNectar } from './ecology.js';
 
 const MAX_OF_KIND = 30, STRANDED = 400, COLD = 900, SPLIT_MASS = 255;
 const WELL_FED = 1200, BITE = 2, ROT = 60;
+const SHOAL = 24, SHOAL_Y = 16, CROWDED = 4, CROWD_X = 64, CROWD_Y = 32;   // pixels: a fish breeds with another this close by, unless this many fish already swim within CROWD_X by CROWD_Y of it
 const FISH_BREATH = 0.001, SUFFOCATE = 300, AIR_GONE = 300, AMMONIA_KILLS = 80;   // mg/L of oxygen a fish uses a tick; ticks it lasts without enough
 const PIKE_MAX = 6, PIKE_STARVE = 7200, PIKE_DIGEST = 1200, HUNT_RANGE = 48, FLEE_RANGE = 32;   // ticks; pixels
 const BIRD_MAX = 8, BIRD_STARVE = 14400, BIRD_SEEK = 120, BIRD_COLD = -25, BIRD_FROZEN = 1800;   // BIRD_SEEK in pixels
 const MOTH_MAX = 20, MOTH_STARVE = 10800, MOTH_REST = 5, MOTH_COLD = -20, MOTH_FROZEN = 1200, MOTH_HOT = 60, MOTH_SEEK = 16, MOTH_EAT = 0.03, MOTH_GIVE_UP = 300;   // MOTH_SEEK in tiles
+const DEATH_HISTORY = 128;   // recent events retained with the world; counts do not grow an unbounded event list
+
+function recordDeath(b, k, cause) {
+  if (b.deathCause) return;
+  b.deathCause = cause;
+  const diagnostic = S.diagnostics || (S.diagnostics = { deaths: [], deathCounts: {}, births: {} });
+  const key = b.kind + ':' + cause;
+  diagnostic.deathCounts[key] = (diagnostic.deathCounts[key] || 0) + 1;
+  diagnostic.deaths.push({ id: b.id, kind: b.kind, cause, tick: S.tick, tile: k, night: sunHeight() <= 0,
+    oxygen: liq[k] && typ[k] === WATER ? oxygenIn(k) : null,
+    ammonia: liq[k] ? sol[k * NSOL + SOL_AMMONIA] : 0, temperature: temp[k] });
+  if (diagnostic.deaths.length > DEATH_HISTORY) diagnostic.deaths.shift();
+}
+// Flying-creature decay is a later life-cycle change; retain its current behavior while recording every death.
+function vanishCreature(b, k, fx, cause) { return die(b, k, fx, cause); }
+export { DEATH_HISTORY, recordDeath };
 
 // Moths and birds breathe the air they're in: false once they've choked on stale air too long.
 function airless(b, k) {
-  if (Math.random() < 0.02) breatheAir(k);
   b.choke = stifling(k) ? (b.choke || 0) + 1 : 0;
   return b.choke <= AIR_GONE;
 }
@@ -53,25 +73,24 @@ function walk(b, grounded) {
 }
 // Moves one creature for a tick. s is its sample of the liquid around it, A its area. Returns false if it died.
 function driveCreature(b, s, sub, grounded, A, addBody) {
-  if (b.eaten) return false;
+  if (b.eaten) { recordDeath(b, centre(b), 'predation'); return false; }
   const k = centre(b), Tk = temp[k];
+  if (!ecoMaintain(b, k)) return die(b, k, 'fizz', 'starvation');
   if (b.kind === 'moth') return driveMoth(b, s, k, Tk, A, addBody);
   if (b.kind === 'bird') return driveBird(b, s, k, Tk, grounded, addBody);
   if (b.kind === 'bee') return driveBee(b, s, k, Tk, addBody);
-  if (solid[k] || s.acid / A > 0.1 || s.poison / A > 0.2 || s.shock / A > 0.1) return die(b, k, 'fizz');
+  if (solid[k] || s.acid / A > 0.1 || s.poison / A > 0.2 || s.shock / A > 0.1) return die(b, k, 'fizz', solid[k] ? 'crushed' : s.acid / A > 0.1 ? 'acid' : s.poison / A > 0.2 ? 'toxic-gas' : 'electricity');
   if (b.kind === 'fish' || b.kind === 'pike') {
-    if (s.lava || (liq[k] && Tk > 45)) return die(b, k, 'steam');   // hot water (not hot air: a fish mid-leap is fine)
+    if (s.lava || (liq[k] && Tk > 45)) return die(b, k, 'steam', 'heat');   // hot water (not hot air: a fish mid-leap is fine)
     const algae = liq[k] && typ[k] === WATER ? sol[k * NSOL + SOL_ALGAE] : 0;
     b.hunger = (b.hunger || 0) + 1;
     const pike = b.kind === 'pike';
     if (liq[k] && typ[k] === WATER) {   // breathing: it uses the water's oxygen, and suffocates where there's too little
-      breatheWater(k, pike ? FISH_BREATH * 2 : FISH_BREATH);
       b.gasp = oxygenIn(k) < (pike ? PIKE_GASPS : FISH_GASPS) ? (b.gasp || 0) + 1 : 0;
-      if (b.gasp > SUFFOCATE || sol[k * NSOL + SOL_AMMONIA] > AMMONIA_KILLS) return die(b, k, 'fizz');   // or poisoned by ammonium
-      if (b.grazed && Math.random() < 0.01) addSol(k, SOL_AMMONIA, 1);   // a fed fish gives off ammonium
+      if (sol[k * NSOL + SOL_AMMONIA] > AMMONIA_KILLS) return die(b, k, 'fizz', 'ammonia');
+      if (b.gasp > SUFFOCATE) return die(b, k, 'fizz', 'hypoxia');
     }
-    if (pike) { if (b.hunger > PIKE_STARVE) return die(b, k, 'fizz'); }
-    else if (algae >= BITE && Math.random() < 0.02) { sol[k * NSOL + SOL_ALGAE] -= BITE; b.hunger = 0; b.grazed = true; }   // grazes
+    if (!pike && algae > 0 && Math.random() < 0.02 && ecoGraze(b, k, BITE * liq[k] / 255)) b.grazed = true;
     const chasing = !pike && snapMoth(b, k, s.water / A > 0.6);   // small fish eat moths; pike eat fish
     if (s.water / A > 0.6) {
       b.air = 0;
@@ -79,24 +98,24 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
       if (pike) { hunt(b, sub, addBody); return true; }
       if (!chasing) swim(b, sub);
       flee(b);
-      if (b.grazed && b.hunger < WELL_FED && Math.random() < 0.0004 && howMany('fish') < MAX_OF_KIND && bodies.some(o => o !== b && o.kind === 'fish' && Math.abs(o.x - b.x) < 24 && Math.abs(o.y - b.y) < 16)) addBody('fish', b.x, b.y);
+      if (b.grazed && b.hunger < WELL_FED && Math.random() < 0.0004 && howMany('fish') < MAX_OF_KIND && shoal(b)) ecoBirth(b, addBody);
     } else {
       b.air = (b.air || 0) + 1;
-      if (b.air > STRANDED) return die(b, k, 'fizz');
+      if (b.air > STRANDED) return die(b, k, 'fizz', 'stranded');
       if (grounded && Math.random() < 0.05) { b.vy = -1.6; b.vx = 0.8 * towardWater(k); }   // flops, towards water if it can see some
     }
   } else if (b.kind === 'salamander') {
-    if (s.water / A > 0.3) return die(b, k, 'steam');   // quenched
+    if (s.water / A > 0.3) return die(b, k, 'steam', 'quenched');
     if (s.lava / A > 0.5) { b.cold = 0; swim(b, sub); }
     else {
       walk(b, grounded);
       b.cold = Tk < 200 ? (b.cold || 0) + 1 : 0;
-      if (b.cold > COLD) return die(b, k, 'smoke');
+      if (b.cold > COLD) return die(b, k, 'smoke', 'cold');
       const feet = k + W;   // it's hot enough to set what it stands on alight
       if (feet < W * H && solid[feet] && temp[feet] < 220) { temp[feet] = 220; heatWake(feet); }
     }
   } else if (b.kind === 'slimeling') {
-    if (s.lava || Tk > 150 || touchesSalt(b)) return die(b, k, 'fizz');
+    if (s.lava || Tk > 150 || touchesSalt(b)) return die(b, k, 'fizz', s.lava || Tk > 150 ? 'heat' : 'salt');
     absorb(b);
     if (b.mass >= SPLIT_MASS && howMany('slimeling') < MAX_OF_KIND) { b.mass = 0; addBody('slimeling', b.x + (b.face > 0 ? -9 : 9), b.y); puff(k, 'fizz'); }
     const ex = bodies.find(o => o.kind === 'explorer');
@@ -107,6 +126,18 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
     if (ex && !ex.ward && !ex.ouch && ex.x < b.x + b.w && ex.x + ex.w > b.x && ex.y < b.y + b.h && ex.y + ex.h > b.y) { ex.ouch = 40; ex.vy = -3; puff(k, 'fizz'); }
   }
   return true;
+}
+// Whether fish b has a mate close by and room to breed: another fish within SHOAL, and fewer than CROWDED fish within
+// CROWD_X by CROWD_Y, so a small pool's fish stop at a few instead of filling it to the world's limit.
+function shoal(b) {
+  let mate = false, near = 1;   // this fish occupies one of the local population slots
+  for (const o of bodies) {
+    if (o === b || o.kind !== 'fish' || o.eaten) continue;
+    const dx = Math.abs(o.x - b.x), dy = Math.abs(o.y - b.y);
+    if (dx < CROWD_X && dy < CROWD_Y && ++near >= CROWDED) return false;
+    if (dx < SHOAL && dy < SHOAL_Y) mate = true;
+  }
+  return mate;
 }
 // The nearest live body of a kind within range pixels of b (centre to centre), or null.
 function nearest(b, kind, range) {
@@ -129,8 +160,8 @@ function hunt(b, sub, addBody) {
   b.vx += (b.dir * 1.0 - b.vx) * 0.15;
   b.vy += Math.sign(dy) * 0.08 + (sub < 0.95 ? 0.1 : 0);
   // touching (bodies push each other apart, so they never overlap): it eats the fish
-  if (Math.abs(dx) < (b.w + prey.w) / 2 + 1 && Math.abs(dy) < (b.h + prey.h) / 2 + 1) { prey.eaten = true; b.hunger = 0; b.full = PIKE_DIGEST; b.fed = (b.fed || 0) + 1; puff(centre(prey), 'fizz'); }
-  if (b.fed >= 2 && Math.random() < 0.002 && howMany('pike') < PIKE_MAX && nearest(b, 'pike', 40)) { b.fed = 0; addBody('pike', b.x, b.y); }
+  if (Math.abs(dx) < (b.w + prey.w) / 2 + 1 && Math.abs(dy) < (b.h + prey.h) / 2 + 1 && ecoEatPrey(b, prey, centre(b))) { b.full = PIKE_DIGEST; b.fed = (b.fed || 0) + 1; puff(centre(prey), 'fizz'); }
+  if (b.fed >= 2 && Math.random() < 0.002 && howMany('pike') < PIKE_MAX && nearest(b, 'pike', 40) && ecoBirth(b, addBody)) b.fed = 0;
 }
 // A small fish swims away from a pike that comes close.
 function flee(b) {
@@ -145,7 +176,7 @@ function snapMoth(b, k, inWater) {
   const m = nearest(b, 'moth', 28);
   if (!m) return false;
   const dx = m.x + 1.5 - b.x - b.w / 2, dy = m.y + 1 - b.y - b.h / 2;
-  if (Math.abs(dx) < 5 && Math.abs(dy) < b.h / 2 + 5) { m.eaten = true; b.hunger = 0; b.grazed = true; puff(k, 'fizz'); return false; }
+  if (Math.abs(dx) < 5 && Math.abs(dy) < b.h / 2 + 5) { if (ecoEatPrey(b, m, k)) b.grazed = true; puff(k, 'fizz'); return false; }
   const surface = k >= W && !(liq[k - W] && typ[k - W] === WATER);
   if (!inWater || dy >= 0) return false;
   if (Math.abs(dx) >= 4) { b.dir = b.face = Math.sign(dx); b.vx += (b.dir * 0.8 - b.vx) * 0.2; return true; }   // swims in under it
@@ -155,11 +186,11 @@ function snapMoth(b, k, inWater) {
 // Moths flutter a few tiles over the ground, towards the nearest leaf when there is one, and nibble it away.
 function driveMoth(b, s, k, Tk, A, addBody) {
   const drowned = liq[k] >= 128 && LIQ_SINKS(typ[k]);   // under water; rain and splashes don't count
-  if (drowned || s.lava || s.acid || Tk > MOTH_HOT || solid[k]) { puff(k, 'fizz'); return false; }
-  if (!airless(b, k)) { puff(k, 'fizz'); return false; }
+  if (drowned || s.lava || s.acid || Tk > MOTH_HOT || solid[k]) return vanishCreature(b, k, 'fizz', drowned ? 'drowned' : solid[k] ? 'crushed' : s.acid ? 'acid' : 'heat');
+  if (!airless(b, k)) return vanishCreature(b, k, 'fizz', 'stale-air');
   b.chill = Tk < MOTH_COLD ? (b.chill || 0) + 1 : 0;
   b.hunger = (b.hunger || 0) + 1;
-  if (b.hunger > MOTH_STARVE || b.chill > MOTH_FROZEN) { puff(k, 'fizz'); return false; }
+  if (b.chill > MOTH_FROZEN) return vanishCreature(b, k, 'fizz', 'cold');
   if (Tk < MOTH_REST) { b.vx *= 0.8; b.vy = 0; return true; }   // too cold to fly: it clings where it is and waits
   if (b.target == null || solid[b.target] !== LEAF || S.tick - (b.since || 0) > MOTH_GIVE_UP) { b.target = findLeaf(k, b.target); b.since = S.tick; }
   let wx, wy;
@@ -167,8 +198,8 @@ function driveMoth(b, s, k, Tk, A, addBody) {
     const tx = (b.target % W) * T + 4, ty = ((b.target / W) | 0) * T + 4;
     wx = Math.sign(tx - b.x - 1.5) * 0.6; wy = Math.sign(ty - b.y - 1) * 0.4;
     if (Math.abs(tx - b.x - 1.5) < 12 && Math.abs(ty - b.y - 1) < 12 && Math.random() < MOTH_EAT) {   // within a tile and a half
-      solid[b.target] = AIR; markDirty(b.target % W, (b.target / W) | 0);
-      b.hunger = 0; b.fed = (b.fed || 0) + 1; b.target = -1;
+      if (ecoEatLeaf(b, b.target)) b.fed = (b.fed || 0) + 1;
+      b.target = -1;
     }
   } else {
     if (!b.dir || b.hitX || Math.random() < 0.01) b.dir = b.dir ? -b.dir : Math.random() < 0.5 ? -1 : 1;
@@ -179,7 +210,7 @@ function driveMoth(b, s, k, Tk, A, addBody) {
   b.vx += (wx - b.vx) * 0.2;
   b.vy += (wy - b.vy) * 0.35 + (Math.random() - 0.5) * 0.3;   // holds itself up against gravity, fluttering
   b.face = b.vx < 0 ? -1 : 1;
-  if (b.fed >= 2 && Math.random() < 0.01 && howMany('moth') < MOTH_MAX && nearest(b, 'moth', 40)) { b.fed = 0; addBody('moth', b.x, b.y); }
+  if (b.fed >= 2 && Math.random() < 0.01 && howMany('moth') < MOTH_MAX && nearest(b, 'moth', 40) && ecoBirth(b, addBody)) b.fed = 0;
   return true;
 }
 const LIQ_SINKS = t => t !== 0 && !LIQ[t].gas;   // a liquid a moth can drown in
@@ -190,7 +221,7 @@ function driveBird(b, s, k, Tk, grounded, addBody) {
   const drowned = liq[k] >= 128 && !LIQ[typ[k]].gas;
   b.chill = Tk < BIRD_COLD ? (b.chill || 0) + 1 : 0;
   b.hunger = (b.hunger || 0) + 1;
-  if (drowned || s.lava || s.acid || Tk > 70 || solid[k] || b.hunger > BIRD_STARVE || b.chill > BIRD_FROZEN || !airless(b, k)) { puff(k, 'smoke'); return false; }
+  if (drowned || s.lava || s.acid || Tk > 70 || solid[k] || b.chill > BIRD_FROZEN || !airless(b, k)) return vanishCreature(b, k, 'smoke', drowned ? 'drowned' : solid[k] ? 'crushed' : s.acid ? 'acid' : s.lava || Tk > 70 ? 'heat' : b.chill > BIRD_FROZEN ? 'cold' : 'stale-air');
   b.resting = sunHeight() < -0.1;
   if (b.resting) { b.vx *= 0.8; if (!grounded) b.vy = Math.min(b.vy, 0.6); return true; }   // drifts down and roosts
   let wx, wy;
@@ -198,7 +229,7 @@ function driveBird(b, s, k, Tk, grounded, addBody) {
   if (m) {
     const dx = m.x + 1.5 - b.x - 2.5, dy = m.y + 1 - b.y - 1.5, d = Math.hypot(dx, dy) || 1;
     wx = dx / d * 1.3; wy = dy / d * 1.3;
-    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) { m.eaten = true; b.hunger = 0; b.fed = (b.fed || 0) + 1; }
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4 && ecoEatPrey(b, m, k)) b.fed = (b.fed || 0) + 1;
   } else {
     if (!b.dir || b.hitX || Math.random() < 0.004) b.dir = b.dir ? -b.dir : Math.random() < 0.5 ? -1 : 1;
     let clear = 0;
@@ -208,7 +239,7 @@ function driveBird(b, s, k, Tk, grounded, addBody) {
   b.vx += (wx - b.vx) * 0.15;
   b.vy += (wy - b.vy) * 0.35 + (Math.random() - 0.5) * 0.1;   // holds itself up against gravity
   b.face = b.vx < 0 ? -1 : 1;
-  if (b.fed >= 3 && Math.random() < 0.01 && howMany('bird') < BIRD_MAX && nearest(b, 'bird', 60)) { b.fed = 0; addBody('bird', b.x, b.y); }
+  if (b.fed >= 3 && Math.random() < 0.01 && howMany('bird') < BIRD_MAX && nearest(b, 'bird', 60) && ecoBirth(b, addBody)) b.fed = 0;
   return true;
 }
 // The nearest leaf within MOTH_SEEK tiles of tile k, or -1; not the one it just gave up on, if there's another.
@@ -216,24 +247,25 @@ function driveBird(b, s, k, Tk, grounded, addBody) {
 // its hive (honeycomb), where it turns it into honey: each load fills the comb a little, and a full comb gets a new
 // cell built beside it. A well-stocked hive raises new bees. At night, or in the cold, bees go home and wait. They
 // drown, burn, choke and starve like moths; the hive's honey feeds them.
-const BEE_MAX = 12, BEE_LOAD = 32, BEE_SEEK = 30, BEE_HOME = 40, BEE_STARVE = 10800, BEE_COLD = 10, BEE_FROZEN = 1800, HONEY_PER_LOAD = 8;
+const BEE_MAX = 12, BEE_LOAD = ECO_RATE.beeLoad, BEE_SEEK = 30, BEE_HOME = 40, BEE_STARVE = 10800, BEE_COLD = 10, BEE_FROZEN = 1800, HONEY_PER_LOAD = 8;
 function driveBee(b, s, k, Tk, addBody) {
   const drowned = liq[k] >= 128 && LIQ_SINKS(typ[k]);
-  if (drowned || s.lava || s.acid || Tk > 50 || solid[k] || !airless(b, k)) { puff(k, 'fizz'); return false; }
+  if (drowned || s.lava || s.acid || Tk > 50 || solid[k] || !airless(b, k)) return vanishCreature(b, k, 'fizz', drowned ? 'drowned' : solid[k] ? 'crushed' : s.acid ? 'acid' : s.lava || Tk > 50 ? 'heat' : 'stale-air');
   b.load = b.load || 0; b.hunger = (b.hunger || 0) + 1;
   b.chill = Tk < 0 ? (b.chill || 0) + 1 : 0;
-  if (b.hunger > BEE_STARVE || b.chill > BEE_FROZEN) { puff(k, 'fizz'); return false; }
+  if (b.chill > BEE_FROZEN) return vanishCreature(b, k, 'fizz', 'cold');
   if (b.home == null || solid[b.home] !== COMB || S.tick - (b.homeAt || 0) > 600) { b.home = findBlock(k, COMB, BEE_HOME); b.homeAt = S.tick; }
   const out = sunHeight() > 0 && Tk >= BEE_COLD && b.load < BEE_LOAD;
-  if (out && (b.target == null || solid[b.target] !== FLOWER || held[b.target] < 8 || S.tick - (b.since || 0) > 600)) { b.target = findBlock(k, FLOWER, BEE_SEEK, f => held[f] >= 8); b.since = S.tick; }
+  if (out && (b.target == null || solid[b.target] !== FLOWER || held[b.target] < ECO_RATE.beeMinNectar || S.tick - (b.since || 0) > 600)) { b.target = findBlock(k, FLOWER, BEE_SEEK, f => held[f] >= ECO_RATE.beeMinNectar); b.since = S.tick; }
   const goal = out && b.target >= 0 ? b.target : b.home;
   if (goal >= 0) {
     const tx = (goal % W) * T + 4, ty = ((goal / W) | 0) * T + 4, near = Math.abs(tx - b.x - 1.5) < 10 && Math.abs(ty - b.y - 1) < 10;
     b.vx += (Math.sign(tx - b.x - 1.5) * 0.7 - b.vx) * 0.25; b.vy += (Math.sign(ty - b.y - 1) * 0.5 - b.vy) * 0.35 + (Math.random() - 0.5) * 0.3;
-    if (near && goal === b.target) { const sip = Math.min(held[goal], BEE_LOAD - b.load); held[goal] -= sip; b.load += sip; b.target = -1; }
+    if (near && goal === b.target) { const taken = ecoTakeNectar(goal, BEE_LOAD - b.load); b.load += taken; S.accounting.nectarCollected = (S.accounting.nectarCollected || 0) + taken; b.target = -1; }
     else if (near && goal === b.home) {
-      b.hunger = 0;   // eats at the hive
-      if (b.load >= BEE_LOAD) { b.load = 0; storeHoney(b.home); if (Math.random() < 0.1 && howMany('bee') < BEE_MAX) addBody('bee', b.x, b.y); }
+      const food = Math.min(ecoComb(b.home), ecoAppetite(b) / ECO_C.honey);
+      if (food > 0) { ecoSetComb(b.home, ecoComb(b.home) - food); ecoFeed(b, ecoFood(food), k); S.accounting.honeyEaten = (S.accounting.honeyEaten || 0) + food; }
+      if (b.load > 0) { b.load -= storeHoney(b.home, b.load); if (Math.random() < 0.1 && howMany('bee') < BEE_MAX) ecoBirth(b, addBody); }
       b.vx *= 0.5; b.vy *= 0.5;
     }
   } else {   // no hive and nothing to do: wanders like a moth
@@ -244,12 +276,22 @@ function driveBee(b, s, k, Tk, addBody) {
   return true;
 }
 // Honey goes into the hive's comb: into a cell that isn't full yet, or a new cell built onto the comb.
-function storeHoney(home) {
+function storeHoney(home, offered = HONEY_PER_LOAD) {
   const cells = [home], seen = new Set(cells);
   for (let i = 0; i < cells.length && cells.length < 64; i++) for (const o of [cells[i] - W, cells[i] - 1, cells[i] + 1, cells[i] + W]) if (o >= 0 && o < W * H && solid[o] === COMB && !seen.has(o)) { seen.add(o); cells.push(o); }
-  const part = cells.find(c => held[c] > 0 && held[c] < 255);   // held: a cell's honey (0 is a full cell)
-  if (part >= 0) { held[part] = Math.min(255, held[part] + HONEY_PER_LOAD); if (held[part] === 255) held[part] = 0; return; }
-  for (const c of cells) for (const o of [c - 1, c + 1, c + W, c - W]) if (o >= 0 && o < W * H && !solid[o] && !liq[o]) { solid[o] = COMB; held[o] = HONEY_PER_LOAD; markDirty(o % W, (o / W) | 0); return; }
+  const part = cells.find(c => ecoComb(c) < 255);
+  if (part !== undefined) { const put = Math.min(offered, 255 - ecoComb(part)); ecoSetComb(part, ecoComb(part) + put); S.accounting.honeyStored = (S.accounting.honeyStored || 0) + put; return put; }
+  // New wax is paid for from the offered food, including its own nutrient quota.
+  const waxFood = ECO_COST.wax / ECO_C.honey;
+  if (offered <= waxFood) return 0;
+  for (const c of cells) for (const o of [c - 1, c + 1, c + W, c - W]) if (o >= 0 && o < W * H && !solid[o] && !liq[o]) {
+    const put = Math.min(255, offered - waxFood), remainder = ecoFood(waxFood), tissue = bioPool(ECO_COST.wax);
+    remainder.c -= tissue.c; remainder.n -= tissue.n; remainder.p -= tissue.p;
+    ecoDeposit(o, remainder); solid[o] = COMB; ecoInstallTissue(o, COMB, tissue); ecoSetComb(o, put);
+    S.accounting.honeyStored = (S.accounting.honeyStored || 0) + put;
+    markDirty(o % W, (o / W) | 0); return put + waxFood;
+  }
+  return 0;
 }
 // The nearest block b within `reach` tiles of k (that passes `ok`), or -1.
 function findBlock(k, b, reach, ok) {
@@ -275,12 +317,10 @@ function findLeaf(k, skip) {
   return best;
 }
 // A creature that dies (unless it burnt) rots: into the water it lay in, or as a little fertiliser where it fell.
-function die(b, k, fx) {
+function die(b, k, fx, cause = 'other') {
+  recordDeath(b, k, cause);
   puff(k, fx);
-  if (fx !== 'steam' && fx !== 'smoke' && !solid[k]) {
-    if (liq[k] && typ[k] === WATER) { addSol(k, SOL_AMMONIA, ROT); breatheWater(k, ROT * ROT_OX); }   // rots in the water, using its oxygen
-    else if (!liq[k]) { liq[k] = 40; typ[k] = FERT; sol.fill(0, k * NSOL, k * NSOL + NSOL); wake(k); }
-  }
+  ecoSettleBody(b, k);
   return false;
 }
 // Which way (-1 or 1) the nearest water lies within 16 tiles on this row or the one below; random if none.
@@ -310,4 +350,4 @@ function absorb(b) {
   }
 }
 
-export { BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
+export { CROWDED, CROWD_X, CROWD_Y, shoal, BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };

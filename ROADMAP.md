@@ -687,10 +687,28 @@ Water landscapes (built; see below):
 - Rivers are generated since; see "Rivers and creatures in new worlds" below.
 - Test: `water landscapes: groundwater, valleys and deltas, floating ice`.
 
-### Phase 22: Life cycles
+### Phase 22: Life cycles (in progress)
 
 Plants that live on light and CO₂, flowers, bees and honey, rot and the nitrogen cycle, CO₂ in water, yeast, alcohol
 and vinegar; a sealed jar that lives. What was built: `CHEMISTRY.md` section 7.
+
+The October 2026 audit found that the earlier completion claims exceeded the tested behavior.
+See `reports/Tidepool living world audit.md` for the researched gaps and material expansion plan.
+
+- **22A, quantity accounting (implemented within its documented scope):** fractional ingredients; finite oxygen/CO₂ exchange; retained
+  residues and latent energy in transfers; reagent-limited spirit combustion and distillation;
+  saved-state migration; causal mortality tests. Implementation and acceptance contract:
+  `docs/design/phase22a-accounting.md`.
+- **22B, finite life cycles (implemented within its documented scope):** explicit carbon/nitrogen/
+  phosphorus pools; finite food and reserves; paid growth, seeds and offspring; retained deaths,
+  nutrient recycling and substrate-limited decay/fermentation. Saved inventories include hive,
+  bag, bucket, pump and river stores. Rules, tunables and verification:
+  `docs/design/phase22b-life-cycles.md`. Quantities remain game-scale archetypes.
+- **22C, ecosystem completion:** controlled long-duration survival and collapse experiments,
+  including the proposed ten-day gate, plus performance and player feedback.
+- **Later material expansion:** sand mineralogy and grain properties; sugar extraction,
+  crystallization and milling; additional powders and processing chains. These depend on the
+  quantity foundations and are not implemented by 22A/22B.
 
 ### Phase 21: Air and water
 

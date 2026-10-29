@@ -7,6 +7,7 @@ import { BLOOM, BOILER, DIRT, GATE, GLASS, H, HONEY, LAVA, LEVER, METAL, OBSIDIA
 import { DAY_TICKS } from './daynight.js';
 import { placeDevice } from './devices.js';
 import { resetWorld } from './generate.js';
+import { ecoInitializeWorld } from './ecology.js';
 import { LIQ } from './liquids.js';
 import { S, bodies, devices, liq, sol, solid, temp, typ, under, wakeAll } from './world.js';
 import { CHARCOAL, BRICK, DEPTH, FUSE, LAMP, NSOL, ORE, PIXEL, SOL_SALT, WOOD } from './config.js';
@@ -194,6 +195,7 @@ function startLevel(i) {
   if (!S.level) { S.sandboxWeather = S.weather; S.sandboxPressure = S.pressure; }   // restored when the player goes back to the sandbox
   arena();
   const region = L.build();
+  ecoInitializeWorld();
   S.weather = false; S.pressure = true;   // puzzles are built for still weather and for pressure
   S.level = { index: i, name: L.name, goal: L.goal, tools: L.tools, region, text: '', done: false, failed: null };
   wakeAll();

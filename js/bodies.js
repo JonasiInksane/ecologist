@@ -4,6 +4,7 @@ import { explorerTools } from './explorer.js';
 import { ACID, H, LAVA, PH, CHLORINE, POISON, PW, SLIME, SMOKE, STEAM, T, TONIC, W, WATER } from './config.js';
 import { OXYGEN } from './config.js';
 import { driveCreature } from './creatures.js';
+import { ecoEnsureBody, ecoLoseBucket, ecoSettleBody } from './ecology.js';
 import { toggleLeversNear } from './devices.js';
 import { DRAG, LIQ, RHO } from './liquids.js';
 import { DRAIN_REACH, whirlpools } from './momentum.js';
@@ -110,15 +111,22 @@ const KINDS = {
   salamander: { w: 8,  h: 4,  rho: 3.1,  sprite: SALAMANDER_SPR, creature: true, walker: true },
   slimeling:  { w: 8,  h: 6,  rho: 1.6,  sprite: SLIMELING_SPR, creature: true },
 };
-function addBody(kind, x, y) {
+function addBody(kind, x, y, resources) {
   const K = KINDS[kind];
   const old = kind === 'explorer' ? bodies.findIndex(b => b.kind === 'explorer') : -1;
   if (bodies.length - (old >= 0 ? 1 : 0) >= 80) return;   // full: keep everything, including the current explorer
-  if (old >= 0) bodies.splice(old, 1);
+  if (old >= 0) { ecoSettleBody(bodies[old], centerTile(bodies[old]), true); bodies.splice(old, 1); }
   S.nextId = (S.nextId || 0) + 1;
   const b = { id: S.nextId, kind, x, y, w: K.w, h: K.h, vx: 0, vy: 0, face: 1, heat: 0, ouch: 0, walk: 0, ward: 0 };
   if (kind === 'explorer') { b.hp = 100; b.air = 100; S.spawn = { x, y }; }   // fainting wakes the explorer here
   bodies.push(b);
+  ecoEnsureBody(b, resources && resources.bio);
+  if (K.creature) {
+    const diagnostic = S.diagnostics || (S.diagnostics = { deaths: [], deathCounts: {}, births: {} });
+    const category = resources?.bio ? 'births' : 'introductions';
+    if (!diagnostic[category]) diagnostic[category] = {};
+    diagnostic[category][kind] = (diagnostic[category][kind] || 0) + 1;
+  }
   return b;
 }
 // Ties a new balloon to the nearest body below it, within ROPE * 2 pixels.
@@ -276,7 +284,7 @@ function hurt(b, n) {
   puff(centerTile(b), 'smoke');
   const sp = S.spawn || { x: b.x, y: b.y };
   b.x = sp.x; b.y = sp.y; b.vx = 0; b.vy = 0; b.hp = 100; b.air = 100; b.ouch = 60; b.fainted = S.tick;
-  if (b.inv) b.inv.bucket = null;
+  ecoLoseBucket(b.inv);
   if (S.level) S.level.fainted = true;
 }
 // Air: liquid over the explorer's face uses it up (about 6 s from full), open air refills it fast; smoke and

@@ -5,12 +5,13 @@ import { ACID, AETHER, AIR, BASALT, BLOOM, BRICK, CHUNK, CLAY, COMB, CRISP, CRYS
 import { LIQ } from './liquids.js';
 import { puff } from './particles.js';
 import { solidify } from './reactions.js';
-import { clearSol } from './solutes.js';
+import { ecoHoneyCaramel, ecoMeltComb } from './ecology.js';
+import { addSoluteAmount, clearSol, soluteAmount, setSoluteAmount } from './solutes.js';
 import { CHH, CW, HEAT_AWAKE, S, afloat, deco, drop, heatAwake, held, latent, liq, markDirty, meltAmount, sol, solid, temp, temp2, typ, under, wake } from './world.js';
-import { COPPER, LIMESTONE, POROUS, SAND, STONE, WETDIRT, WOOL } from './config.js';
+import { ASH, COPPER, LIMESTONE, POROUS, QUICKLIME, SAND, SODA, SPONGE, STONE, WETDIRT, WETSPONGE, WOOL } from './config.js';
 import { FNITRO, MSLAG, ORE, RUST, SLAG, SUGAR, THERMO } from './config.js';
-import { vapour } from './air.js';
-import { AIR_CAP, AIR_COND, BCAP, BCOND, HEAT_SPEED, LATENT, LCAP, LCOND, L_BOIL_WATER, L_FUSION_IRON, L_FUSION_ROCK, L_FUSION_WATER } from './matter.js';
+import { SOL_ETHANOL, SOL_O2, SOL_CO2 } from './config.js';
+import { AIR_CAP, AIR_COND, BCAP, BCOND, HEAT_SPEED, LATENT, LCAP, LCOND, L_BOIL_WATER, L_FUSION_IRON, L_FUSION_ROCK, L_FUSION_WATER, dissolvedHeatCapacity, poreHeatCapacity } from './matter.js';
 
 
 
@@ -30,6 +31,25 @@ const NITRO_FREEZE = 12, NITRO_THAW = 14;   // nitroglycerin melts at 13°; it f
 const NITRO_HEAT = 218, QUICK_BOIL = 357, WAX_MELT = 64, METAL_MELT = IRON_MELTS, SNOW_MELT = MELT_ICE, SNOW_WATER = 64, CLAY_BAKE = 900;
 const ACID_BOIL = 300, SUGAR_BURNS = 170, HONEY_BURNS = 160, MUD_DRIES = 100;
 const SALT_FREEZE = 0.085, SOLUTE_BOIL = 0.035;   // degrees lower freezing, higher boiling, per unit of dissolved salt (and sugar)
+const ETHANOL_BOILS = 78.37, DISTIL = 0.1, DISTIL_TAKE = 255;
+// A bounded game-scale equilibrium approximation. Concentration is relative to the carrier, not measured ABV.
+// The full ethanol/water activity-coefficient model remains a later material-data task. Dilute liquid neither boils
+// at pure ethanol's boiling point nor yields pure ethanol vapor in one pass.
+const ETHANOL_VOLATILITY = 4, DISTIL_ENRICH_LIMIT = 0.96, L_BOIL_ETHANOL = 846, ETHANOL_RHO = 0.789;
+const ETHANOL_DEW = (BOIL_WATER - ETHANOL_BOILS) / 255;
+const vaporOffset = fraction => (1 - fraction) * (L_BOIL_WATER * LATENT + (LCAP[WATER] - LCAP[STEAM]) * BOIL_WATER)
+  + fraction * (L_BOIL_ETHANOL * ETHANOL_RHO * LATENT + (LCAP[WATER] - LCAP[STEAM]) * ETHANOL_BOILS);
+const mixtureBoiling = concentration => BOIL_WATER - Math.max(0, Math.min(255, concentration)) * ETHANOL_DEW;
+const vaporFraction = fraction => Math.min(Math.max(fraction, DISTIL_ENRICH_LIMIT), ETHANOL_VOLATILITY * fraction / (1 + (ETHANOL_VOLATILITY - 1) * fraction));
+const vaporDew = concentration => {
+  const f = Math.max(0, Math.min(1, concentration / 255));
+  return mixtureBoiling(255 * f / (ETHANOL_VOLATILITY - (ETHANOL_VOLATILITY - 1) * f));
+};
+// Dirt's held field stores pore water, so a partial silt residue cannot use that block inventory yet.
+const RESIDUE_BLOCK = { [SOL_SALT]: SALT, [SOL_SUGAR]: SUGAR };
+const VOLATILE_SOLUTES = new Set([SOL_ETHANOL, SOL_O2, SOL_CO2]);
+const PARTIAL_HEAT = new Set([SALT, SUGAR, SAND, SNOW, SODA, ASH, QUICKLIME, ICE, CRISP, FNITRO, METAL, SLAG, BASALT]);
+const PORE_HEAT = new Set([DIRT, WETDIRT, SPONGE, WETSPONGE]);
 const ALIVE = new Uint8Array(NLIQ);
 [ACID, LAVA, FROST, AETHER, SLIME, BLOOM, TONIC, FOAM, MOLTEN, MSLAG, NITRO].forEach(t => { ALIVE[t] = 1; });
 // Natural ground: it rests at the climate's temperature for its depth (js/climate.js), standing in for the earth
@@ -38,6 +58,8 @@ const GROUND = new Uint8Array(NBLOCK);
 [STONE, DIRT, WETDIRT, SAND, CLAY, BASALT, OBSIDIAN, PERMAFROST, ORE, POROUS, BRICK, LIMESTONE].forEach(b => { GROUND[b] = 1; });
 // Each tile's heat capacity (J/K) and conductance this heat tick, from what's in it.
 const cap = new Float32Array(W * H), cond = new Float32Array(W * H);
+const occupiedCapacity = (capacity, amount) => capacity * amount / 255 + AIR_CAP * (1 - amount / 255);
+const liquidCapacity = (k, amount = liq[k]) => LCAP[typ[k]] * amount / 255 + dissolvedHeatCapacity(amount, sol, k * NSOL);
 
 const skyRow = new Float32Array(W);
 // Heat sleeps where it has settled. A chunk whose tiles all changed by less than SETTLED in a heat tick falls asleep
@@ -53,11 +75,12 @@ const chunkSlime = new Uint16Array(CW * CHH);   // slime tiles in each chunk whe
 function fillMatter() {
   for (let k = 0; k < W * H; k++) {
     const b = solid[k];
-    if (b) { cap[k] = BCAP[b]; cond[k] = BCOND[b]; continue; }
+    if (PORE_HEAT.has(b)) { cap[k] = poreHeatCapacity(b, held[k], sol, k * NSOL); cond[k] = BCOND[b]; continue; }
+    if (b) { cap[k] = occupiedCapacity(BCAP[b], PARTIAL_HEAT.has(b) ? (held[k] || 255) : 255) + (b === ICE ? dissolvedHeatCapacity(held[k] || 255, sol, k * NSOL) : 0); cond[k] = BCOND[b]; continue; }
     const a = liq[k];
     if (!a) { cap[k] = AIR_CAP; cond[k] = AIR_COND; latent[k] = 0; continue; }
     const f = a / 255, t = typ[k];
-    cap[k] = f * LCAP[t] + (1 - f) * AIR_CAP; cond[k] = f * LCOND[t] + (1 - f) * AIR_COND;
+    cap[k] = liquidCapacity(k) + (1 - f) * AIR_CAP; cond[k] = f * LCOND[t] + (1 - f) * AIR_COND;
   }
 }
 // The new temperature of tile k after m heat ticks. Heat flows to and from each neighbour in proportion to the
@@ -126,8 +149,7 @@ function heatTick() {
 // total: between the two points where the tile changes state (lo, hi) it's all temperature; past one, the tile is held
 // at that point and the rest is latent, and once that reaches the change's latent heat (need, J for the tile) the change
 // happens. It returns +1 (melt or boil), −1 (freeze, condense or set) or 0, and leaves the heat left over in `spare`.
-// Liquid flows between heat ticks while latent[k] stays with the tile, which this absorbs: the heat isn't lost, it just
-// counts towards the change in whatever is there now.
+// Liquid transport also transports latent[k]; it belongs to the material whose phase change is in progress.
 let spare = 0;
 function balance(k, lo, hi, needLo, needHi) {
   const Te = temp[k] + latent[k] / cap[k];
@@ -159,26 +181,36 @@ function phaseChanges(c, m) {
       if (ALIVE[t]) wake(k);
       if (t === FROST) temp[k] = Math.min(Tk, -40);
       else if (t === LAVA) {
-        if (balance(k, restsOn(k) ? LAVA_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, BASALT); afterChange(k, LAVA_SETS, spare, BCAP[BASALT], false); puff(k, 'steam'); }
+        if (balance(k, restsOn(k) ? LAVA_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, BASALT); afterChange(k, LAVA_SETS, spare, occupiedCapacity(BCAP[BASALT], a), false); puff(k, 'steam'); }
       }
       else if (t === QUICK) { if (Tk > QUICK_BOIL) { typ[k] = POISON; wake(k); puff(k, 'smoke'); } }   // toxic mercury vapour
       else if (t === FOAM) { if (Tk > 90) { typ[k] = OIL; liq[k] = Math.max(1, liq[k] >> 1); wake(k); puff(k, 'steam'); } }   // its water boils off
       else if (t === WATER) {
         // salt and sugar raise the boiling point and salt lowers the freezing point; boiling leaves them behind.
         // Falling water doesn't freeze, so cold rain lands as water.
-        const p = k * NSOL, boils = BOIL_WATER + (sol[p + SOL_SALT] + sol[p + SOL_SUGAR]) * SOLUTE_BOIL, freezes = MELT_ICE - sol[p + SOL_SALT] * SALT_FREEZE;
-        const d = balance(k, restsOn(k) ? freezes : -Infinity, boils, needOf(L_FUSION_WATER, 1, a), needOf(L_BOIL_WATER, 1, a));
-        if (d > 0 && !leaveResidue(k)) {
-          typ[k] = STEAM; clearSol(k); afterChange(k, boils, spare, LCAP[STEAM] * a / 255 + AIR_CAP * (1 - a / 255), true); wake(k); if (Math.random() < 0.3) puff(k, 'steam');
+        const p = k * NSOL, boils = mixtureBoiling(sol[p + SOL_ETHANOL]) + Math.min(255, sol[p + SOL_SALT] + sol[p + SOL_SUGAR]) * SOLUTE_BOIL, freezes = MELT_ICE - sol[p + SOL_SALT] * SALT_FREEZE;
+        const hasResidue = hasNonvolatile(k);
+        if ((sol[p + SOL_ETHANOL] || hasResidue) && Math.random() < DISTIL) distil(k, p);
+        if (!liq[k] || typ[k] !== WATER) continue;
+        // A solution evaporates incrementally, retaining its ingredients. Unsupported residues keep their last
+        // carrier drop until a material definition can represent them; they must not be silently discarded.
+        const now = liq[k];
+        cap[k] = liquidCapacity(k) + AIR_CAP * (1 - now / 255);
+        const d = balance(k, restsOn(k) ? freezes : -Infinity, hasResidue || sol[p + SOL_ETHANOL] ? Infinity : boils, needOf(L_FUSION_WATER, 1, now), needOf(L_BOIL_WATER, 1, now));
+        if (d > 0) {
+          typ[k] = STEAM; afterChange(k, boils, spare, LCAP[STEAM] * now / 255 + AIR_CAP * (1 - now / 255), true); wake(k); if (Math.random() < 0.3) puff(k, 'steam');
         } else if (d < 0) {
           afloat[k] = k < W * H - W && !solid[k + W] ? 1 : 0;   // frozen on water: lake ice, which floats
-          solidify(k, ICE); afterChange(k, freezes, spare, BCAP[ICE], false);
+          const contents = sol.slice(p, p + NSOL);
+          solidify(k, ICE); sol.set(contents, p); afterChange(k, freezes, spare, occupiedCapacity(BCAP[ICE], now) + dissolvedHeatCapacity(now, contents), false);
         }
       }
       else if (t === STEAM) {   // condensing gives back the heat boiling took: steam scalds and warms what it touches
-        if (balance(k, BOIL_WATER, Infinity, needOf(L_BOIL_WATER, 1, a), 0) < 0) { typ[k] = WATER; afterChange(k, BOIL_WATER, spare, LCAP[WATER] * a / 255 + AIR_CAP * (1 - a / 255), false); wake(k); }
+        const f = Math.max(0, Math.min(1, sol[k * NSOL + SOL_ETHANOL] / 255)), dew = vaporDew(sol[k * NSOL + SOL_ETHANOL]);
+        const release = (vaporOffset(f) - (LCAP[WATER] - LCAP[STEAM]) * dew) * a / 255;
+        if (balance(k, dew, Infinity, release, 0) < 0) { typ[k] = WATER; afterChange(k, dew, spare, liquidCapacity(k) + AIR_CAP * (1 - a / 255), false); wake(k); }
       }
-      else if (t === HONEY) { if (Tk > HONEY_BURNS) { solidify(k, CRISP); puff(k, 'smoke'); } }
+      else if (t === HONEY) { if (Tk > HONEY_BURNS) { ecoHoneyCaramel(k); solidify(k, CRISP); puff(k, 'smoke'); } }
       else if (t === ACID) { if (Tk > ACID_BOIL) { liq[k] = 0; typ[k] = 0; wake(k); puff(k, 'smoke'); } }
       else if (t === STORM) { if (Tk > BOIL_WATER) { typ[k] = STEAM; temp[k] = 110; clearSol(k); wake(k); if (Math.random() < 0.3) puff(k, 'steam'); } }
       else if (t === NITRO) {   // nitro must go off at once, so its heat never sleeps
@@ -187,10 +219,10 @@ function phaseChanges(c, m) {
         else if (Tk < NITRO_FREEZE && (k >= W * H - W || solid[k + W] || liq[k + W])) { drop[k] = 0; solidify(k, FNITRO); }   // falling nitro doesn't freeze
       }
       else if (t === MOLTEN) {
-        if (balance(k, restsOn(k) ? CAST_IRON_SETS : -Infinity, Infinity, needOf(L_FUSION_IRON, 7, a), 0) < 0) { solidify(k, METAL); afterChange(k, CAST_IRON_SETS, spare, BCAP[METAL], false); puff(k, 'smoke'); }
+        if (balance(k, restsOn(k) ? CAST_IRON_SETS : -Infinity, Infinity, needOf(L_FUSION_IRON, 7, a), 0) < 0) { solidify(k, METAL); afterChange(k, CAST_IRON_SETS, spare, occupiedCapacity(BCAP[METAL], a), false); puff(k, 'smoke'); }
       }
       else if (t === MSLAG) {
-        if (balance(k, restsOn(k) ? SLAG_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, SLAG); afterChange(k, SLAG_SETS, spare, BCAP[SLAG], false); puff(k, 'smoke'); }
+        if (balance(k, restsOn(k) ? SLAG_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, SLAG); afterChange(k, SLAG_SETS, spare, occupiedCapacity(BCAP[SLAG], a), false); puff(k, 'smoke'); }
       }
       else if (t === MUD) { if (Tk > MUD_DRIES) { solidify(k, DIRT); puff(k, 'steam'); } }   // its water boils off; firing it into brick takes lava
       else if (t === SLIME) { slime++; if (Tk > 150) { liq[k] = 0; typ[k] = 0; wake(k); puff(k, 'smoke'); } }
@@ -208,19 +240,21 @@ function phaseChanges(c, m) {
     } else if (solid[k] === PERMAFROST && Tk > MELT_ICE && Math.random() < 0.01 * m) {   // frozen ground thaws into mud
       solid[k] = AIR; liq[k] = 200; typ[k] = MUD; clearSol(k); markDirty(x, y);
     } else if (solid[k] === SUGAR && Tk > SUGAR_BURNS) {   // sugar caramelises into crisp honey
-      solid[k] = CRISP; held[k] = 0; markDirty(x, y); puff(k, 'smoke');
+      solid[k] = CRISP; markDirty(x, y); puff(k, 'smoke');
     } else if (solid[k] === CLAY && Tk > CLAY_BAKE) {
       solid[k] = BRICK; markDirty(x, y);
     } else if (solid[k] === COMB && Tk > WAX_MELT) {   // the wax melts and the honey runs out
-      solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = HONEY; clearSol(k); markDirty(x, y);
+      const honey = ecoMeltComb(k);
+      solid[k] = AIR; held[k] = 0; liq[k] = honey; typ[k] = honey ? HONEY : 0; clearSol(k); markDirty(x, y);
     } else if (solid[k] === METAL) {
-      if (balance(k, -Infinity, METAL_MELT, 0, needOf(L_FUSION_IRON, 7.85, held[k])) > 0) { solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = MOLTEN; clearSol(k); afterChange(k, METAL_MELT, spare, LCAP[MOLTEN], true); markDirty(x, y); }
+      if (balance(k, -Infinity, METAL_MELT, 0, needOf(L_FUSION_IRON, 7.85, held[k])) > 0) { solid[k] = AIR; liq[k] = meltAmount(k); typ[k] = MOLTEN; clearSol(k); afterChange(k, METAL_MELT, spare, occupiedCapacity(LCAP[MOLTEN], liq[k]), true); markDirty(x, y); }
     } else if (solid[k] === ICE && Math.random() < 0.01 * m && touches(k, SALT)) {   // salt melts ice into brine, and the salt block dissolves into it
-      const s = neighbourOf(k, SALT), salt = Math.max(1, Math.round(120 * (held[s] || 255) / 255));   // a pinch makes weaker brine
+      const s = neighbourOf(k, SALT), salt = held[s] || 255;
       solid[s] = AIR; held[s] = 0; markDirty(s % W, (s / W) | 0);
-      latent[k] = 0; solid[k] = AIR; afloat[k] = 0; liq[k] = meltAmount(k); typ[k] = WATER; clearSol(k); sol[k * NSOL + SOL_SALT] = salt; markDirty(x, y);
+      latent[k] = 0; solid[k] = AIR; afloat[k] = 0; liq[k] = meltAmount(k); typ[k] = WATER;
+      addSoluteAmount(k, SOL_SALT, salt); markDirty(x, y);
     } else if (solid[k] === ICE) {
-      if (balance(k, -Infinity, MELT_ICE, 0, needOf(L_FUSION_WATER, 1, held[k])) > 0) { solid[k] = AIR; afloat[k] = 0; liq[k] = meltAmount(k); typ[k] = WATER; clearSol(k); afterChange(k, MELT_ICE, spare, LCAP[WATER] * liq[k] / 255 + AIR_CAP * (1 - liq[k] / 255), true); markDirty(x, y); }
+      if (balance(k, -Infinity, MELT_ICE, 0, needOf(L_FUSION_WATER, 1, held[k])) > 0) { solid[k] = AIR; afloat[k] = 0; liq[k] = meltAmount(k); typ[k] = WATER; afterChange(k, MELT_ICE, spare, liquidCapacity(k) + AIR_CAP * (1 - liq[k] / 255), true); markDirty(x, y); }
     }
   }
   return slime;
@@ -248,30 +282,112 @@ function warmWater(k) {
   }
   return false;
 }
-// Boiling water leaves what was dissolved in it: salt or sugar as fine grains (exactly as much as there was: a pinch
-// from weak brine, nearly a full tile from strong), its water going up as steam into the tile above (into the air
-// if there's no room). Very muddy water can still crust over into a dirt block. Returns whether it left anything.
+function hasNonvolatile(k) {
+  const p = k * NSOL;
+  for (let i = 0; i < NSOL; i++) if (!VOLATILE_SOLUTES.has(i) && sol[p + i] > 0) return true;
+  return false;
+}
+// Material enthalpy used by the incremental evaporator. Empty-cell air is excluded: this inventory follows the
+// water/steam carrier, its dissolved contents and its stored phase energy. The phase offset is linear in ethanol
+// content, so mixing two vapor parcels does not create or destroy their evaporation energy.
+function phaseInventory(k) {
+  if (!liq[k]) return 0;
+  const f = liq[k] / 255, e = Math.max(0, Math.min(1, sol[k * NSOL + SOL_ETHANOL] / 255));
+  return liquidCapacity(k) * temp[k] + f * (typ[k] === STEAM ? vaporOffset(e) : 0) + latent[k];
+}
+function receiveVapor(k, amount, contents, energy) {
+  const before = liq[k], total = before + amount, previousEnergy = before ? phaseInventory(k) : 0;
+  const previous = new Float64Array(NSOL);
+  if (before) for (let i = 0; i < NSOL; i++) previous[i] = soluteAmount(k, i);
+  liq[k] = total; typ[k] = STEAM;
+  for (let i = 0; i < NSOL; i++) setSoluteAmount(k, i, previous[i] + contents[i]);
+  const fraction = Math.max(0, Math.min(1, sol[k * NSOL + SOL_ETHANOL] / 255));
+  latent[k] = 0;
+  temp[k] = (previousEnergy + energy - vaporOffset(fraction) * total / 255) / liquidCapacity(k);
+  wake(k);
+}
+// A vapor parcel bubbles through a continuous water column to its headspace. This coarse transport keeps
+// its energy and contents; a solid roof or another liquid still blocks the outlet.
+function vaporOutlet(k) {
+  let up = k - W;
+  while (up >= 0 && !solid[up] && liq[up] && typ[up] === WATER) up -= W;
+  return up;
+}
+// Moves carrier and an enriched (never automatically pure) ethanol fraction into an available vapor cell. The
+// source pays the vaporization energy, and every other ingredient retains its amount. Dissolved gases travel with
+// the vapor parcel in this coarse model, instead of being recreated when it condenses.
+function distil(k, p) {
+  const up = vaporOutlet(k);
+  if (!liq[k] || typ[k] !== WATER || up < 0 || solid[up] || (liq[up] && typ[up] !== STEAM) || liq[up] >= 255) return 0;
+  if (liq[k] === 1) return leaveResidue(k) ? 1 : 0;
+  const amount = liq[k], fraction = Math.max(0, Math.min(1, sol[p + SOL_ETHANOL] / 255)), enriched = vaporFraction(fraction);
+  const boils = mixtureBoiling(sol[p + SOL_ETHANOL]) + Math.min(255, sol[p + SOL_SALT] + sol[p + SOL_SUGAR]) * SOLUTE_BOIL;
+  const energy = phaseInventory(k), liquidAtBoil = LCAP[WATER] * boils, vaporAtBoil = LCAP[STEAM] * boils + vaporOffset(enriched);
+  const costPerUnit = (vaporAtBoil - liquidAtBoil) / 255;
+  const retainedCapacity = dissolvedHeatCapacity(amount, sol, p);
+  const available = Math.max(0, energy - liquidAtBoil * amount / 255 - retainedCapacity * boils);
+  const fuelLimit = enriched > 0 ? soluteAmount(k, SOL_ETHANOL) / enriched : Infinity;
+  const mv = Math.floor(Math.min(DISTIL_TAKE, amount - 1, 255 - liq[up], fuelLimit, available / costPerUnit));
+  if (!(mv > 0)) return 0;
+  const contents = new Float64Array(NSOL), remaining = new Float64Array(NSOL);
+  for (let i = 0; i < NSOL; i++) {
+    const have = soluteAmount(k, i);
+    contents[i] = i === SOL_ETHANOL ? enriched * mv : VOLATILE_SOLUTES.has(i) ? have * mv / amount : 0;
+    remaining[i] = have - contents[i];
+  }
+  // The outgoing vapor carries its share of superheat. Leaving it at the boiling point while retaining all
+  // sensible heat in the source traps hot liquid in a cold reflux loop, even when the heater supplies ample heat.
+  const sharedTemperature = (energy - vaporOffset(enriched) * mv / 255)
+    / (LCAP[WATER] * (amount - mv) / 255 + retainedCapacity + LCAP[STEAM] * mv / 255);
+  const sentEnergy = (LCAP[STEAM] * sharedTemperature + vaporOffset(enriched)) * mv / 255;
+  liq[k] = amount - mv;
+  for (let i = 0; i < NSOL; i++) setSoluteAmount(k, i, remaining[i]);
+  latent[k] = 0;
+  temp[k] = (energy - sentEnergy) / liquidCapacity(k);
+  receiveVapor(up, mv, contents, sentEnergy); wake(k);
+  return mv;
+}
+// Final dry-out is atomic. Reserve a vapor cell and space for EVERY known residue before consuming the last carrier.
+// Unknown residues or blocked products postpone drying; the liquid retains them until they can be represented.
 function leaveResidue(k) {
-  const p = k * NSOL, s = sol[p + SOL_SALT], g = sol[p + SOL_SUGAR], m = sol[p + SOL_SILT];
-  if (m > s && m > g) {
-    if (s + g + m < 64 || Math.random() > (s + g + m) / 400) return false;
-    solidify(k, DIRT); puff(k, 'steam');
-    return true;
+  const water = liq[k], up = vaporOutlet(k), p = k * NSOL, x = k % W;
+  if (!water || up < 0 || solid[up] || (liq[up] && typ[up] !== STEAM) || liq[up] + water > 255) return false;
+  const contents = new Float64Array(NSOL), allocations = new Map();
+  const sites = [k, x > 0 ? k - 1 : -1, x < W - 1 ? k + 1 : -1, k < W * H - W ? k + W : -1];
+  for (let i = 0; i < NSOL; i++) {
+    const amount = soluteAmount(k, i);
+    if (VOLATILE_SOLUTES.has(i)) { contents[i] = amount; continue; }
+    if (amount <= 0) continue;
+    const block = RESIDUE_BLOCK[i];
+    if (!block) return false;
+    let left = amount;
+    for (const n of sites) {
+      if (n < 0 || (n !== k && liq[n])) continue;
+      const plan = allocations.get(n), existing = plan ? plan.block : solid[n];
+      if (existing && existing !== block) continue;
+      const base = solid[n] ? held[n] || 255 : 0, used = plan ? plan.amount : 0;
+      const take = Math.min(left, Math.max(0, 255 - base - used));
+      if (take > 0) { allocations.set(n, { block, amount: used + take }); left -= take; }
+      if (left <= 1e-10) break;
+    }
+    if (left > 1e-10) return false;
   }
-  const amount = Math.round(Math.max(s, g) * liq[k] / 255);
-  if (amount < 1) return false;
-  const water = liq[k], up = k - W;
-  liq[k] = 0; typ[k] = 0; clearSol(k);
-  solid[k] = s >= g ? SALT : SUGAR; held[k] = amount >= 255 ? 0 : amount;   // a powder's amount (js/powders.js)
-  let left = water;
-  if (up >= 0 && !solid[up] && (!liq[up] || typ[up] === STEAM)) {
-    const mv = Math.min(left, 255 - liq[up]);
-    if (!liq[up]) { clearSol(up); temp[up] = 110; }
-    liq[up] += mv; typ[up] = STEAM; left -= mv; wake(up);
+  const fraction = Math.max(0, Math.min(1, sol[p + SOL_ETHANOL] / 255));
+  const boils = mixtureBoiling(sol[p + SOL_ETHANOL]) + Math.min(255, sol[p + SOL_SALT] + sol[p + SOL_SUGAR]) * SOLUTE_BOIL;
+  const residueCapacity = [...allocations.values()].reduce((n, plan) => n + BCAP[plan.block] * plan.amount / 255, 0);
+  const energy = phaseInventory(k), required = (LCAP[STEAM] * boils + vaporOffset(fraction)) * water / 255 + residueCapacity * boils;
+  if (energy < required) return false;
+  const sharedTemperature = (energy - vaporOffset(fraction) * water / 255) / (LCAP[STEAM] * water / 255 + residueCapacity);
+  receiveVapor(up, water, contents, energy - residueCapacity * sharedTemperature);
+  liq[k] = 0; typ[k] = 0; latent[k] = 0; clearSol(k);
+  for (const [n, plan] of allocations) {
+    const before = solid[n] ? held[n] || 255 : 0, total = before + plan.amount;
+    temp[n] = (temp[n] * before + sharedTemperature * plan.amount) / total;
+    solid[n] = plan.block; held[n] = total >= 255 ? 0 : total;
+    markDirty(n % W, (n / W) | 0);
   }
-  if (left) vapour(k, left);
-  markDirty(k % W, (k / W) | 0); puff(k, 'steam');
+  markDirty(x, (k / W) | 0); puff(k, 'steam');
   return true;
 }
 
-export { GROUND, MELT_ICE, BOIL_WATER, LAVA_SETS, IRON_MELTS, SLAG_SETS, LAVA_HEAT, LAVA_KEEP, ACID_BOIL, SUGAR_BURNS, HONEY_BURNS, MUD_DRIES, SALT_FREEZE, SOLUTE_BOIL, cap, cond, fillMatter, balance, NITRO_FREEZE, NITRO_THAW, CAST_IRON_SETS, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, ALIVE, heatTick, warmWater, leaveResidue };
+export { ETHANOL_BOILS, DISTIL, distil, vaporFraction, vaporOffset, mixtureBoiling, phaseInventory, GROUND, MELT_ICE, BOIL_WATER, LAVA_SETS, IRON_MELTS, SLAG_SETS, LAVA_HEAT, LAVA_KEEP, ACID_BOIL, SUGAR_BURNS, HONEY_BURNS, MUD_DRIES, SALT_FREEZE, SOLUTE_BOIL, cap, cond, fillMatter, balance, NITRO_FREEZE, NITRO_THAW, CAST_IRON_SETS, SETTLED, SLEEP_EVERY, steps, tileHeat, phaseChanges, NITRO_HEAT, QUICK_BOIL, WAX_MELT, METAL_MELT, SNOW_MELT, SNOW_WATER, CLAY_BAKE, touches, ALIVE, heatTick, warmWater, leaveResidue };
