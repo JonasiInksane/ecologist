@@ -14,9 +14,9 @@ fi
 bindings="$root/.tools/bindings/godot-cpp-e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77"
 godot="$root/.tools/godot/Godot.app/Contents/MacOS/Godot"
 cmake="$(command -v cmake || true)"
-[ -n "$cmake" ] || cmake="$(find "$root/.tools/python/cmake/data" -path '*/bin/cmake' -type f 2>/dev/null | head -n 1)"
+[ -n "$cmake" ] || cmake="$(find "$root/.tools/python/cmake/data" -path '*/bin/cmake' -type f 2>/dev/null | head -n 1 || true)"
 ninja="$(command -v ninja || true)"
-[ -n "$ninja" ] || ninja="$(find "$root/.tools/python/ninja/data" -path '*/bin/ninja' -type f 2>/dev/null | head -n 1)"
+[ -n "$ninja" ] || [ ! -x "$root/.tools/python/bin/ninja" ] || ninja="$root/.tools/python/bin/ninja"
 if [ -z "$cmake" ] || [ ! -f "$bindings/CMakeLists.txt" ] || [ ! -x "$godot" ]; then
     echo "Native tools are missing. First run: tools/native.sh setup" >&2
     exit 1
