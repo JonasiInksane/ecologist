@@ -9,7 +9,16 @@ namespace godot {
 void EcologistWorld::_bind_methods() {
     ClassDB::bind_method(D_METHOD("setup", "width", "height", "seed"), &EcologistWorld::setup);
     ClassDB::bind_method(D_METHOD("reset_demo", "seed"), &EcologistWorld::reset_demo);
+    ClassDB::bind_method(D_METHOD("setup_plot", "seed"), &EcologistWorld::setup_plot);
     ClassDB::bind_method(D_METHOD("advance", "ticks"), &EcologistWorld::advance);
+    ClassDB::bind_method(D_METHOD("player_input", "left", "right", "jump", "up", "down"), &EcologistWorld::player_input);
+    ClassDB::bind_method(D_METHOD("player_state"), &EcologistWorld::player_state);
+    ClassDB::bind_method(D_METHOD("build", "x", "y", "code"), &EcologistWorld::build);
+    ClassDB::bind_method(D_METHOD("toggle_door", "x", "y"), &EcologistWorld::toggle_door);
+    ClassDB::bind_method(D_METHOD("use_door_near_player"), &EcologistWorld::use_door_near_player);
+    ClassDB::bind_method(D_METHOD("save_world", "path"), &EcologistWorld::save_world);
+    ClassDB::bind_method(D_METHOD("load_world", "path"), &EcologistWorld::load_world);
+    ClassDB::bind_method(D_METHOD("back_data"), &EcologistWorld::back_data);
     ClassDB::bind_method(D_METHOD("paint", "x", "y", "radius", "material"), &EcologistWorld::paint);
     ClassDB::bind_method(D_METHOD("paint_grains", "x", "y", "radius", "kind"), &EcologistWorld::paint_grains);
     ClassDB::bind_method(D_METHOD("heat", "x", "y", "radius", "delta"), &EcologistWorld::heat);
@@ -34,21 +43,104 @@ bool EcologistWorld::setup(int w, int h, int seed) {
         return false;
     grains.reset(simulation);
     sandbox.reset(simulation);
+    player = {};
     return true;
 }
 void EcologistWorld::reset_demo(int seed) {
     simulation.demo(seed);
     grains.reset(simulation);
     sandbox.reset(simulation);
+    player = {};
 }
+void EcologistWorld::setup_plot(int seed) { ecologist::start_plot(simulation, grains, sandbox, player, seed); }
 void EcologistWorld::advance(int ticks) {
     if (simulation.width)
-        for (int i = 0; i < std::clamp(ticks, 0, 600); i++) {
-            simulation.step();
-            sandbox.step(simulation, grains);
-            grains.step(simulation);
-            ecologist::chemistry_step(simulation, grains);
+        for (int i = 0; i < std::clamp(ticks, 0, 600); i++)
+            ecologist::step_game(simulation, grains, sandbox, &player);
+}
+void EcologistWorld::player_input(bool left, bool right, bool jump, bool up, bool down) {
+    player.input = {left, right, jump, up, down};
+}
+Dictionary EcologistWorld::player_state() const {
+    Dictionary d;
+    d["active"] = player.active;
+    if (!player.active)
+        return d;
+    d["x"] = player.x;
+    d["y"] = player.y;
+    d["vx"] = player.vx;
+    d["vy"] = player.vy;
+    d["width"] = ecologist::Player::WIDTH;
+    d["height"] = ecologist::Player::HEIGHT;
+    d["health"] = player.health;
+    d["breath"] = player.breath;
+    d["facing"] = player.facing;
+    d["on_ground"] = player.on_ground;
+    d["climbing"] = player.climbing;
+    d["swimming"] = player.swimming;
+    d["deaths"] = player.deaths;
+    d["event"] = String(player.event.c_str());
+    return d;
+}
+// Builds or removes one tile. Solid tiles are refused where they would trap the player.
+int EcologistWorld::build(int x, int y, int code) {
+    const bool solid = code < 0 || code == ecologist::BUILD_DOOR;
+    if (solid && player.active) {
+        const int tx = x & ~1, ty = y & ~1;
+        if (code == ecologist::BUILD_DOOR ? player.overlaps(tx, ty - 4, 2, 6) : player.overlaps(tx, ty, 2, 2))
+            return 0;
+    }
+    return sandbox.build(simulation, grains, x, y, code);
+}
+bool EcologistWorld::toggle_door(int x, int y) {
+    if (x < 0 || y < 0 || x >= simulation.width || y >= simulation.height)
+        return false;
+    const int k = y * simulation.width + x;
+    bool blocked = false; // a door does not close on the player standing in it
+    if (player.active && (sandbox.back[k] & ecologist::BACK_DOOR_OPEN))
+        for (int cy = y - 6; cy <= y + 6 && !blocked; cy++)
+            for (int cx = x - 1; cx <= x + 1; cx++)
+                if (cx >= 0 && cy >= 0 && cx < simulation.width && cy < simulation.height &&
+                    (sandbox.back[cy * simulation.width + cx] & ecologist::BACK_DOOR_OPEN) && player.overlaps(cx, cy))
+                    blocked = true;
+    return sandbox.toggle_door(simulation, x, y, !blocked);
+}
+// The interact key: the nearest door within two tiles of the player's middle opens or closes.
+bool EcologistWorld::use_door_near_player() {
+    if (!player.active)
+        return false;
+    const int px = int((player.x + ecologist::Player::WIDTH / 2) / 8), py = int((player.y + ecologist::Player::HEIGHT / 2) / 8);
+    int best = -1, best_d = 1 << 30;
+    for (int cy = py - 5; cy <= py + 5; cy++)
+        for (int cx = px - 5; cx <= px + 5; cx++) {
+            if (cx < 0 || cy < 0 || cx >= simulation.width || cy >= simulation.height)
+                continue;
+            const int k = cy * simulation.width + cx, d = (cx - px) * (cx - px) + (cy - py) * (cy - py);
+            if ((simulation.solid[k] == ecologist::B_DOOR || (sandbox.back[k] & ecologist::BACK_DOOR_OPEN)) && d < best_d) {
+                best = k;
+                best_d = d;
+            }
         }
+    return best >= 0 && toggle_door(best % simulation.width, best / simulation.width);
+}
+// Both return an empty string on success, otherwise the reason it failed.
+String EcologistWorld::save_world(const String &path) const {
+    std::string error;
+    return ecologist::save_world(path.utf8().get_data(), simulation, grains, sandbox, player, &error) ? String()
+                                                                                                    : String(error.c_str());
+}
+String EcologistWorld::load_world(const String &path) {
+    std::string error;
+    return ecologist::load_world(path.utf8().get_data(), simulation, grains, sandbox, player, &error) ? String()
+                                                                                                    : String(error.c_str());
+}
+// One byte per cell: background wall (bits 0-3: 1 wood, 2 brick), open door (0x20) and ladder (0x40).
+PackedByteArray EcologistWorld::back_data() const {
+    PackedByteArray result;
+    result.resize(sandbox.back.size());
+    if (!sandbox.back.empty())
+        std::memcpy(result.ptrw(), sandbox.back.data(), sandbox.back.size());
+    return result;
 }
 bool EcologistWorld::paint(int x, int y, int radius, int material) {
     radius = std::clamp(radius, 1, 16);
@@ -300,6 +392,7 @@ Dictionary EcologistWorld::inspect(int x, int y) const {
     d["salt"] = simulation.sol[k * ecologist::NSOL + ecologist::SOL_SALT] * simulation.liq[k] / 255.0;
     d["burning"] = !sandbox.fire.empty() && sandbox.fire[k] > 0;
     d["air"] = sandbox.air(simulation, k);
+    d["back"] = sandbox.back.empty() ? 0 : sandbox.back[k];
     if (!sandbox.air_ox.empty()) {
         d["oxygen"] = sandbox.air_ox[k] / 10;   // percent
         d["co2"] = sandbox.air_carb[k] / 100;   // percent

@@ -57,6 +57,7 @@ void Sandbox::reset(const World &w) {
     shake = 0;
     explosions = 0;
     budget.clear();
+    back.assign(n, 0);
     message = "Choose a material or build a machine.";
 }
 int Sandbox::neighbor(const World &w, int k, int d) const {

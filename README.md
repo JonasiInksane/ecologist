@@ -16,7 +16,29 @@ powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action run
 
 Setup downloads pinned Godot 4.7.2, LLVM-MinGW and godot-cpp into `.tools/`, verifies archive hashes,
 and installs local CMake/Ninja. It does not change system settings. The extension targets Godot's
-4.5 API. Windows x64 is the tested platform; other platforms need their own toolchain/build.
+4.5 API.
+
+## Native prototype (macOS)
+
+Install the Xcode command line tools (`xcode-select --install`) and Node.js, then run:
+
+```sh
+tools/native.sh setup
+tools/native.sh run
+```
+
+Afterwards, double-click **`run-ecologist.command`**. `tools/native.sh build` and `tools/native.sh test`
+match the Windows actions. Setup downloads the pinned Godot 4.7.2 macOS build and godot-cpp into `.tools/`.
+
+## Playing
+
+The game starts in **campaign** mode: your character in a wooden shack on a small plot. Walk with **A D**,
+jump with **Space**, climb ladders with **W S** and open doors with **E**. Left click builds the selected tile
+from the build bar (it costs credits), right click removes one for a partial refund. **F5** saves the whole
+world and the workshop, **F9** loads them, and **Tab** switches to the free sandbox. See
+[M0 foundations](docs/design/m0-foundations.md).
+
+In the sandbox:
 
 Paint with left drag; select a material with **1–8** or the toolbar. **Ignite** brings fuel under the brush
 past its ignition point; **Pressure on / off** and **Momentum on / off** switch those flow systems. **Space** pauses, **N** advances
@@ -96,7 +118,8 @@ See [the native fire, air and flow pass](docs/design/native-fire-air-flow.md).
 Full browser parity is **not yet complete**. Ecology-measured fuels, the remaining solute/ecological
 reactions, living plants/creatures, cloud-sourced weather, world generation, browser save import,
 floating bodies, magnets holding ferrofluid and complete lighting remain to be ported.
-Organic terrain is placeable but does not grow. The sandbox world still has no save/load.
+Organic terrain is placeable but does not grow. Campaign saves hold the whole native world; the sandbox
+world is not saved.
 Use the browser version for those complete systems. See [this pass's scope](docs/design/native-sandbox-port.md).
 
 ```powershell

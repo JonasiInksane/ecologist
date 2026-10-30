@@ -1,5 +1,6 @@
 #pragma once
 #include "../core/grains.hpp"
+#include "../core/save.hpp"
 #include "../core/sandbox.hpp"
 #include "../core/world.hpp"
 #include <godot_cpp/classes/ref_counted.hpp>
@@ -13,6 +14,7 @@ class EcologistWorld : public RefCounted {
     ecologist::World simulation;
     ecologist::Grains grains;
     ecologist::Sandbox sandbox;
+    ecologist::Player player;
 
   protected:
     static void _bind_methods();
@@ -20,6 +22,15 @@ class EcologistWorld : public RefCounted {
   public:
     bool setup(int width, int height, int seed);
     void reset_demo(int seed);
+    void setup_plot(int seed);
+    void player_input(bool left, bool right, bool jump, bool up, bool down);
+    Dictionary player_state() const;
+    int build(int x, int y, int code);
+    bool toggle_door(int x, int y);
+    bool use_door_near_player();
+    String save_world(const String &path) const;
+    String load_world(const String &path);
+    PackedByteArray back_data() const;
     void advance(int ticks);
     bool paint(int x, int y, int radius, int material);
     int paint_grains(int x, int y, int radius, int kind);

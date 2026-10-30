@@ -29,6 +29,20 @@ The first slice is not full-game parity. One million grid cells in a transport b
 one million moving particles with all systems and rendering enabled. The direction below is recorded;
 detailed mechanics, progression and balance still need their own designs.
 
+## Game plan: the manufacturing game (M0–M8)
+
+The game design plan ("Ecologist: game design plan", 2026-10-30) turns the sandbox into a side-view
+manufacturing game: a shack that grows into a multi-floor factory, real process chains on lab equipment,
+deliveries by truck, farming, police risk and hired staff. Decisions: side view, humour, a fictional city,
+no survival needs, staff, Steam on Windows and macOS, solo at about 2 hours a day.
+
+- [x] M0 Foundations: campaign plot with a shack, a walking/jumping/climbing/swimming player hurt by heat, falls
+  and bad air, background walls, ladders and doors, a costed build mode, whole-world saves and a macOS build.
+  See [M0 foundations](docs/design/m0-foundations.md).
+- [ ] M1 Shack slice: bench glassware, syrup, candy and salt, selling. (Gate G1 after M2.)
+- [ ] M2 Logistics: shop, trucks, couplings, tanks, beet sugar.
+- [ ] M3 Property · M4 Farming · M5 Police and risk (gate G2) · M6 Hazards · M7 Scale up · M8 Polish and launch (gate G3).
+
 ## Game direction: chemistry, manufacturing and trade
 
 User direction: after fine-grain materials, grow Ecologist into a chemistry game with more fluids,

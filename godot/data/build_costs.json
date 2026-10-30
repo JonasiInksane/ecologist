@@ -1,0 +1,16 @@
+{
+  "_comment": "Campaign build palette (M0). cost is credits per tile (2 x 2 cells; a door is 2 x 6). salvage is the share refunded when the tile is removed; natural terrain refunds nothing so digging is not a money source.",
+  "reach_tiles": 12,
+  "items": [
+    {"id": "wood", "name": "Wood planks", "short": "Wood", "code": -18, "cost": 2, "salvage": 0.5},
+    {"id": "brick", "name": "Brick", "short": "Brick", "code": -23, "cost": 4, "salvage": 0.5},
+    {"id": "stone", "name": "Stone block", "short": "Stone", "code": -2, "cost": 3, "salvage": 0},
+    {"id": "glass", "name": "Glass pane", "short": "Glass", "code": -22, "cost": 6, "salvage": 0.5},
+    {"id": "metal", "name": "Steel plate", "short": "Steel", "code": -24, "cost": 10, "salvage": 0.5},
+    {"id": "dirt", "name": "Dirt", "short": "Dirt", "code": -1, "cost": 1, "salvage": 0},
+    {"id": "back_wood", "name": "Wood back wall", "short": "Wood wall", "code": 1001, "cost": 1, "salvage": 0.5},
+    {"id": "back_brick", "name": "Brick back wall", "short": "Brick wall", "code": 1002, "cost": 2, "salvage": 0.5},
+    {"id": "ladder", "name": "Ladder", "short": "Ladder", "code": 1003, "cost": 3, "salvage": 0.5},
+    {"id": "door", "name": "Door", "short": "Door", "code": 1004, "cost": 25, "salvage": 0.5}
+  ]
+}

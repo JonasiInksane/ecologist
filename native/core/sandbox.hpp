@@ -25,6 +25,12 @@ struct Pump {
     FluidBuffer buffer;
 };
 // Air in each empty cell, in the browser's units: oxygen in tenths of a percent, CO2 in hundredths.
+// Building layer (M0): a door is a solid block while closed; the background layer holds walls behind rooms,
+// ladders and the cells of an open door, none of which block liquids.
+inline constexpr int B_DOOR = 80;
+inline constexpr std::uint8_t BACK_WALL = 0x0f, BACK_LADDER = 0x40, BACK_DOOR_OPEN = 0x20;
+inline constexpr int BUILD_REMOVE = 1000, BUILD_BACK_WOOD = 1001, BUILD_BACK_BRICK = 1002, BUILD_LADDER = 1003,
+                     BUILD_DOOR = 1004, BUILD_REMOVE_BACK = 1005;
 inline constexpr double AIR_OX = 210, AIR_CARB = 4, MAX_AIR_OX = 1000, MAX_AIR_CARB = 10000, CARB_PER_OX = 10,
                         FIRE_OX = 150;
 struct Sandbox {
@@ -49,6 +55,7 @@ struct Sandbox {
     double shake = 0;
     int explosions = 0;
     std::map<std::string, double> budget;
+    std::vector<std::uint8_t> back;
     std::string message;
     void reset(const World &w);
     bool paint(World &w, Grains &g, int x, int y, int radius, int material);
@@ -73,6 +80,8 @@ struct Sandbox {
     bool air(const World &w, int k) const;
     double breathe_air(World &w, int k, double oxygen);
     void stir(const World &w, int k);
+    int build(World &w, Grains &g, int x, int y, int code);
+    bool toggle_door(World &w, int x, int y, bool closing_allowed = true);
     void erase(World &w, int k);
     void freeze(World &w, int k, int block);
     void melt(World &w, int k, int type);

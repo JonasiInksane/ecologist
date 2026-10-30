@@ -4,6 +4,10 @@ const CELL := 8.0
 const WIDTH := 512
 const HEIGHT := 128
 const SEED := 7
+const WORLD_SAVE := "user://world-v1.ecosave"
+const PLAYER_ART := "res://art/player.png"
+const DOOR_CODE := 1004
+const REMOVE_CODE := 1000
 var TOOLS: Array = [
     ["Water", 1, Color("5daee7")], ["Oil", 9, Color("b6a16b")],
     ["Honey", 3, Color("edb151")], ["Steam", 8, Color("c3d5da")],
@@ -17,13 +21,33 @@ var TOOLS: Array = [
     ["Ignite", 203, Color("ff9a3c")]
 ]
 
-var world := EcologistWorld.new()
+# The campaign plot (player, building with costs) and the free sandbox are separate worlds; Tab swaps them.
+var campaign_world := EcologistWorld.new()
+var sandbox_world := EcologistWorld.new()
+var world: EcologistWorld
+var campaign := true
+var build_items: Array = []
+var build_reach := 12
+var build_selected := 0
+var build_buttons: Array[Button] = []
+var build_bar: HBoxContainer
+var palette: HBoxContainer
+var mode_button: Button
+var sandbox_only: Array[Button] = []
+var hud_label: Label
+var player_texture: Texture2D
+var player: Dictionary = {}
+var walk_clock := 0.0
+var removing := false
+var last_build := Vector2i(-1, -1)
+var notice_until := 0.0
 var camera := Camera2D.new()
 var surface := Sprite2D.new()
 var texture: ImageTexture
 var grain_texture: ImageTexture
 var solution_texture: ImageTexture
 var fire_texture: ImageTexture
+var back_texture: ImageTexture
 var liquid_material := ShaderMaterial.new()
 var animation_time := 0.0
 var paused := false
@@ -54,8 +78,12 @@ var momentum := true
 var pending_wire := -1
 
 func _ready() -> void:
-    world.reset_demo(SEED)
+    campaign_world.setup_plot(SEED)
+    sandbox_world.reset_demo(SEED)
+    world = campaign_world
     _load_catalog()
+    _load_build_items()
+    player_texture = _load_texture(PLAYER_ART)
     surface.centered = false
     surface.show_behind_parent = true
     # The texture holds two metadata planes; the shader expands each world cell to 8x8 pixels.
@@ -68,7 +96,20 @@ func _ready() -> void:
     add_child(camera)
     _build_ui()
     _select(9)
+    _set_mode(true)
     _refresh_texture()
+
+func _load_build_items() -> void:
+    var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/build_costs.json"))
+    build_items = data.items
+    build_reach = int(data.reach_tiles)
+
+# Imported when the editor has seen the file; read straight from disk otherwise (headless test runs).
+func _load_texture(path: String) -> Texture2D:
+    if ResourceLoader.exists(path):
+        return load(path)
+    var image := Image.load_from_file(ProjectSettings.globalize_path(path))
+    return ImageTexture.create_from_image(image) if image != null else null
 
 func _load_catalog() -> void:
     for tool in TOOLS:
@@ -152,18 +193,38 @@ func _build_ui() -> void:
     var subtitle := _label("MATERIALS & MACHINES", 12, Color("8cb8aa"))
     subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     heading.add_child(subtitle)
+    mode_button = _button("Sandbox  ·  Tab", func(): _set_mode(not campaign))
+    heading.add_child(mode_button)
     heading.add_child(_button("Day / night", _toggle_day))
-    heading.add_child(_button("Wind on / off", _toggle_wind))
-    heading.add_child(_button("Pressure on / off", _toggle_pressure))
-    heading.add_child(_button("Momentum on / off", _toggle_momentum))
+    sandbox_only.append(_button("Wind on / off", _toggle_wind))
+    sandbox_only.append(_button("Pressure on / off", _toggle_pressure))
+    sandbox_only.append(_button("Momentum on / off", _toggle_momentum))
+    for button in sandbox_only:
+        heading.add_child(button)
     heading.add_child(_button("Workshop", _toggle_workshop))
     pause_button = _button("Pause  ·  Space", _toggle_pause)
     heading.add_child(pause_button)
-    heading.add_child(_button("Step  ·  N", _single_step))
-    heading.add_child(_button("Reset sandbox  ·  R", _reset))
-    var palette := HBoxContainer.new()
+    sandbox_only.append(_button("Step  ·  N", _single_step))
+    sandbox_only.append(_button("Reset sandbox  ·  R", _reset))
+    heading.add_child(sandbox_only[3])
+    heading.add_child(sandbox_only[4])
+    palette = HBoxContainer.new()
     palette.add_theme_constant_override("separation", 6)
     column.add_child(palette)
+    build_bar = HBoxContainer.new()
+    build_bar.add_theme_constant_override("separation", 6)
+    column.add_child(build_bar)
+    for i in build_items.size():
+        var item: Dictionary = build_items[i]
+        var build_button := _button("%s %d" % [item.short, int(item.cost)], _select_build.bind(i))
+        build_button.tooltip_text = "%s · key %d · %d credits per tile" % [item.name, (i + 1) % 10, int(item.cost)]
+        build_buttons.append(build_button)
+        build_bar.add_child(build_button)
+    var build_spacer := Control.new()
+    build_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    build_bar.add_child(build_spacer)
+    build_bar.add_child(_button("Save · F5", _save_world))
+    build_bar.add_child(_button("Load · F9", _load_world))
     material_picker.custom_minimum_size.x = 220
     for category in ["All", "Liquids", "Terrain", "Powders", "Machines", "Tools"]:
         category_picker.add_item(category)
@@ -198,6 +259,8 @@ func _build_ui() -> void:
     info_label = _label("Paint: left drag   ·   Pan: middle drag / Shift + drag   ·   Zoom: wheel   ·   Brush: [ ]", 13)
     info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     foot_row.add_child(info_label)
+    hud_label = _label("", 14, Color("e1f2e5"))
+    foot_row.add_child(hud_label)
     status_label = _label("")
     foot_row.add_child(status_label)
     inspector_label = _label("Fine grains · Pour sugar into water. Heat or cool it to explore concentration.", 12, Color("91b7b2"))
@@ -230,6 +293,143 @@ func _select(index: int) -> void:
     for i in tool_buttons.size():
         tool_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == selected else Color("1d3036"), Color("91bdae") if i == selected else Color.TRANSPARENT))
 
+func _select_build(index: int) -> void:
+    build_selected = clampi(index, 0, build_items.size() - 1)
+    for i in build_buttons.size():
+        build_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == build_selected else Color("1d3036"), Color("91bdae") if i == build_selected else Color.TRANSPARENT))
+
+func _set_mode(on: bool) -> void:
+    if world != null:
+        world.player_input(false, false, false, false, false)
+    campaign = on
+    world = campaign_world if on else sandbox_world
+    world.environment(1.0 if day else 0.0, 0.4 if breezy else 0.0)
+    world.flow(pressure, momentum)
+    palette.visible = not on
+    build_bar.visible = on
+    mode_button.text = "Sandbox  ·  Tab" if on else "Campaign  ·  Tab"
+    hud_label.visible = on
+    for button in sandbox_only:
+        button.visible = not on
+    _label_pause()
+    drawing = false
+    panning = false
+    camera.zoom = Vector2.ONE * (2.0 if on else 1.0)
+    player = world.player_state()
+    if on and player.get("active", false):
+        camera.position = Vector2(player.x, player.y)
+    elif not on:
+        camera.position = Vector2(104, 74) * CELL
+    _clamp_camera()
+    _select_build(build_selected)
+    info_label.text = "Move: A D · Jump: Space · Climb: W S · Door: E · Build: left click · Remove: right click · Pause: P" if on else "Paint: left drag   ·   Pan: middle drag / Shift + drag   ·   Zoom: wheel   ·   Brush: [ ]"
+    dirty = true
+
+# A message that the hover inspector leaves on screen for a moment.
+func _notice(text: String) -> void:
+    inspector_label.text = text
+    notice_until = animation_time + 2.5
+
+func _tile_at(cell: Vector2i) -> Vector2i:
+    return Vector2i(cell.x & ~1, cell.y & ~1)
+
+func _in_reach(tile: Vector2i) -> bool:
+    if not player.get("active", false):
+        return false
+    var center := Vector2(player.x + player.width / 2.0, player.y + player.height / 2.0)
+    return center.distance_to(Vector2(tile) * CELL + Vector2.ONE * CELL) <= build_reach * 2 * CELL
+
+func _item_for(code: int) -> Dictionary:
+    for item in build_items:
+        if int(item.code) == code:
+            return item
+    return {}
+
+# Credits returned for removing a tile, worked out cell by cell in the order the native remove follows.
+func _salvage(tile: Vector2i) -> float:
+    var cells: Array[Dictionary] = []
+    var any_solid := false
+    var any_ladder := false
+    for y in range(tile.y, tile.y + 2):
+        for x in range(tile.x, tile.x + 2):
+            var cell: Dictionary = world.inspect(x, y)
+            if cell.is_empty():
+                continue
+            cells.append(cell)
+            any_solid = any_solid or int(cell.solid) != 0
+            any_ladder = any_ladder or (int(cell.back) & 0x40) != 0
+    var value := 0.0
+    for cell in cells:
+        var item: Dictionary = {}
+        var share := 0.25
+        if any_solid:
+            if int(cell.solid) == 80:
+                item = _item_for(DOOR_CODE)
+                share = 1.0 / 12.0
+            elif int(cell.solid) != 0:
+                item = _item_for(-int(cell.solid))
+        elif any_ladder:
+            if int(cell.back) & 0x40:
+                item = _item_for(1003)
+        elif int(cell.back) & 0x0f:
+            item = _item_for(1000 + (int(cell.back) & 0x0f))
+        if not item.is_empty():
+            value += float(item.cost) * float(item.salvage) * share
+    return value
+
+func _campaign_build(cell: Vector2i) -> void:
+    var tile := _tile_at(cell)
+    if tile == last_build:
+        return
+    last_build = tile
+    if not _in_reach(tile):
+        _notice("Too far away to build there.")
+        return
+    var model: WorkshopModel = workshop.model
+    if removing:
+        var refund := _salvage(tile)
+        if world.build(tile.x, tile.y, REMOVE_CODE) > 0:
+            model.cash += refund
+            _notice("Removed · %.2f credits back" % refund if refund > 0 else "Removed")
+            dirty = true
+        return
+    var item: Dictionary = build_items[build_selected]
+    var cost: float = item.cost
+    if model.cash + 0.000001 < cost:
+        _notice("Not enough credits for %s (%.2f)." % [item.name, cost])
+        return
+    var changed: int = world.build(tile.x, tile.y, int(item.code))
+    if changed > 0:
+        var spent := cost * minf(1.0, changed / (12.0 if int(item.code) == DOOR_CODE else 4.0))
+        model.cash = maxf(0.0, model.cash - spent)
+        _notice("Built %s · %.2f credits" % [item.name, spent])
+        dirty = true
+    elif int(item.code) < 0 or int(item.code) == DOOR_CODE:
+        _notice("Something is in the way.")
+
+func _save_world() -> void:
+    var path := ProjectSettings.globalize_path(WORLD_SAVE)
+    var error: String = campaign_world.save_world(path + ".tmp")
+    if error.is_empty():
+        if FileAccess.file_exists(WORLD_SAVE):
+            DirAccess.remove_absolute(path)
+        if DirAccess.rename_absolute(path + ".tmp", path) != OK:
+            error = "could not replace the old save"
+    workshop._save()
+    _notice("Game saved." if error.is_empty() else "Could not save the world: " + error)
+
+func _load_world() -> void:
+    if not FileAccess.file_exists(WORLD_SAVE):
+        _notice("No saved game yet.")
+        return
+    var error: String = campaign_world.load_world(ProjectSettings.globalize_path(WORLD_SAVE))
+    if not error.is_empty():
+        _notice("Could not load the world: " + error)
+        return
+    workshop._load_save()
+    _set_mode(true)
+    _notice("Game loaded.")
+
 func _resize_brush(change: int) -> void:
     radius = clampi(radius + change, 1, 16)
     radius_label.text = "Brush %d" % radius
@@ -237,7 +437,10 @@ func _resize_brush(change: int) -> void:
 
 func _toggle_pause() -> void:
     paused = not paused
-    pause_button.text = "Resume  ·  Space" if paused else "Pause  ·  Space"
+    _label_pause()
+
+func _label_pause() -> void:
+    pause_button.text = ("Resume  ·  " if paused else "Pause  ·  ") + ("P" if campaign else "Space")
     status_clock = 0.25
 
 func _single_step() -> void:
@@ -248,8 +451,10 @@ func _single_step() -> void:
     dirty = true
 
 func _reset() -> void:
-    world.reset_demo(SEED)
+    sandbox_world.reset_demo(SEED)
     dirty = true
+    if campaign:
+        inspector_label.text = "The sandbox world was reset. Your plot is unchanged."
 
 func _toggle_workshop() -> void:
     workshop.visible = not workshop.visible
@@ -284,7 +489,7 @@ func _pointer_over_ui() -> bool:
 func _input(event: InputEvent) -> void:
     # Always release a drag, including when the pointer ends over a button.
     if event is InputEventMouseButton and not event.pressed:
-        if event.button_index == MOUSE_BUTTON_LEFT:
+        if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
             drawing = false
             if not Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
                 panning = false
@@ -294,6 +499,24 @@ func _input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventKey and event.pressed and not event.echo:
         match event.keycode:
+            KEY_TAB:
+                _set_mode(not campaign)
+                return
+            KEY_F5:
+                _save_world()
+                return
+            KEY_F9:
+                _load_world()
+                return
+    if campaign and event is InputEventKey and event.pressed and not event.echo:
+        if event.keycode == KEY_P:
+            _toggle_pause()
+        elif event.physical_keycode == KEY_E and world.use_door_near_player():
+            dirty = true
+        elif event.keycode >= KEY_0 and event.keycode <= KEY_9:
+            _select_build((event.keycode - KEY_1 + 10) % 10)
+    elif event is InputEventKey and event.pressed and not event.echo:
+        match event.keycode:
             KEY_SPACE: _toggle_pause()
             KEY_N: _single_step()
             KEY_R: _reset()
@@ -301,7 +524,17 @@ func _unhandled_input(event: InputEvent) -> void:
             KEY_BRACKETRIGHT: _resize_brush(1)
         if event.keycode >= KEY_1 and event.keycode <= KEY_8:
             _select(event.keycode - KEY_1)
-    if event is InputEventMouseButton and event.pressed and not _pointer_over_ui():
+    if campaign and event is InputEventMouseButton and event.pressed and not _pointer_over_ui():
+        match event.button_index:
+            MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT:
+                drawing = true
+                removing = event.button_index == MOUSE_BUTTON_RIGHT
+                last_build = Vector2i(-1, -1)
+            MOUSE_BUTTON_MIDDLE:
+                panning = true
+            MOUSE_BUTTON_WHEEL_UP: _zoom(1.15)
+            MOUSE_BUTTON_WHEEL_DOWN: _zoom(1.0 / 1.15)
+    elif event is InputEventMouseButton and event.pressed and not _pointer_over_ui():
         match event.button_index:
             MOUSE_BUTTON_LEFT:
                 panning = event.shift_pressed
@@ -340,7 +573,16 @@ func _clamp_camera() -> void:
     queue_redraw()
 
 func _physics_process(_delta: float) -> void:
-    if drawing and not _pointer_over_ui():
+    if campaign:
+        world.player_input(
+            Input.is_physical_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT),
+            Input.is_physical_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT),
+            Input.is_physical_key_pressed(KEY_SPACE),
+            Input.is_physical_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP),
+            Input.is_physical_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
+        if drawing and not _pointer_over_ui():
+            _campaign_build(Vector2i((get_global_mouse_position() / CELL).floor()))
+    elif drawing and not _pointer_over_ui():
         var cell := Vector2i((get_global_mouse_position() / CELL).floor())
         var material: int = TOOLS[selected][1]
         if material >= 101 and material <= 107:
@@ -361,6 +603,15 @@ func _physics_process(_delta: float) -> void:
 
 func _process(delta: float) -> void:
     animation_time += delta
+    if campaign:
+        player = world.player_state()
+        if player.get("active", false):
+            walk_clock += delta
+            var target := Vector2(player.x + player.width / 2.0, player.y + player.height / 2.0)
+            camera.position = camera.position.lerp(target, 1.0 - exp(-delta * 8.0))
+            _clamp_camera()
+            if player.event == "respawn":
+                _notice("You blacked out and woke up back at home.")
     liquid_material.set_shader_parameter("animation_time", animation_time)
     liquid_material.set_shader_parameter("view_origin", (camera.get_screen_center_position() - get_viewport_rect().size / camera.zoom / 2).floor())
     if dirty:
@@ -372,15 +623,19 @@ func _process(delta: float) -> void:
         status_clock = 0.0
         var stats := world.stats()
         status_label.text = "%s · %d fps · %d grains" % ["Paused" if paused else "Running", Engine.get_frames_per_second(), stats.grains]
+        if campaign and player.get("active", false):
+            var item: Dictionary = build_items[build_selected]
+            hud_label.text = "%.2f credits   ·   Health %d   ·   Breath %d   ·   %s   " % [workshop.model.cash, ceili(player.health), ceili(player.breath), "Removing" if removing and drawing else item.name]
         var cell := Vector2i((get_global_mouse_position() / CELL).floor())
         var sample: Dictionary = world.inspect(cell.x, cell.y)
-        if not sample.is_empty() and not _pointer_over_ui():
+        var label: String = build_items[build_selected].name if campaign else TOOLS[selected][0]
+        if not sample.is_empty() and not _pointer_over_ui() and animation_time >= notice_until:
             if sample.has("machine"):
-                inspector_label.text = "%s · %.1f °C · %s · setting %s · liquid #%s · %s" % [TOOLS[selected][0], sample.temperature, "active" if sample.active or sample.on or sample.open else "idle", sample.level if sample.machine != 14 else sample.period, sample.liquid, stats.message]
+                inspector_label.text = "%s · %.1f °C · %s · setting %s · liquid #%s · %s" % [label, sample.temperature, "active" if sample.active or sample.on or sample.open else "idle", sample.level if sample.machine != 14 else sample.period, sample.liquid, stats.message]
             elif sample.air:
-                inspector_label.text = "%s · air %.1f °C · oxygen %.1f%% · CO₂ %.2f%% · %d burning · %s" % [TOOLS[selected][0], sample.temperature, sample.oxygen, sample.co2, stats.burning, stats.message]
+                inspector_label.text = "%s · air %.1f °C · oxygen %.1f%% · CO₂ %.2f%% · %d burning · %s" % [label, sample.temperature, sample.oxygen, sample.co2, stats.burning, stats.message]
             else:
-                inspector_label.text = "%s · %.1f °C%s · sugar %.2f · salt %.2f · stored water %.1f · %s" % [TOOLS[selected][0], sample.temperature, " · burning" if sample.burning else "", sample.sugar, sample.salt, sample.stored_water, stats.message]
+                inspector_label.text = "%s · %.1f °C%s · sugar %.2f · salt %.2f · stored water %.1f · %s" % [label, sample.temperature, " · burning" if sample.burning else "", sample.sugar, sample.salt, sample.stored_water, stats.message]
 
 func _refresh_texture() -> void:
     var pixels: PackedByteArray = world.render_data()
@@ -405,6 +660,13 @@ func _refresh_texture() -> void:
         liquid_material.set_shader_parameter("has_fire", true)
     else:
         fire_texture.update(fire_image)
+    var back_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, world.back_data())
+    if back_texture == null:
+        back_texture = ImageTexture.create_from_image(back_image)
+        liquid_material.set_shader_parameter("back_data", back_texture)
+        liquid_material.set_shader_parameter("has_back", true)
+    else:
+        back_texture.update(back_image)
     var grains: PackedByteArray = world.grain_pixels()
     liquid_material.set_shader_parameter("has_grains", not grains.is_empty())
     if not grains.is_empty():
@@ -472,7 +734,40 @@ func _draw() -> void:
     if pending_wire >= 0:
         var start := Vector2(pending_wire % WIDTH, pending_wire / WIDTH) * CELL + Vector2(4, 4)
         draw_line(start, get_global_mouse_position(), Color("f2c94c"), 1.0 / camera.zoom.x)
-    if not _pointer_over_ui():
+    if campaign:
+        _draw_campaign()
+    elif not _pointer_over_ui():
         var center := (get_global_mouse_position() / CELL).floor() * CELL + Vector2.ONE * CELL / 2
         var fine: bool = TOOLS[selected][1] >= 101 and TOOLS[selected][1] <= 107
         draw_arc(get_global_mouse_position() if fine else center, radius * (4.0 if fine else CELL), 0, TAU, 48, Color(0.85, 0.96, 0.91, 0.65), 1.0 / camera.zoom.x)
+
+# Sprite sheet frames: 0 idle, 1-4 walk, 5 jump, 6-7 climb. The 32 x 48 frame puts the 20 x 42 hitbox at (6, 6).
+func _player_frame() -> int:
+    if player.climbing:
+        return 6 + (int(walk_clock * 6.0) % 2 if absf(player.vy) > 0.1 else 0)
+    if not player.on_ground and not player.swimming:
+        return 5
+    if absf(player.vx) > 0.3:
+        return 1 + int(walk_clock * 10.0) % 4
+    return 0
+
+func _draw_campaign() -> void:
+    if not _pointer_over_ui() and not build_items.is_empty():
+        var tile := _tile_at(Vector2i((get_global_mouse_position() / CELL).floor()))
+        var item: Dictionary = build_items[build_selected]
+        var rect := Rect2(Vector2(tile) * CELL, Vector2(2, 2) * CELL)
+        if int(item.code) == DOOR_CODE and not removing:
+            rect = Rect2(Vector2(tile.x, tile.y - 4) * CELL, Vector2(2, 6) * CELL)
+        var ok: bool = _in_reach(tile) and (removing or workshop.model.cash + 0.000001 >= float(item.cost))
+        var tint := Color(0.55, 0.95, 0.65) if ok else Color(1.0, 0.45, 0.4)
+        draw_rect(rect, Color(tint, 0.18))
+        draw_rect(rect, Color(tint, 0.8), false, 1.0 / camera.zoom.x)
+    if player.get("active", false) and player_texture != null:
+        var source := Rect2(_player_frame() * 32, 0, 32, 48)
+        var origin := Vector2(player.x - 6, player.y - 6).round()
+        if player.facing < 0:
+            draw_set_transform(origin + Vector2(32, 0), 0.0, Vector2(-1, 1))
+        else:
+            draw_set_transform(origin, 0.0, Vector2.ONE)
+        draw_texture_rect_region(player_texture, Rect2(0, 0, 32, 48), source, Color(1, 1, 1, 0.85) if player.swimming else Color.WHITE)
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

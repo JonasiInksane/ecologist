@@ -1,6 +1,8 @@
-#include "sandbox.hpp"
+#include "save.hpp"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <fstream>
 #include <iostream>
 using namespace ecologist;
 int checks = 0, failures = 0;
@@ -704,6 +706,186 @@ int main() {
             after += f.s.air_carb[n];
         check(f.w.liq[c] < 200 && near(after - carbon, (200 - f.w.liq[c]) * 10000.0 / 255, 1e-6),
               "loose CO2 gas joins the air without loss");
+    }
+
+    {
+        // Building in 2 x 2 tiles: only into empty cells, removal gives back soaked water.
+        Fixture f;
+        check(f.s.build(f.w, f.g, 5, 5, -B_STONE) == 4 && f.w.solid[f.cell(4, 4)] == B_STONE &&
+                  f.w.solid[f.cell(5, 5)] == B_STONE,
+              "a stone tile fills its 2 x 2 cells");
+        f.fill(f.cell(8, 4), WATER, 200);
+        const double v = f.volume();
+        check(f.s.build(f.w, f.g, 8, 4, -B_BRICK) == 0 && f.w.liq[f.cell(8, 4)] == 200,
+              "building is refused where liquid stands");
+        check(f.s.build(f.w, f.g, 12, 12, -B_PUMP_IN) == 0, "only plain blocks can be built");
+        check(f.s.build(f.w, f.g, 4, 4, BUILD_REMOVE) == 4 && !f.w.solid[f.cell(5, 5)], "removing clears the tile");
+        check(f.s.build(f.w, f.g, 4, 4, BUILD_BACK_WOOD) == 4 && (f.s.back[f.cell(4, 4)] & BACK_WALL) == 1,
+              "background wall goes behind empty cells");
+        check(f.s.build(f.w, f.g, 4, 4, BUILD_LADDER) == 4 && (f.s.back[f.cell(5, 5)] & BACK_LADDER),
+              "ladder is placed on the background layer");
+        check(f.s.build(f.w, f.g, 4, 4, BUILD_REMOVE) == 4 && !(f.s.back[f.cell(5, 5)] & BACK_LADDER) &&
+                  (f.s.back[f.cell(5, 5)] & BACK_WALL),
+              "remove takes the ladder before the wall");
+        check(f.s.build(f.w, f.g, 4, 4, BUILD_REMOVE) == 4 && !f.s.back[f.cell(5, 5)], "then the wall");
+        check(near(f.volume(), v), "building never changes liquid volume");
+    }
+    {
+        // A door is a solid while closed and lets liquid through while open.
+        Fixture f;
+        stone_box(f, 2, 20, 28, 30);
+        check(f.s.build(f.w, f.g, 14, 28, BUILD_DOOR) == 12 && f.w.solid[f.cell(14, 24)] == B_DOOR &&
+                  f.w.solid[f.cell(15, 29)] == B_DOOR,
+              "a door stands three tiles tall on the clicked tile");
+        for (int y = 26; y < 30; y++)
+            for (int x = 3; x < 14; x++)
+                f.fill(f.cell(x, y), WATER, 255);
+        const double v = f.volume();
+        for (int i = 0; i < 60; i++)
+            f.w.step();
+        check(!f.w.liq[f.cell(20, 29)], "a closed door holds water back");
+        check(f.s.toggle_door(f.w, 14, 25) && !f.w.solid[f.cell(14, 25)] && (f.s.back[f.cell(15, 28)] & BACK_DOOR_OPEN),
+              "opening a door clears every door cell");
+        for (int i = 0; i < 200; i++)
+            f.w.step();
+        check(f.w.liq[f.cell(20, 29)] > 0 && near(f.volume(), v), "water flows through an open door without loss");
+        check(!f.s.toggle_door(f.w, 14, 29), "a door cannot close on standing water");
+        for (int y = 24; y < 30; y++)
+            for (int x = 14; x < 16; x++)
+                f.w.liq[f.cell(x, y)] = 0;
+        check(f.s.toggle_door(f.w, 14, 29) && f.w.solid[f.cell(15, 24)] == B_DOOR, "a dry doorway closes");
+        check(f.s.build(f.w, f.g, 14, 26, BUILD_REMOVE) == 4 && f.w.solid[f.cell(14, 24)] == B_DOOR,
+              "doors are removed a tile at a time");
+    }
+    {
+        // The player walks, is stopped by walls and doors, steps up ledges, climbs and keeps the room's air.
+        World w;
+        Grains g;
+        Sandbox s;
+        Player p;
+        start_plot(w, g, s, p, 3);
+        const double spawn_y = p.y;
+        for (int i = 0; i < 30; i++)
+            step_game(w, g, s, &p);
+        check(p.on_ground && near(p.y, spawn_y), "the player stands on the shack floor");
+        p.input.right = true;
+        for (int i = 0; i < 240; i++)
+            step_game(w, g, s, &p);
+        check(p.x + Player::WIDTH <= 270 * 8 && p.x + Player::WIDTH > 268 * 8, "the closed door stops the player");
+        check(s.toggle_door(w, 270, 96), "the shack door opens");
+        for (int i = 0; i < 120; i++)
+            step_game(w, g, s, &p);
+        check(p.x > 280 * 8 && p.on_ground, "the player walks out through the open door");
+        const int ledge = (int(p.x / 8) + 6) & ~1;
+        check(s.build(w, g, ledge, 98, -B_STONE) == 4, "a one-tile ledge is built in the way");
+        const double ground = p.y;
+        double highest = p.y;
+        for (int i = 0; i < 60; i++) {
+            step_game(w, g, s, &p);
+            highest = std::min(highest, p.y);
+        }
+        check(highest <= ground - 15 && p.x > (ledge + 2) * 8, "walking steps up a one-tile ledge");
+        p.input = {};
+        for (int i = 0; i < 60; i++)
+            step_game(w, g, s, &p);
+        const double standing = p.y;
+        p.input.jump = true;
+        step_game(w, g, s, &p);
+        p.input.jump = false;
+        for (int i = 0; i < 6; i++)
+            step_game(w, g, s, &p);
+        check(p.y < standing - 20, "jumping lifts the player");
+        for (int i = 0; i < 90; i++)
+            step_game(w, g, s, &p);
+        check(p.on_ground && near(p.y, standing) && p.health == 100, "a jump lands without harm");
+        const int lx = int(p.x / 8) & ~1;
+        for (int y = 70; y < 100; y += 2)
+            s.build(w, g, lx, y, BUILD_LADDER);
+        s.build(w, g, lx + 2, 70, BUILD_LADDER);
+        p.input.up = true;
+        for (int i = 0; i < 60; i++)
+            step_game(w, g, s, &p);
+        check(p.climbing && p.y < standing - 60, "the player climbs a ladder");
+        p.input = {};
+        const double hold = p.y;
+        for (int i = 0; i < 30; i++)
+            step_game(w, g, s, &p);
+        check(near(p.y, hold), "a ladder holds the player in place");
+        p.input.jump = true;
+        step_game(w, g, s, &p);
+        p.input = {};
+        for (int i = 0; i < 200; i++)
+            step_game(w, g, s, &p);
+        check(p.on_ground && p.health < 100 && p.health > 0, "a long fall hurts without killing");
+    }
+    {
+        // Sealed in a small room the player uses up the oxygen and is eventually overcome, then respawns.
+        Fixture f;
+        Player p;
+        stone_box(f, 2, 2, 12, 12);
+        p.active = true;
+        p.place(4 * 8, 12 * 8 - Player::HEIGHT);
+        p.spawn_x = 20 * 8, p.spawn_y = 30 * 8 - Player::HEIGHT;
+        auto room = [&](const std::vector<double> &a) {
+            double n = 0;
+            for (int y = 3; y < 12; y++)
+                for (int x = 3; x < 12; x++)
+                    n += a[f.cell(x, y)];
+            return n;
+        };
+        for (int y = 3; y < 12; y++)
+            for (int x = 3; x < 12; x++)
+                f.s.air_ox[f.cell(x, y)] = 121;
+        const double oxygen = room(f.s.air_ox), carbon = room(f.s.air_carb);
+        for (int i = 0; i < 120; i++)
+            step_game(f.w, f.g, f.s, &p);
+        check(room(f.s.air_ox) < oxygen && near(room(f.s.air_carb) - carbon, (oxygen - room(f.s.air_ox)) * 10, 1e-6),
+              "breathing turns the room's oxygen into CO2");
+        check(p.breath == 100, "air above the choking level is fine");
+        bool choked = false;
+        for (int i = 0; i < 60 * 600 && !choked; i++) {
+            step_game(f.w, f.g, f.s, &p);
+            choked = p.deaths > 0;
+        }
+        check(choked && p.x == p.spawn_x, "running out of air respawns the player");
+    }
+    {
+        // A save holds the whole simulation: a loaded world steps on exactly like the original.
+        World w;
+        Grains g;
+        Sandbox s;
+        Player p;
+        start_plot(w, g, s, p, 9);
+        s.paint(w, g, 200, 80, 4, WATER);
+        s.paint(w, g, 210, 96, 2, -B_WOOD);
+        s.ignite(w, 210, 96, 2);
+        g.paint(w, 100 * 8, 70 * 8, 6, SAND);
+        p.input.left = true;
+        for (int i = 0; i < 40; i++)
+            step_game(w, g, s, &p);
+        const std::string path = "sandbox-test-world.ecosave";
+        std::string error;
+        check(save_world(path, w, g, s, p, &error), "the world saves");
+        World w2;
+        Grains g2;
+        Sandbox s2;
+        Player p2;
+        check(load_world(path, w2, g2, s2, p2, &error), "the world loads");
+        p2.input = p.input;
+        for (int i = 0; i < 120; i++) {
+            step_game(w, g, s, &p);
+            step_game(w2, g2, s2, &p2);
+        }
+        check(w.liq == w2.liq && w.typ == w2.typ && w.solid == w2.solid && w.temp == w2.temp && w.sol == w2.sol &&
+                  s.air_ox == s2.air_ox && s.fire == s2.fire && g.image == g2.image && p.x == p2.x && p.y == p2.y,
+              "a loaded world steps on identically");
+        {
+            std::ofstream bad(path, std::ios::binary | std::ios::trunc);
+            bad << "ECOSAVE1 not really";
+        }
+        World w3 = w2;
+        check(!load_world(path, w3, g2, s2, p2, &error) && w3.solid == w2.solid, "a damaged save is refused");
+        std::remove(path.c_str());
     }
     std::cout << "Native sandbox: " << checks << " checks, " << failures << " failures\n";
     return failures ? 1 : 0;

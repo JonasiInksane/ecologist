@@ -24,7 +24,7 @@ constexpr double INF = std::numeric_limits<double>::infinity();
 
 double ignite_at(int b) {
     switch (b) {
-    case B_WOOD: return 260;
+    case B_WOOD: case B_DOOR: return 260;
     case B_COMB: case B_CRISP: return 200;
     case B_PLANT: return 250;
     case B_WOOL: return 570;
@@ -37,7 +37,7 @@ double ignite_at(int b) {
 // The browser leaves BURN_TIME[LEAF] inside a comment, so its leaves catch but never burn; here they burn briefly.
 int burn_time(int b) {
     switch (b) {
-    case B_WOOD: return 240;
+    case B_WOOD: case B_DOOR: return 240;
     case B_COMB: return 140;
     case B_CRISP: return 180;
     case B_PLANT: return 60;
@@ -55,7 +55,7 @@ bool breaks(int b) {
     case B_MOSS: case B_SALT: case B_SAND: case B_GLASS: case B_BRICK: case B_SODA: case B_GEM: case B_SPONGE:
     case B_WETSPONGE: case B_WETDIRT: case B_POROUS: case B_WOOL: case B_CORAL: case B_BLEACHED: case B_FUSE:
     case B_ORE: case B_SLAG: case B_SUGAR: case B_RUST: case B_LIMESTONE: case B_QUICKLIME: case B_LIME:
-    case B_CHARCOAL: case B_ASH: case B_PLANT: case B_LEAF: case B_FLOWER:
+    case B_CHARCOAL: case B_ASH: case B_PLANT: case B_LEAF: case B_FLOWER: case B_DOOR:
         return true;
     default: return false;
     }

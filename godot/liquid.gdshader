@@ -10,6 +10,9 @@ uniform bool has_solutions = false;
 uniform bool has_grains = false;
 uniform sampler2D fire_data : filter_nearest, repeat_disable;
 uniform bool has_fire = false;
+// Building layer (native back_data()): bits 0-3 background wall (1 wood, 2 brick), 0x20 open door, 0x40 ladder.
+uniform sampler2D back_data : filter_nearest, repeat_disable;
+uniform bool has_back = false;
 uniform ivec2 world_size = ivec2(512, 128);
 uniform float animation_time = 0.0;
 uniform uint world_seed = 7u;
@@ -69,6 +72,53 @@ vec3 backdrop(ivec2 pixel, ivec4 cell) {
     }
     return color;
 }
+int back_at(ivec2 tile) {
+    if (!has_back || !in_world(tile)) { return 0; }
+    return int(round(texelFetch(back_data, tile, 0).r * 255.0));
+}
+// Walls behind rooms are darker than the blocks in front so a room reads as an interior.
+vec3 back_wall_pixel(ivec2 pixel, int wall) {
+    if (wall == 2) {
+        int row = pixel.y / 4, shifted = pixel.x + (row % 2) * 4;
+        bool mortar = pixel.y % 4 == 3 || shifted % 8 == 7;
+        float r = world_hash(ivec2(shifted / 8, row + 9100));
+        vec3 brick = BLOCK_COLORS[23*6 + (r < 0.45 ? 0 : r < 0.8 ? 1 : 3)];
+        return floor((mortar ? vec3(0.16, 0.14, 0.13) : brick * 0.5) * 255.0) / 255.0;
+    }
+    int board = pixel.y / 4;
+    float r = world_hash(ivec2((pixel.x + board * 13) >> 3, board + 9200));
+    vec3 wood = BLOCK_COLORS[18*6 + (r < 0.4 ? 0 : r < 0.75 ? 1 : 2)];
+    bool seam = pixel.y % 4 == 3 || (pixel.x + board * 11) % 24 == 0;
+    return floor((seam ? wood * 0.34 : wood * 0.55) * 255.0) / 255.0;
+}
+// Ladders, open doors and the background wall, drawn wherever no solid block covers them.
+vec3 back_pixel(vec3 bg, ivec2 pixel, int back) {
+    if ((back & 15) != 0) { bg = back_wall_pixel(pixel, back & 15); }
+    int lx = pixel.x % 16;
+    if ((back & 32) != 0) {
+        // the door swung open against its hinge side
+        if (lx < 3) { bg = BLOCK_COLORS[18*6 + (lx == 0 ? 3 : 1)]; }
+        else { bg = floor(bg * 0.85 * 255.0) / 255.0; }
+    }
+    if ((back & 64) != 0) {
+        bool rail = lx == 2 || lx == 3 || lx == 12 || lx == 13;
+        bool rung = (pixel.y % 6 == 2 || pixel.y % 6 == 3) && lx > 3 && lx < 12;
+        if (rail) { bg = BLOCK_COLORS[18*6 + (lx == 2 || lx == 12 ? 2 : 1)]; }
+        else if (rung) { bg = BLOCK_COLORS[18*6 + (pixel.y % 6 == 2 ? 2 : 3)]; }
+    }
+    return bg;
+}
+vec3 door_pixel(ivec2 pixel, ivec2 tile) {
+    int lx = pixel.x % 16, top = tile.y;
+    for (int i = 0; i < 6 && top > 0 && cell_at(ivec2(tile.x, top - 1)).b == 80; i++) { top--; }
+    int ly = pixel.y - top * 8;
+    bool frame = lx == 0 || lx == 15 || ly == 0 || cell_at(ivec2(tile.x, tile.y + 1)).b != 80 && pixel.y % 8 == 7;
+    if (frame) { return BLOCK_COLORS[18*6 + 4]; }
+    if (lx >= 11 && lx <= 12 && ly >= 24 && ly <= 26) { return vec3(0.83, 0.72, 0.38); }
+    bool panel = (lx == 3 || lx == 12) && ly > 3 || ly == 4 || ly == 22 || ly == 42;
+    float r = world_hash(ivec2(pixel.x / 4 + 300, pixel.y >> 2));
+    return BLOCK_COLORS[18*6 + (panel ? 3 : r < 0.6 ? 0 : 1)];
+}
 vec3 base_pixel(ivec2 pixel) {
     if (reference_mode) { return reference_color; }
     ivec2 tile = ivec2(floor(vec2(pixel)/8.0));
@@ -76,6 +126,9 @@ vec3 base_pixel(ivec2 pixel) {
     ivec4 cell = cell_at(tile); ivec2 local = pixel - tile*8;
     vec3 bg = backdrop(pixel, cell);
     int material = cell.b;
+    int back = back_at(tile);
+    if (back != 0 && (material == 0 || material == 22 || material == 25 || material == 26 || material == 27)) { bg = back_pixel(bg, pixel, back); }
+    if (material == 80) { return door_pixel(pixel, tile); }
     if (material == 0) { return bg; }
     if (material == 22) { return blend_pixel(bg,vec3(207.0,238.0,246.0)/255.0,0.22); }
     if (material == 25 || material == 26 || material == 27) { return bg; }
