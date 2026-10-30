@@ -41,6 +41,7 @@ if [ "$action" = test ]; then
     native/build/ecologist-sandbox-tests
     "$godot" --headless --path godot --script res://tests/workshop.gd --log-file "$root/.test-artifacts/workshop-test.log"
     "$godot" --headless --path godot --script res://tests/logistics.gd --log-file "$root/.test-artifacts/logistics-test.log"
+    "$godot" --headless --path godot --script res://tests/people.gd --log-file "$root/.test-artifacts/people-test.log"
     "$godot" --headless --path godot --script res://tests/integration.gd --log-file "$root/.test-artifacts/godot-test.log"
     exit 0
 fi

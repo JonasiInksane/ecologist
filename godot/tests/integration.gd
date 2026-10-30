@@ -403,6 +403,53 @@ func run() -> void:
         check(game.shop.save() == "", "Deliveries save")
         game.shop.model.order("calcium", 0, 2)
         check(game.shop.load_save() == "" and game.shop.model.orders.size() == 1 and int(game.shop.model.orders[0].count) == 1, "Deliveries load")
+        # M3 in the game: a customer at the door, the tooltip, answering the door, a sale, a promise and the town save.
+        var town: PeopleModel = game.people.model
+        town.data.visit_chance = 0.0
+        town.first_done = true
+        town.visitor = {}
+        town.queue.clear()
+        town._enqueue("dale", false)
+        for i in 60 * 90:
+            game.shop.model.step(1)
+            game.people.step()
+            if town.knocking():
+                break
+        check(town.knocking() and town.visitor.customer == "dale" and game.hud.toast_label.text.begins_with("Knock knock. Dale"), "Dale walks up and knocks, said in a toast")
+        var at_door := Vector2(float(town.visitor.x) * 8.0, 800.0 - 20.0)
+        check(game.people.tip(at_door).begins_with("Dale Pickering") and game.people.tip(at_door).ends_with("click to answer"), "Pointing at him says who he is")
+        game.people.click(at_door)
+        check(game.people.visible != game.inspector_label.text.begins_with("Walk over"), "Answering the door needs the player next to it")
+        game.people.open()
+        game.workshop.model.store("hard_candy_b", 1000.0)
+        game.people.refresh()
+        var sell_b: Button = null
+        for button in game.people.actions.get_children():
+            if button is Button and button.text.begins_with("Sell grade B") and not button.disabled:
+                sell_b = button
+        check(game.people.visible and sell_b != null and game.people.request.text.contains("hard candy, grade B or better"), "The door window shows his request and a grade B sale")
+        var till: float = game.workshop.model.cash
+        sell_b.pressed.emit()
+        check(not game.people.visible and game.workshop.model.cash > till and town.rep("dale") > 0.0 and town.visitor.phase == "leave", "Selling closes the window, pays and pleases him")
+        for i in 60 * 60:
+            game.shop.model.step(1)
+            game.people.step()
+            if town.visitor.is_empty():
+                break
+        town._enqueue("gus", false)
+        for i in 60 * 90:
+            game.shop.model.step(1)
+            game.people.step()
+            if town.knocking():
+                break
+        game.people.open()
+        game.people._promise()
+        game.hud.set_orders(game.people.orders_text())
+        check(town.orders.size() == 1 and game.hud.orders_row.visible and game.hud.orders.text.begins_with("Gus "), "A promise shows on the HUD")
+        game.people.save_path = "res://../.test-artifacts/people-save-test.json"
+        check(game.people.save() == "", "The town saves")
+        town.orders.clear()
+        check(game.people.load_save() == "" and town.orders.size() == 1 and town.orders[0].customer == "gus", "The town loads with its promise")
         game.free()
     print("Ecologist integration: %d checks, %d failures" % [checks, failures])
     quit(1 if failures else 0)

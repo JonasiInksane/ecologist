@@ -15,6 +15,8 @@ var clock_icon: TextureRect
 var clock := UiStyle.label("", "HudLabel")
 var delivery := UiStyle.label("", "HudLabel")
 var delivery_row := HBoxContainer.new()
+var orders := UiStyle.label("", "HudLabel")
+var orders_row := HBoxContainer.new()
 var bar := VBoxContainer.new()
 var item_label := UiStyle.label("", "HudLabel")
 var build_tab: Button
@@ -107,6 +109,12 @@ func _build_clock() -> void:
     delivery_row.add_child(UiStyle.icon_rect(UiStyle.icon("truck"), 28))
     delivery_row.add_child(delivery)
     column.add_child(delivery_row)
+    orders_row.add_theme_constant_override("separation", 8)
+    orders_row.add_child(UiStyle.icon_rect(UiStyle.icon("person"), 28))
+    orders_row.add_child(orders)
+    orders_row.tooltip_text = "Customers coming back for what you promised"
+    orders_row.hide()
+    column.add_child(orders_row)
     var buttons := VBoxContainer.new()
     corner.add_child(buttons)
     buttons.add_child(_icon_button("crate", "Stock and sales", main._toggle_workshop))
@@ -244,6 +252,7 @@ func toggle_menu() -> void:
             main._toggle_pause()
         main.kitchen.close()
         main.shop.close()
+        main.people.close()
         main.workshop.hide()
         shade.show()
         menu.show()
@@ -298,6 +307,11 @@ func refresh(player: Dictionary, credits: float, minute: float, status: String, 
     delivery_row.visible = not status.is_empty()
     item_label.text = item
     paused_label.visible = paused and not menu.visible
+
+# Promised orders, under the next delivery.
+func set_orders(text: String) -> void:
+    orders.text = text
+    orders_row.visible = not text.is_empty()
 
 func _process(delta: float) -> void:
     if toast_left > 0.0:

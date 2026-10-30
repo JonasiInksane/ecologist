@@ -140,7 +140,7 @@ def ui_sheet():
 ICONS = ["heart", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
          "wood", "brick", "stone", "glass", "steel", "dirt", "wood_wall", "brick_wall", "ladder", "door",
          "pipe", "valve", "pump", "thermometer", "drop", "flask", "flame", "laptop", "save", "load", "sandbox",
-         "sack", "beet", "close"]
+         "sack", "beet", "close", "person"]
 
 
 def icon(name, img, ox, oy):
@@ -361,6 +361,17 @@ def icon(name, img, ox, oy):
                     p(x, y, purple)
         r(7, 13, 8, 15, purple_dark)
         r(5, 7, 6, 8, (200, 90, 140))
+    elif name == "person":
+        skin, shirt = (233, 182, 140), (98, 186, 166)
+        for y in range(2, 9):
+            for x in range(4, 12):
+                if ((x - 7.5) / 3.6) ** 2 + ((y - 5.5) / 3.6) ** 2 <= 1:
+                    p(x, y, skin)
+        r(5, 1, 10, 2, (92, 58, 38))
+        for y in range(10, 15):
+            w = 3 + (y - 10)
+            r(8 - w, y, 7 + w, y, shirt)
+        r(7, 10, 8, 10, (196, 140, 104))
     elif name == "close":
         for i in range(10):
             for d in (0, 1):

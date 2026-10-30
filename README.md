@@ -50,7 +50,9 @@ Lay **pipes**, **valves** and **pumps** from the hotbar: pipe ends couple to the
 and a sea water tanker pumps through a coupling by the road. With a kettle, lime and a centrifuge, beets become
 white sugar, molasses and pulp. See [M2 logistics](docs/design/m2-logistics.md).
 
-Days pass: the light follows the game clock through dusk, a starry night with the shack lamp-lit, and dawn. See
+Days pass: the light follows the game clock through dusk, a starry night with the shack lamp-lit, and dawn. People
+walk the street, and customers knock at the door for syrup, candy, salt and sugar: walk over and click them to sell
+from stock or promise it for later (promises show under the clock). See
 [M3 living world](docs/design/m3-living-world.md).
 
 In the sandbox:

@@ -235,6 +235,7 @@ func open() -> void:
     show()
     main.workshop.hide()
     main.kitchen.close()
+    main.people.close()
     refresh()
 
 func close() -> void:

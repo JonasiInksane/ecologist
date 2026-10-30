@@ -52,8 +52,8 @@ no survival needs, staff, Steam on Windows and macOS, solo at about 2 hours a da
   See [M2 logistics](docs/design/m2-logistics.md). Next: gate G1 (twenty minutes in the shack without help).
 - [x] G1 playtest fix: a pixel-art game interface (HUD, hotbar, toasts, tooltip, Esc menu, steel windows, the laptop
   shop as a web page) in place of the tool bars. See [the game interface](docs/design/ui.md).
-- [ ] M3 Living world and property: day and night (done), street life, customers at the door, then plots, floors,
-  basements and utilities. See [M3 living world](docs/design/m3-living-world.md).
+- [ ] M3 Living world and property: day and night, street life and customers at the door (done), then plots,
+  floors, basements and utilities. See [M3 living world](docs/design/m3-living-world.md).
 - [ ] M4 Farming · M5 Police and risk, with vampires, the dark web and crime (gate G2) · M6 Hazards · M7 Scale up ·
   M8 Polish and launch (gate G3).
 

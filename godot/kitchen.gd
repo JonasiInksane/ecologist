@@ -160,6 +160,7 @@ func open(id: int) -> void:
     show()
     main.workshop.hide()
     main.shop.hide()
+    main.people.close()
     refresh()
 
 func close() -> void:

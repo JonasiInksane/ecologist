@@ -10,7 +10,7 @@ const ICON_SHEET := "res://art/icons.png"
 const ICONS := ["heart", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
     "wood", "brick", "stone", "glass", "steel", "dirt", "wood_wall", "brick_wall", "ladder", "door",
     "pipe", "valve", "pump", "thermometer", "drop", "flask", "flame", "laptop", "save", "load", "sandbox",
-    "sack", "beet", "close"]
+    "sack", "beet", "close", "person"]
 const TEXT := Color("f0e9d2")
 const MUTED := Color("a9b8ba")
 const ACCENT := Color("f2c94c")

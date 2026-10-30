@@ -39,6 +39,7 @@ var kit_buttons: Array[Button] = []
 var kit_mode := false
 var kitchen: PanelContainer
 var shop: PanelContainer
+var people: PanelContainer
 var hud: Control
 var lighting: Node2D
 var room_data := PackedByteArray()
@@ -306,6 +307,9 @@ func _build_ui() -> void:
     shop = preload("res://shop_panel.gd").new()
     shop.setup(self)
     ui.add_child(shop)
+    people = preload("res://people_panel.gd").new()
+    people.setup(self)
+    ui.add_child(people)
     hud = preload("res://hud.gd").new()
     ui.add_child(hud)
     hud.setup(self)
@@ -378,6 +382,9 @@ func _item_text() -> String:
 
 # The tooltip at the pointer: equipment, the truck at the curb, valves and pumps.
 func _hover_tip() -> String:
+    var person: String = people.tip(get_global_mouse_position())
+    if not person.is_empty():
+        return person
     var cell := Vector2i((get_global_mouse_position() / CELL).floor())
     var id: int = world.equipment_at(cell.x, cell.y)
     if id >= 0:
@@ -649,6 +656,8 @@ func _save_world() -> void:
     workshop._save()
     if error.is_empty():
         error = shop.save()
+    if error.is_empty():
+        error = people.save()
     _notice("Game saved." if error.is_empty() else "Could not save the world: " + error)
 
 func _load_world() -> void:
@@ -662,9 +671,15 @@ func _load_world() -> void:
     workshop._load_save()
     kitchen.reset()
     var deliveries: String = shop.load_save()
+    var town: String = people.load_save()
     _refresh_kit()
     _set_mode(true)
-    _notice("Game loaded." if deliveries.is_empty() else "Game loaded, but not the deliveries: " + deliveries + ".")
+    if not deliveries.is_empty():
+        _notice("Game loaded, but not the deliveries: " + deliveries + ".")
+    elif not town.is_empty():
+        _notice("Game loaded, but not the town: " + town + ".")
+    else:
+        _notice("Game loaded.")
 
 func _resize_brush(change: int) -> void:
     radius = clampi(radius + change, 1, 16)
@@ -697,6 +712,7 @@ func _toggle_workshop() -> void:
     if workshop.visible:
         kitchen.close()
         shop.close()
+        people.close()
     drawing = false
     panning = false
 
@@ -764,9 +780,10 @@ func _unhandled_input(event: InputEvent) -> void:
         if event.keycode == KEY_P:
             _toggle_pause()
         elif event.keycode == KEY_ESCAPE:
-            if kitchen.visible or shop.visible or workshop.visible or kitchen.carrying >= 0:
+            if kitchen.visible or shop.visible or workshop.visible or people.visible or kitchen.carrying >= 0:
                 kitchen.close()
                 shop.close()
+                people.close()
                 workshop.hide()
                 kitchen.carrying = -1
             else:
@@ -795,6 +812,8 @@ func _unhandled_input(event: InputEvent) -> void:
         match event.button_index:
             MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT:
                 var clicked := Vector2i((get_global_mouse_position() / CELL).floor())
+                if kitchen.carrying < 0 and event.button_index == MOUSE_BUTTON_LEFT and people.click(get_global_mouse_position()):
+                    return
                 if kitchen.carrying < 0 and shop.truck_at(clicked):
                     if event.button_index == MOUSE_BUTTON_LEFT:
                         shop.click_truck()
@@ -878,6 +897,7 @@ func _physics_process(_delta: float) -> void:
         if campaign:
             kitchen.bill()
             shop.step()
+            people.step()
         dirty = true
 
 func _process(delta: float) -> void:
@@ -906,6 +926,7 @@ func _process(delta: float) -> void:
         status_label.text = "%s · %d fps · %d grains" % ["Paused" if paused else "Running", Engine.get_frames_per_second(), stats.grains]
         if campaign:
             hud.refresh(player, workshop.model.cash, shop.model.minute, shop.model.status(), _item_text(), paused)
+            hud.set_orders(people.orders_text())
             hud.set_tip(_hover_tip() if not _pointer_over_ui() else "")
         if campaign and player.get("active", false):
             var delivery: String = shop.model.status()
@@ -1048,6 +1069,7 @@ func _player_frame() -> int:
 func _draw_campaign() -> void:
     shop.draw_trucks(self, animation_time)
     kitchen.draw_equipment(self, equipment_view, animation_time)
+    people.draw_people(self, animation_time)
     var pointer_cell := Vector2i((get_global_mouse_position() / CELL).floor())
     var inlet := int(world.stats().pending_inlet)
     if inlet >= 0:

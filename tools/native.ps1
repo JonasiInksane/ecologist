@@ -43,6 +43,7 @@ try {
         Invoke-Checked (Join-Path $projectRoot 'native/build/ecologist-sandbox-tests.exe') @()
         Invoke-Checked $godot @('--headless', '--path', 'godot', '--script', 'res://tests/workshop.gd', '--log-file', "$projectRoot/.test-artifacts/workshop-test.log")
         Invoke-Checked $godot @('--headless', '--path', 'godot', '--script', 'res://tests/logistics.gd', '--log-file', "$projectRoot/.test-artifacts/logistics-test.log")
+        Invoke-Checked $godot @('--headless', '--path', 'godot', '--script', 'res://tests/people.gd', '--log-file', "$projectRoot/.test-artifacts/people-test.log")
         Invoke-Checked $godot @('--headless', '--path', 'godot', '--script', 'res://tests/integration.gd', '--log-file', "$projectRoot/.test-artifacts/godot-test.log")
         return
     }
