@@ -364,9 +364,17 @@ void Sandbox::pumps_step(World &w) {
     for (auto &p : pumps) {
         if (!p.on)
             continue;
+        budget["power_joules"] += PUMP_WATTS / 60.0;
         int room = std::min(int(CFG_PUMP_RATE), int(255 - p.buffer.amount));
-        for (int dir = 0; dir < 4 && room; dir++)
-            room -= take(w, neighbor(w, p.inlet, dir), p.buffer, room);
+        PortRef port;
+        for (int dir = 0; dir < 4 && room; dir++) {
+            const int n = neighbor(w, p.inlet, dir);
+            room -= find_port(w, *this, n, p.inlet, port) ? port_take(*this, port, p.buffer, room) : take(w, n, p.buffer, room);
+        }
+        // A vessel port beside the outlet takes the pumped liquid first.
+        for (int d = 0; d < 4 && p.buffer.amount >= 1; d++)
+            if (find_port(w, *this, neighbor(w, p.outlet, d), p.outlet, port))
+                port_put(*this, port, p.buffer, int(p.buffer.amount));
         bool open = false;
         for (int d = 0; d < 3; d++) {
             int n = neighbor(w, p.outlet, d);
@@ -394,7 +402,15 @@ void Sandbox::pumps_step(World &w) {
         }
     }
 }
+// Pipes carry liquid from a higher mouth to the lowest one their network reaches, as communicating vessels. A mouth
+// is an open cell beside a pipe end, or a vessel port the end is coupled to (M2); a coupled end has no other mouth,
+// so a fitting does not leak, while an open end pours onto the floor.
 void Sandbox::pipes_step(World &w) {
+    struct Mouth {
+        int cell = -1, end = -1;
+        PortRef port;
+        bool vessel() const { return port.id >= 0; }
+    };
     std::vector<unsigned char> seen(w.liq.size(), 0);
     auto degree = [&](int k) {
         int count = 0;
@@ -413,69 +429,112 @@ void Sandbox::pipes_step(World &w) {
             top -= w.width;
         return top / w.width * 256 + 255 - w.liq[top];
     };
-    auto passes = [&](int k, int type, int from) {
+    auto passes = [&](int k, int type, bool salty) {
         if (w.solid[k] == B_PIPE)
             return true;
         auto f = machines.find(k);
         return f != machines.end() &&
                (w.solid[k] == B_VALVE    ? f->second.open
-                : f->second.liquid == 39 ? type == WATER && w.sol[from * NSOL + SOL_SALT] > 0
+                : f->second.liquid == 39 ? type == WATER && salty
                                          : f->second.liquid == type);
     };
+    auto mouths_of = [&](int k, std::vector<Mouth> &out) {
+        out.clear();
+        for (int d = 0; d < 4; d++) {
+            Mouth m;
+            m.cell = neighbor(w, k, d);
+            m.end = k;
+            if (m.cell >= 0 && find_port(w, *this, m.cell, k, m.port)) {
+                out.assign(1, m);
+                return;
+            }
+        }
+        for (int d = 0; d < 4; d++) {
+            const int n = neighbor(w, k, d);
+            if (n >= 0 && !w.solid[n])
+                out.push_back({n, k, {}});
+        }
+    };
+    std::vector<Mouth> found;
     for (int start = 0; start < w.width * w.height; start++) {
         if (seen[start] || !is_pipe(w.solid[start]))
             continue;
         std::vector<int> queue{start};
         seen[start] = 1;
-        std::map<int, int> mouths;
+        std::map<int, Mouth> mouths; // by cell, the first pipe end found keeps it
         for (std::size_t h = 0; h < queue.size(); h++) {
             int k = queue[h];
-            bool end = degree(k) <= 1;
             for (int d = 0; d < 4; d++) {
                 int n = neighbor(w, k, d);
-                if (n < 0)
-                    continue;
-                if (is_pipe(w.solid[n])) {
-                    if (!seen[n]) {
-                        seen[n] = 1;
-                        queue.push_back(n);
-                    }
-                } else if (end && !w.solid[n])
-                    mouths.emplace(n, k);
+                if (n >= 0 && is_pipe(w.solid[n]) && !seen[n]) {
+                    seen[n] = 1;
+                    queue.push_back(n);
+                }
+            }
+            if (degree(k) <= 1) {
+                mouths_of(k, found);
+                for (const auto &m : found)
+                    mouths.emplace(m.cell, m);
             }
         }
         if (mouths.size() < 2)
             continue;
-        std::vector<std::pair<int, int>> sources;
-        for (auto m : mouths)
-            if (w.liq[m.first] >= 8)
-                sources.push_back(m);
-        std::stable_sort(sources.begin(), sources.end(),
-                         [&](auto a, auto b) { return level(a.first) < level(b.first); });
+        struct Source {
+            Mouth m;
+            int level;
+        };
+        std::vector<Source> sources;
+        for (const auto &[cell, m] : mouths) {
+            int lv = 0;
+            if (m.vessel() ? port_level(w, *this, m.port, true, lv) : w.liq[m.cell] >= 8)
+                sources.push_back({m, m.vessel() ? lv : level(m.cell)});
+        }
+        std::stable_sort(sources.begin(), sources.end(), [](const Source &a, const Source &b) { return a.level < b.level; });
         if (sources.size() > CFG_MAX_SOURCES)
             sources.resize(int(CFG_MAX_SOURCES));
-        for (auto src : sources) {
-            int from = src.first, type = w.typ[from], entry = src.second;
-            if (!w.liq[from] || !passes(entry, type, from))
+        for (const auto &src : sources) {
+            const Mouth &from = src.m;
+            int from_level = 0, type = WATER;
+            bool salty = false;
+            if (from.vessel()) {
+                if (!port_level(w, *this, from.port, true, from_level))
+                    continue;
+                salty = port_salt(*this, from.port) > 0;
+            } else {
+                if (!w.liq[from.cell])
+                    continue;
+                type = w.typ[from.cell];
+                from_level = level(from.cell);
+                salty = w.sol[from.cell * NSOL + SOL_SALT] > 0;
+            }
+            if (!passes(from.end, type, salty))
                 continue;
             std::map<int, int> parent;
-            parent[entry] = -1;
-            std::vector<int> walk{entry};
-            int best = -1, best_pipe = -1, best_level = level(from) + int(CFG_MIN_DROP);
+            parent[from.end] = -1;
+            std::vector<int> walk{from.end};
+            Mouth best;
+            int best_level = from_level + int(CFG_MIN_DROP);
             for (std::size_t h = 0; h < walk.size(); h++) {
                 int k = walk[h];
-                bool end = degree(k) <= 1;
                 for (int d = 0; d < 4; d++) {
                     int n = neighbor(w, k, d);
-                    if (n < 0 || n == from)
+                    if (n >= 0 && is_pipe(w.solid[n]) && !parent.count(n) && passes(n, type, salty)) {
+                        parent[n] = k;
+                        walk.push_back(n);
+                    }
+                }
+                if (degree(k) > 1)
+                    continue;
+                mouths_of(k, found);
+                for (Mouth to : found) {
+                    if (to.cell == from.cell)
                         continue;
-                    if (is_pipe(w.solid[n])) {
-                        if (!parent.count(n) && passes(n, type, from)) {
-                            parent[n] = k;
-                            walk.push_back(n);
-                        }
-                    } else if (end && !w.solid[n]) {
-                        int fill = n;
+                    int lv = 0;
+                    if (to.vessel()) {
+                        if (type != WATER || !port_level(w, *this, to.port, false, lv))
+                            continue;
+                    } else {
+                        int fill = to.cell;
                         while (w.liq[fill] == 255 && w.typ[fill] == type) {
                             int up = neighbor(w, fill, 0);
                             if (up < 0 || w.solid[up]) {
@@ -486,20 +545,34 @@ void Sandbox::pipes_step(World &w) {
                         }
                         if (fill < 0 || (w.liq[fill] && w.typ[fill] != type))
                             continue;
-                        int lv = level(fill);
-                        if (lv > best_level) {
-                            best_level = lv;
-                            best = fill;
-                            best_pipe = k;
-                        }
+                        to.cell = fill;
+                        lv = level(fill);
+                    }
+                    if (lv > best_level) {
+                        best_level = lv;
+                        best = to;
                     }
                 }
             }
+            if (best.cell < 0)
+                continue;
             // Stop at equal pressure; a later source in the same network must not pump
             // the entire parcel straight back after an oversized transfer.
-            if (best >= 0 &&
-                transfer(w, from, best, std::min(int(CFG_PIPE_RATE), (level(best) - level(from)) / 2)))
-                for (int k = best_pipe; k >= 0; k = parent[k]) {
+            const int amount = std::min(int(CFG_PIPE_RATE), (best_level - from_level) / 2);
+            bool moved = false;
+            if (!from.vessel() && !best.vessel())
+                moved = transfer(w, from.cell, best.cell, amount);
+            else {
+                FluidBuffer b;
+                const int room = best.vessel() ? amount : std::min(amount, 255 - int(w.liq[best.cell]));
+                const int got = from.vessel() ? port_take(*this, from.port, b, room) : take(w, from.cell, b, room);
+                const int placed = best.vessel() ? port_put(*this, best.port, b, got) : put(w, b, best.cell, got);
+                if (b.amount >= 1e-10) // what did not fit goes back where it came from
+                    from.vessel() ? port_put(*this, from.port, b, int(std::ceil(b.amount))) : put(w, b, from.cell, int(std::ceil(b.amount)));
+                moved = placed > 0;
+            }
+            if (moved)
+                for (int k = best.end; k >= 0; k = parent[k]) {
                     pipe_show[k] = type;
                     pipe_time[k] = w.tick;
                 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Campaign build palette (M0). cost is credits per tile (2 x 2 cells; a door is 2 x 6). salvage is the share refunded when the tile is removed; natural terrain refunds nothing so digging is not a money source.",
+  "_comment": "Campaign build palette (M0, M2). cost is credits per tile (2 x 2 cells; a door is 2 x 6), or per cell for pipes, valves and pumps (cell: true; solid is the block they make; a pump is paid for when its inlet goes down). salvage is the share refunded when the tile is removed; natural terrain refunds nothing so digging is not a money source.",
   "reach_tiles": 12,
   "items": [
     {"id": "wood", "name": "Wood planks", "short": "Wood", "code": -18, "cost": 2, "salvage": 0.5},
@@ -11,6 +11,9 @@
     {"id": "back_wood", "name": "Wood back wall", "short": "Wood wall", "code": 1001, "cost": 1, "salvage": 0.5},
     {"id": "back_brick", "name": "Brick back wall", "short": "Brick wall", "code": 1002, "cost": 2, "salvage": 0.5},
     {"id": "ladder", "name": "Ladder", "short": "Ladder", "code": 1003, "cost": 3, "salvage": 0.5},
-    {"id": "door", "name": "Door", "short": "Door", "code": 1004, "cost": 25, "salvage": 0.5}
+    {"id": "door", "name": "Door", "short": "Door", "code": 1004, "cost": 25, "salvage": 0.5},
+    {"id": "pipe", "name": "Pipe", "short": "Pipe", "code": 1006, "cost": 1, "salvage": 0.5, "cell": true, "solid": 25},
+    {"id": "valve", "name": "Valve · click to open or shut", "short": "Valve", "code": 1007, "cost": 8, "salvage": 0.5, "cell": true, "solid": 26},
+    {"id": "pump", "name": "Pump · inlet, then outlet; click to switch", "short": "Pump", "code": 1008, "cost": 40, "salvage": 0.5, "cell": true, "solid": 8}
   ]
 }

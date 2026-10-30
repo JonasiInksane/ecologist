@@ -120,8 +120,16 @@ template <class S> void io(S &s, Vessel &v) {
     io(s, v.water), io(s, v.dissolved), io(s, v.sugar_crystal), io(s, v.salt_crystal), io(s, v.bittern_crystal);
     io(s, v.burnt), io(s, v.energy), io(s, v.temperature), io(s, v.peak), io(s, v.salt_heat), io(s, v.salt_formed);
     io(s, v.vapour), io(s, v.smoke), io(s, v.set);
+    if (s.version >= 3) {
+        io(s, v.beet), io(s, v.beet_water), io(s, v.beet_sugar), io(s, v.beet_colloid), io(s, v.beet_ash), io(s, v.beet_cut);
+        io(s, v.mud), io(s, v.crystal_dirt);
+    }
 }
-template <class S> void io(S &s, Equipment &e) { io(s, e.kind), io(s, e.x), io(s, e.y), io(s, e.setting), io(s, e.vessel); }
+template <class S> void io(S &s, Equipment &e) {
+    io(s, e.kind), io(s, e.x), io(s, e.y), io(s, e.setting), io(s, e.vessel);
+    if (s.version >= 3)
+        io(s, e.aux);
+}
 template <class S> void io(S &s, Player &p) {
     io(s, p.x), io(s, p.y), io(s, p.vx), io(s, p.vy), io(s, p.spawn_x), io(s, p.spawn_y), io(s, p.health);
     io(s, p.breath), io(s, p.facing), io(s, p.deaths), io(s, p.active), io(s, p.on_ground), io(s, p.climbing), io(s, p.swimming);
@@ -163,7 +171,7 @@ bool load_world(const std::string &path, World &w, Grains &g, Sandbox &s, Player
     io(in, version);
     if (!in.ok() || version < 1 || version > SAVE_VERSION)
         return fail(error, "this save was made by a different version of the game");
-    in.version = version; // version 1 saves have no equipment
+    in.version = version; // version 1 saves have no equipment, version 2 no beets or second compartments
     // Read into fresh copies so a damaged file leaves the running world untouched.
     World nw;
     Grains ng;
@@ -182,7 +190,8 @@ bool load_world(const std::string &path, World &w, Grains &g, Sandbox &s, Player
         const auto &spec = equipment_spec(e.kind);
         bool placed = e.kind > 0 && e.kind < EQ_KINDS && e.x >= 0 && e.y >= 0 && e.x + spec.width <= nw.width &&
                       e.y + spec.height <= nw.height && id == e.y * nw.width + e.x && e.setting >= 0 && e.setting <= 3 &&
-                      std::isfinite(e.vessel.energy) && std::isfinite(e.vessel.temperature);
+                      std::isfinite(e.vessel.energy) && std::isfinite(e.vessel.temperature) &&
+                      std::isfinite(e.aux.energy) && std::isfinite(e.aux.temperature);
         for (int cy = e.y; placed && cy < e.y + spec.height; cy++)
             for (int cx = e.x; cx < e.x + spec.width; cx++)
                 placed = placed && nw.solid[std::size_t(cy) * nw.width + cx] == B_EQUIPMENT;

@@ -49,20 +49,19 @@ func _ready() -> void:
     tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
     layout.add_child(tabs)
     var stock := _tab(tabs, "Stock")
-    stock.add_child(_text("Select a material. Every intermediate can be traded.", 13))
+    stock.add_child(_text("Select a material to sell it. Supplies are ordered on the laptop in the shack and delivered to the curb.", 13))
     stock.add_child(materials)
     materials.item_selected.connect(func(_index): refresh())
     material_text = _text("")
     stock.add_child(material_text)
     grams.min_value = 1
-    grams.max_value = 2000
+    grams.max_value = 100000
     grams.step = 1
     grams.value = 100
     grams.suffix = "g"
     stock.add_child(grams)
     var trades := HBoxContainer.new()
     stock.add_child(trades)
-    trades.add_child(_button("Buy", func(): model.buy(_material(), grams.value); refresh()))
     trades.add_child(_button("Sell", func(): model.sell(_material(), grams.value); refresh()))
     trades.add_child(_button("Sell all", func(): model.sell(_material(), model.amount(_material())); refresh()))
     stock.add_child(_button("Add to laboratory vessel", func(): model.add_to_vessel(_material(), grams.value); refresh()))

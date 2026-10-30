@@ -206,10 +206,12 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
     for (int y = ROOF + 2; y < GROUND; y++)
         for (int x = L + 2; x < R - 1; x++)
             s.back[y * w.width + x] = 1;
-    // The kitchen: a sink with mains water, a table with a candy mold, and a stove with a saucepan on it.
+    // The kitchen: a sink with mains water, a table with a candy mold and the laptop the shop runs on, and a stove
+    // with a saucepan on it.
     place_equipment(w, g, s, EQ_SINK, L + 4, GROUND - 1);
     place_equipment(w, g, s, EQ_TABLE, L + 10, GROUND - 1);
     place_equipment(w, g, s, EQ_CANDY_MOLD, L + 12, GROUND - 5);
+    place_equipment(w, g, s, EQ_LAPTOP, L + 14, GROUND - 5);
     place_equipment(w, g, s, EQ_STOVE, L + 18, GROUND - 1);
     place_equipment(w, g, s, EQ_SAUCEPAN, L + 18, GROUND - 5);
     w.wake_all();

@@ -1,6 +1,6 @@
-// Building (M0): tile placement in 2 x 2 cell tiles, background walls, ladders and doors. A tile is only built
-// into empty cells, so construction never deletes liquid; removing a block keeps the machine and pore rules of
-// erase(). Costs and reach are game rules applied by the caller.
+// Building (M0): tile placement in 2 x 2 cell tiles, background walls, ladders and doors; pipes, valves and pumps
+// (M2) cell by cell. A tile is only built into empty cells, so construction never deletes liquid; removing a block
+// keeps the machine and pore rules of erase(). Costs and reach are game rules applied by the caller.
 #include "sandbox.hpp"
 #include <algorithm>
 #include <vector>
@@ -20,6 +20,32 @@ bool buildable_block(int b) {
 int Sandbox::build(World &w, Grains &g, int x, int y, int code) {
     if (x < 0 || y < 0 || x >= w.width || y >= w.height)
         return 0;
+    const int k = y * w.width + x, b = w.solid[k];
+    // Pipes, valves and pumps (M2) are single cells, built and removed one at a time.
+    if (code == BUILD_REMOVE && (b == B_PIPE || b == B_VALVE || b == B_FILTER || b == B_PUMP_IN || b == B_PUMP_OUT)) {
+        erase(w, k);
+        w.solid[k] = 0;
+        w.wake(k);
+        return 1;
+    }
+    if (code == BUILD_PIPE || code == BUILD_VALVE || code == BUILD_PUMP) {
+        if (code != BUILD_PUMP && (w.solid[k] || w.liq[k] || (back[k] & BACK_DOOR_OPEN)))
+            return 0;
+        if (code == BUILD_PIPE) {
+            g.erase_cell(x, y);
+            w.solid[k] = B_PIPE;
+            held[k] = 255;
+            back[k] &= ~BACK_LADDER;
+            w.wake(k);
+            return 1;
+        }
+        if (code == BUILD_VALVE && !use(w, x, y, -B_VALVE, 1, &g))
+            return 0;
+        if (code == BUILD_PUMP && (b == B_PUMP_IN || b == B_PUMP_OUT || !use(w, x, y, 301, 1, &g)))
+            return 0;
+        back[k] &= ~BACK_LADDER;
+        return 1;
+    }
     const int tx = x & ~1, ty = y & ~1;
     auto inside = [&](int cx, int cy) { return cx >= 0 && cy >= 0 && cx < w.width && cy < w.height; };
     std::vector<int> cells;

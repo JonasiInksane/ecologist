@@ -1,0 +1,51 @@
+{
+  "_comment": "The laptop shop (M2). Orders are paid when placed and arrive after the supplier's lead time, one truck at the curb at a time. A van waits wait_minutes to be unloaded; a tanker pumps into a fill coupling standing at or right of curb_x. Goods that are not taken go back for a return fee of the larger of minimum and share of their value. Prices are per unit: price when given, else the equipment's cost for a crate, else unit_g times the material's buy price in workshop.json. The clock runs minutes_per_second game minutes per real second from start_minute (Day 1 08:00).",
+  "start_minute": 480,
+  "minutes_per_second": 1.0,
+  "wait_minutes": 120,
+  "return_fee": {"minimum": 5, "share": 0.15},
+  "curb_x": 356,
+  "park_x": 384,
+  "road_row": 100,
+  "tanker_rate_g": 300,
+  "tanker_temperature": 12,
+  "tanker_blocked_seconds": 3,
+  "max_orders": 6,
+  "vehicles": {
+    "van": {"width": 14, "height": 8, "sprite": [0, 0, 112, 64]},
+    "tanker": {"width": 24, "height": 8, "sprite": [0, 64, 192, 64]}
+  },
+  "suppliers": [
+    {"id": "hollis", "short": "Hollis", "name": "Hollis Family Farm", "lead_minutes": 180,
+     "blurb": "Third-generation beet growers. Grandma Hollis still checks every sack by hand and judges your posture.",
+     "items": [
+       {"id": "sugar_beet", "kind": "material", "unit": "25 kg sack", "unit_g": 25000, "max": 8, "vehicle": "van"}
+     ]},
+    {"id": "calcium", "short": "Calcium & Sons", "name": "Calcium & Sons", "lead_minutes": 120,
+     "blurb": "Slaked lime since 1911. Every bag says DO NOT GET IN EYES in four languages, twice, in capitals.",
+     "items": [
+       {"id": "lime", "kind": "material", "unit": "5 kg bag", "unit_g": 5000, "max": 10, "vehicle": "van"}
+     ]},
+    {"id": "sweetco", "short": "SweetCo", "name": "SweetCo Wholesale", "lead_minutes": 90,
+     "blurb": "Sugar by the sack. Their slogan, \"Probably Not Sand\", tested surprisingly well.",
+     "items": [
+       {"id": "sugar", "kind": "material", "unit": "5 kg bag", "unit_g": 5000, "max": 10, "vehicle": "van"},
+       {"id": "sugar", "kind": "material", "unit": "25 kg sack", "unit_g": 25000, "price": 560, "max": 4, "vehicle": "van"}
+     ]},
+    {"id": "brackwater", "short": "Brackwater", "name": "Brackwater Haulage", "lead_minutes": 240,
+     "blurb": "Fresh from the bay, give or take a jellyfish. Bulk comes by tanker: have a fill coupling by the road, the driver does not do buckets.",
+     "items": [
+       {"id": "sea_water", "kind": "material", "unit": "20 L jerrycan", "unit_g": 20000, "max": 5, "vehicle": "van"},
+       {"id": "sea_water", "kind": "tanker", "unit": "100 L by tanker", "unit_g": 100000, "price": 30, "min": 2, "max": 10, "vehicle": "tanker"}
+     ]},
+    {"id": "pipedreams", "short": "Pipe Dreams", "name": "Pipe Dreams Plumbing & Steel", "lead_minutes": 240,
+     "blurb": "If it holds liquid, they sell it. If it holds liquid badly, they sell it cheaper. All sales final, all leaks yours.",
+     "items": [
+       {"id": "drum", "kind": "crate", "unit": "crate", "max": 4, "vehicle": "van"},
+       {"id": "tote", "kind": "crate", "unit": "crate", "max": 2, "vehicle": "van"},
+       {"id": "coupling", "kind": "crate", "unit": "crate", "max": 2, "vehicle": "van"},
+       {"id": "kettle", "kind": "crate", "unit": "crate", "max": 2, "vehicle": "van"},
+       {"id": "centrifuge", "kind": "crate", "unit": "crate", "max": 1, "vehicle": "van"}
+     ]}
+  ]
+}

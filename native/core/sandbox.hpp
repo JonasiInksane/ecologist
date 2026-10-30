@@ -37,10 +37,16 @@ struct Vessel {
     double vapour = 0;                     // about the grams evaporated in the last second, for drawing steam
     double smoke = 0;
     bool set = false;                      // a candy mold's contents have hardened
+    // Beet tissue (M2): marc, and the cell sap's water, sugar, colloids and ash, which diffuse out into the liquid.
+    // beet_cut is the share of the tissue that was shredded into cossettes.
+    double beet = 0, beet_water = 0, beet_sugar = 0, beet_colloid = 0, beet_ash = 0, beet_cut = 0;
+    double mud = 0;          // lime mud: colloids precipitated by lime
+    double crystal_dirt = 0; // non-sugars trapped inside sugar crystals as they grew
 };
 struct Equipment {
     int kind = 0, x = 0, y = 0, setting = 0;
     Vessel vessel;
+    Vessel aux; // a second compartment: the centrifuge's casing (M2)
 };
 // Air in each empty cell, in the browser's units: oxygen in tenths of a percent, CO2 in hundredths.
 // Building layer (M0): a door is a solid block while closed; the background layer holds walls behind rooms,
@@ -48,7 +54,7 @@ struct Equipment {
 inline constexpr int B_DOOR = 80, B_EQUIPMENT = 81;
 inline constexpr std::uint8_t BACK_WALL = 0x0f, BACK_LADDER = 0x40, BACK_DOOR_OPEN = 0x20;
 inline constexpr int BUILD_REMOVE = 1000, BUILD_BACK_WOOD = 1001, BUILD_BACK_BRICK = 1002, BUILD_LADDER = 1003,
-                     BUILD_DOOR = 1004, BUILD_REMOVE_BACK = 1005;
+                     BUILD_DOOR = 1004, BUILD_REMOVE_BACK = 1005, BUILD_PIPE = 1006, BUILD_VALVE = 1007, BUILD_PUMP = 1008;
 inline constexpr double AIR_OX = 210, AIR_CARB = 4, MAX_AIR_OX = 1000, MAX_AIR_CARB = 10000, CARB_PER_OX = 10,
                         FIRE_OX = 150;
 struct Sandbox {

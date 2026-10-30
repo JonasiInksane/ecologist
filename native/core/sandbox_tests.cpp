@@ -1014,6 +1014,237 @@ int main() {
               "a destroyed pan is gone with its contents");
     }
     {
+        // Tanks and pipes (M2): a port couples a vessel to the pipe network, and liquid finds its level between
+        // vessels and the world with its water, salts and heat conserved.
+        Fixture f;
+        for (int y = 30; y < 32; y++)
+            for (int x = 0; x < 32; x++)
+                f.w.solid[f.cell(x, y)] = B_STONE;
+        std::string why;
+        const int tote = place_equipment(f.w, f.g, f.s, EQ_TOTE, 2, 29, &why);
+        const int drum = place_equipment(f.w, f.g, f.s, EQ_DRUM, 12, 29, &why);
+        check(tote == f.cell(2, 24) && drum == f.cell(12, 26), "a tote and a drum stand on the floor");
+        auto books = [&] {
+            double held = 0;
+            for (auto &[id, e] : f.s.equipment)
+                held += e.vessel.energy + e.aux.energy;
+            auto &b = f.s.budget;
+            return held - (b["placed_J"] - b["removed_J"] - b["destroyed_J"] + b["added_J"] + b["stove_J"] +
+                           b["intake_J"] - b["loss_J"] - b["vented_J"] - b["sink_J"] - b["smoke_J"] - b["drained_J"] -
+                           b["spilled_J"] - b["collected_J"] + b["port_in_J"] - b["port_out_J"]);
+        };
+        Vessel &tv = f.s.equipment[tote].vessel, &dv = f.s.equipment[drum].vessel;
+        vessel_add(f.s, tote, "sea_water", 500000, 20, &why);
+        check(vessel_transfer(f.s, drum, tote, &why) == 0 && why == "it has a lid; pipe it in through a port",
+              "nothing is poured into a closed tank");
+        f.machine(f.cell(9, 29), B_VALVE);
+        f.s.use(f.w, 9, 29, -B_VALVE, 1); // closed
+        for (int x : {8, 10, 11})
+            f.w.solid[f.cell(x, 29)] = B_PIPE;
+        PortRef port;
+        check(find_port(f.w, f.s, f.cell(7, 29), f.cell(8, 29), port) && port.id == tote &&
+                  !find_port(f.w, f.s, f.cell(7, 28), f.cell(8, 28), port),
+              "a pipe end beside a port is coupled to it");
+        const double salt0 = tv.dissolved[SOL_SALT], water0 = tv.water;
+        for (int i = 0; i < 120; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        check(dv.water == 0, "a closed valve holds the tank back");
+        f.s.use(f.w, 9, 29, -B_VALVE, 1);
+        for (int i = 0; i < 1200; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        const double tote_row = 24 + 6 * (1 - vessel_mass(tv) / 1e6), drum_row = 26 + 4 * (1 - vessel_mass(dv) / 2e5);
+        check(dv.water > 100000 && std::abs(tote_row - drum_row) < 0.25 && f.w.volume() < 1e-9 &&
+                  near(dv.dissolved[SOL_SALT] / dv.water, salt0 / water0, 1e-9) &&
+                  near(tv.water + dv.water, water0, 1e-6) && near(tv.dissolved[SOL_SALT] + dv.dissolved[SOL_SALT], salt0, 1e-6),
+              "the tote drains into the drum through the pipe until their levels meet");
+        check(near(books(), 0, 1e-3) && near(dv.temperature, 20, 0.5), "heat crosses the ports with the liquid");
+        // With the valve shut again, a pump lifts the drum back up into the tote's top port.
+        f.s.use(f.w, 9, 29, -B_VALVE, 1);
+        f.s.use(f.w, 14, 29, 301, 1);
+        f.s.use(f.w, 4, 23, 301, 1);
+        for (int i = 0; i < 600 && dv.water > GRAMS_PER_UNIT; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        check(dv.water < GRAMS_PER_UNIT && near(tv.water + dv.water + f.s.pumps[0].buffer.amount * GRAMS_PER_UNIT, water0, 1e-6) &&
+                  f.s.budget["power_joules"] > 0,
+              "a pump lifts the drum into the tote through its top port");
+        f.s.pumps[0].on = false;
+        // An open pipe end is a leak: the tote empties onto the floor until the puddle is as high as its level.
+        f.w.solid[f.cell(1, 29)] = B_PIPE;
+        f.w.solid[f.cell(1, 28)] = B_PIPE;
+        const double units = f.w.volume(), in_tote = tv.water;
+        for (int i = 0; i < 240; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        check(f.w.volume() > units + 100 && near((f.w.volume() - units) * GRAMS_PER_UNIT, in_tote - tv.water, 1e-6),
+              "a pipe that ends in the open spills the tank onto the floor");
+        check(near(books(), 0, 1e-3), "the books balance with the ports");
+        check(vessel_collect(f.s, tote, &why).id == "sea_water" && tv.water < 1e-6, "sea water in a tank is bottled for stock");
+    }
+    {
+        // The fill coupling at the curb: while the tanker pumps, it pushes up to a tank's top port at any height.
+        Fixture f;
+        for (int y = 30; y < 32; y++)
+            for (int x = 0; x < 32; x++)
+                f.w.solid[f.cell(x, y)] = B_STONE;
+        std::string why;
+        const int tote = place_equipment(f.w, f.g, f.s, EQ_TOTE, 2, 29, &why);
+        const int coupling = place_equipment(f.w, f.g, f.s, EQ_COUPLING, 20, 29, &why);
+        for (int y = 20; y <= 27; y++)
+            f.w.solid[f.cell(20, y)] = B_PIPE;
+        for (int x = 5; x < 20; x++)
+            f.w.solid[f.cell(x, 20)] = B_PIPE;
+        for (int y = 21; y <= 23; y++)
+            f.w.solid[f.cell(5, y)] = B_PIPE;
+        Vessel &tv = f.s.equipment[tote].vessel, &cv = f.s.equipment[coupling].vessel;
+        Equipment &ce = f.s.equipment[coupling];
+        double delivered = 0;
+        ce.setting = 1;
+        for (int i = 0; i < 600; i++) {
+            const double room = 20000 - vessel_mass(cv), grams = std::min(300.0, room);
+            if (grams > 1 && delivered + grams <= 100000 && vessel_add(f.s, coupling, "sea_water", grams, 12, &why))
+                delivered += grams;
+            step_game(f.w, f.g, f.s, nullptr);
+        }
+        check(delivered > 99000 && vessel_mass(tv) > 0.9 * delivered && f.w.volume() < 1e-9,
+              "the tanker's pump pushes through the coupling up into the tote");
+        ce.setting = 0;
+        const double left = vessel_mass(cv), held = vessel_mass(tv);
+        for (int i = 0; i < 120; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        check(near(vessel_mass(cv), left) && near(vessel_mass(tv), held), "without the tanker's pump nothing flows uphill");
+    }
+    {
+        // Beet sugar (M2): diffuse cossettes in hot water, lime the juice, boil it to grain with a seed, spin the
+        // crystals out in a centrifuge. By-products: pulp, lime mud and molasses.
+        Fixture f;
+        for (int y = 30; y < 32; y++)
+            for (int x = 0; x < 32; x++)
+                f.w.solid[f.cell(x, y)] = B_STONE;
+        std::string why;
+        const int kettle = place_equipment(f.w, f.g, f.s, EQ_KETTLE, 2, 29, &why);
+        const int slow = place_equipment(f.w, f.g, f.s, EQ_KETTLE, 10, 29, &why);
+        const int spinner = place_equipment(f.w, f.g, f.s, EQ_CENTRIFUGE, 18, 29, &why);
+        check(kettle >= 0 && slow >= 0 && spinner >= 0, "two kettles and a centrifuge stand on the floor");
+        auto books = [&] {
+            double held = 0;
+            for (auto &[id, e] : f.s.equipment)
+                held += e.vessel.energy + e.aux.energy;
+            auto &b = f.s.budget;
+            return held - (b["placed_J"] - b["removed_J"] - b["destroyed_J"] + b["added_J"] + b["stove_J"] +
+                           b["intake_J"] - b["loss_J"] - b["vented_J"] - b["sink_J"] - b["smoke_J"] - b["drained_J"] -
+                           b["spilled_J"] - b["collected_J"] + b["port_in_J"] - b["port_out_J"]);
+        };
+        Equipment &ke = f.s.equipment[kettle], &se = f.s.equipment[slow];
+        Vessel &kv = ke.vessel, &sv = se.vessel;
+        vessel_add(f.s, kettle, "cossettes", 10000, 12, &why);
+        vessel_add(f.s, kettle, "water", 12000, 15, &why);
+        vessel_add(f.s, slow, "sugar_beet", 10000, 12, &why);
+        vessel_add(f.s, slow, "water", 12000, 15, &why);
+        auto hold = [&](Equipment &e, double low, double high) {
+            e.setting = e.vessel.temperature < low ? 3 : e.vessel.temperature < high ? 1 : 0;
+        };
+        int ticks = 0;
+        for (; ticks < 60 * 300 && kv.temperature < 72; ticks++) {
+            hold(ke, 72, 75);
+            hold(se, 72, 75);
+            step_game(f.w, f.g, f.s, nullptr);
+        }
+        const int heating = ticks;
+        for (int i = 0; i < 60 * 60; i++) {
+            hold(ke, 72, 75);
+            hold(se, 72, 75);
+            step_game(f.w, f.g, f.s, nullptr);
+        }
+        const double extracted = kv.dissolved[SOL_SUGAR] / (10000 * 0.17), whole = sv.dissolved[SOL_SUGAR] / (10000 * 0.17);
+        check(heating < 60 * 60 && extracted > 0.45 && extracted < 0.62 && whole < extracted / 3,
+              "hot water draws the sugar out of cossettes, and far more slowly out of whole beets");
+        check(vessel_ph(kv) < 7 && kv.dissolved[SOL_SILT] > 50, "raw juice is slightly acid and cloudy");
+        ke.setting = se.setting = 0;
+        Product pulp = vessel_collect(f.s, kettle, &why);
+        check(pulp.id == "beet_pulp" && pulp.grams > 9000 && kv.beet < 1e-9 && kv.water > 8000, "the spent cossettes come out as pulp");
+        // Lime: too little leaves colloids, so dose it by the pH meter until it stays just alkaline once hot.
+        const double colloid = kv.dissolved[SOL_SILT];
+        vessel_add(f.s, kettle, "lime", colloid * 1.03, 20, &why);
+        check(vessel_ph(kv) > 7.8, "fresh lime makes the juice alkaline");
+        for (int i = 0; i < 60 * 30; i++) {
+            hold(ke, 85, 88);
+            step_game(f.w, f.g, f.s, nullptr);
+        }
+        check(kv.dissolved[SOL_SILT] < 0.03 * colloid && kv.mud > colloid && vessel_ph(kv) < 7.5, "hot lime clears the juice");
+        check(vessel_collect(f.s, kettle, &why).id == "lime_mud" && kv.mud < 1e-9, "the lime mud is scooped out");
+        // Boil it down past saturation, seed it, and keep boiling until half the massecuite is crystal.
+        ticks = 0;
+        for (; ticks < 60 * 600 && kv.dissolved[SOL_SUGAR] / (kv.dissolved[SOL_SUGAR] + kv.water) < 0.86; ticks++) {
+            ke.setting = 3;
+            step_game(f.w, f.g, f.s, nullptr);
+        }
+        const int boiling = ticks;
+        vessel_add(f.s, kettle, "sugar", 20, 20, &why);
+        ke.setting = 1;
+        for (; ticks < 60 * 900 && kv.sugar_crystal < 0.5 * vessel_mass(kv); ticks++)
+            step_game(f.w, f.g, f.s, nullptr);
+        ke.setting = 0;
+        check(boiling < 60 * 240 && ticks - boiling < 60 * 120 && kv.sugar_crystal > 400, "a seeded syrup boils to grain");
+        check(vessel_collect(f.s, kettle, &why).id.empty() && why == "that is massecuite: spin the sugar out of it in a centrifuge",
+              "massecuite is not sold as it is");
+        Vessel &basket = f.s.equipment[spinner].vessel, &casing = f.s.equipment[spinner].aux;
+        const double massecuite = vessel_mass(kv);
+        check(near(vessel_transfer(f.s, kettle, spinner, &why), massecuite, 1e-6), "the massecuite is poured into the centrifuge");
+        // Spin, wash the crystals with a splash of water, and spin again.
+        f.s.equipment[spinner].setting = 1;
+        for (int i = 0; i < 60 * 10; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        vessel_add(f.s, spinner, "water", basket.sugar_crystal * 0.03, 15, &why);
+        for (int i = 0; i < 60 * 10; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        f.s.equipment[spinner].setting = 0;
+        const double crystals = basket.sugar_crystal;
+        Product sugar = vessel_collect(f.s, spinner, &why);
+        check(sugar.id == "sugar" && sugar.grams > 0.98 * crystals && sugar.grams < 1.03 * crystals, "limed, spun beet sugar is white");
+        Product molasses = vessel_collect(f.s, spinner, &why);
+        check(molasses.id == "molasses" && molasses.grams > 200 && vessel_mass(casing) < 1e-9, "the casing holds molasses");
+        check(near(books(), 0, 1e-2), "the books balance through a beet sugar campaign");
+        // The same juice unlimed makes off-white sugar; unspun massecuite is raw sugar.
+        vessel_discard(f.s, slow, false);
+        vessel_add(f.s, slow, "water", 4000, 15, &why);
+        vessel_add(f.s, slow, "sugar", 4000, 20, &why);
+        sv.dissolved[SOL_SILT] = 4000 * 0.07; // as much as raw juice carries
+        sv.dissolved[SOL_METAL] = 4000 * 0.048;
+        ticks = 0;
+        for (; ticks < 60 * 600 && sv.dissolved[SOL_SUGAR] / (sv.dissolved[SOL_SUGAR] + sv.water) < 0.86; ticks++) {
+            se.setting = 3;
+            step_game(f.w, f.g, f.s, nullptr);
+        }
+        vessel_add(f.s, slow, "sugar", 20, 20, &why);
+        se.setting = 1;
+        for (; ticks < 60 * 900 && sv.sugar_crystal < 0.5 * vessel_mass(sv); ticks++)
+            step_game(f.w, f.g, f.s, nullptr);
+        se.setting = 0;
+        vessel_transfer(f.s, slow, spinner, &why);
+        f.s.equipment[spinner].setting = 1;
+        for (int i = 0; i < 60 * 20; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        f.s.equipment[spinner].setting = 0;
+        sugar = vessel_collect(f.s, spinner, &why);
+        check(sugar.id == "beet_sugar_b" || sugar.id == "brown_sugar", "cloudy juice makes off-colour sugar");
+        vessel_collect(f.s, spinner, &why);
+        check(near(books(), 0, 1e-2), "the books still balance");
+        // A save keeps the second compartment and the beet tissue.
+        vessel_add(f.s, kettle, "cossettes", 1000, 20, &why);
+        f.s.equipment[spinner].aux.water = 500;
+        f.s.equipment[spinner].aux.energy += 500 * 4.18 * 20;
+        Player p;
+        const std::string path = "sandbox-test-m2.ecosave";
+        check(save_world(path, f.w, f.g, f.s, p, &why), "an M2 world saves");
+        World w2;
+        Grains g2;
+        Sandbox s2;
+        Player p2;
+        check(load_world(path, w2, g2, s2, p2, &why) && s2.equipment[spinner].aux.water == 500 &&
+                  s2.equipment[kettle].vessel.beet_sugar == kv.beet_sugar && s2.equipment[kettle].vessel.beet_cut == 1,
+              "the casing and the cossettes survive a save");
+        std::remove(path.c_str());
+    }
+    {
         // A save holds the whole simulation: a loaded world steps on exactly like the original.
         World w;
         Grains g;
@@ -1050,7 +1281,7 @@ int main() {
         }
         check(w.liq == w2.liq && w.typ == w2.typ && w.solid == w2.solid && w.temp == w2.temp && w.sol == w2.sol &&
                   s.air_ox == s2.air_ox && s.fire == s2.fire && g.image == g2.image && p.x == p2.x && p.y == p2.y &&
-                  s2.equipment.size() == 5 && s.equipment[pan].vessel.energy == s2.equipment[pan].vessel.energy &&
+                  s2.equipment.size() == 6 && s.equipment[pan].vessel.energy == s2.equipment[pan].vessel.energy &&
                   s.equipment[pan].vessel.water == s2.equipment[pan].vessel.water && s.equipment[pan].vessel.temperature > 30,
               "a loaded world steps on identically, pans cooking and all");
         {

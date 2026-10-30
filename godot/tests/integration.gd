@@ -91,7 +91,7 @@ func run() -> void:
     var shack := EcologistWorld.new()
     shack.setup_plot(7)
     var kinds: Array = shack.equipment_kinds()
-    check(kinds.size() == 6 and kinds[3].id == "saucepan" and kinds[0].support and not kinds[3].support, "Six kinds of kitchen equipment")
+    check(kinds.size() == 12 and kinds[3].id == "saucepan" and kinds[0].support and not kinds[3].support and kinds[8].closed and kinds[8].ports == 4, "Twelve kinds of equipment, with closed tanks and ports")
     var ids := {}
     for info in shack.equipment_list():
         ids[info.kind] = info.id
@@ -99,7 +99,7 @@ func run() -> void:
     var stove: int = ids.get("stove", -1)
     var mold: int = ids.get("candy_mold", -1)
     var sink: int = ids.get("sink", -1)
-    check(ids.size() == 5 and shack.equipment_info(pan).resting_on == stove and shack.inspect(259, 95).solid == 81, "The shack starts with a stove, a pan on it, a sink, a table and a mold")
+    check(ids.size() == 6 and ids.has("laptop") and shack.equipment_info(pan).resting_on == stove and shack.inspect(259, 95).solid == 81, "The shack starts with a stove, a pan on it, a sink, a table, a mold and the laptop")
     check(shack.equipment_at(259, 95) == pan and shack.equipment_at(259, 97) == stove and shack.equipment_at(259, 92) == -1, "Cells find their equipment")
     check(shack.vessel_add(pan, "sugar", 600, 20) == "" and shack.vessel_add(pan, "water", 200, 15) == "", "Sugar and water go in the pan")
     check(shack.vessel_add(pan, "sugar", 5000, 20) == "it would overflow", "A pan cannot overflow")
@@ -222,7 +222,7 @@ func run() -> void:
         game._campaign_build(Vector2i(20, 90))
         check(is_equal_approx(game.workshop.model.cash, cash_before - 1.0) and game.world.inspect(20, 90).solid == 0, "Building out of reach is refused")
         # M1 in the game: the kitchen kit bar, the kitchen panel, ingredients from stock and the tap, gas billing.
-        check(game.kit_items.size() == 6 and game.kitchen != null and not game.kitchen.visible, "The kitchen kit loads")
+        check(game.kit_items.size() == 12 and game.kitchen != null and not game.kitchen.visible, "The kitchen kit loads")
         game._set_kit_mode(true)
         check(game.kit_buttons[0].visible and not game.build_buttons[0].visible, "K swaps the build bar to the kitchen kit")
         var game_ids := {}
@@ -247,9 +247,11 @@ func run() -> void:
         game.kitchen._set_flame(3)
         var gas_cash: float = game.workshop.model.cash
         game.kitchen.reset()
+        var gas_before: float = game.world.budget("stove_joules")
         game.world.advance(600)
         game.kitchen.bill()
-        check(game.workshop.model.cash < gas_cash - 0.1, "Gas is billed as the stove burns")
+        var gas_bill: float = (game.world.budget("stove_joules") - gas_before) / 1000.0 * float(game.kitchen.data.gas_price_per_kj)
+        check(gas_bill > 0.005 and is_equal_approx(game.workshop.model.cash, gas_cash - gas_bill), "Gas is billed as the stove burns")
         game.kitchen.open(game_pan)
         game.kitchen._set_flame(0)
         game.kitchen._collect()
@@ -264,6 +266,115 @@ func run() -> void:
         check(game.kitchen.carrying == game_pan and not game.kitchen.visible, "Move picks the pan up to carry")
         game._equipment_click(Vector2i(266, 99), false)
         check(game.kitchen.carrying == -1 and game.world.equipment_at(266, 99) >= 0 and is_equal_approx(game.world.equipment_info(game.world.equipment_at(266, 99)).mass, carried_mass), "The carried pan is put down on the floor with its syrup")
+        # M2 in the game: the laptop shop, a van with a crate, the kettle, pipes, a valve, a pump and a tanker.
+        game.workshop.model.cash = 3000.0
+        var laptop: int = game_ids.laptop
+        var laptop_cell := Vector2i(int(game.world.equipment_info(laptop).x), int(game.world.equipment_info(laptop).y))
+        game._set_kit_mode(false)
+        check(game._equipment_click(laptop_cell, false) and game.shop.visible and not game.kitchen.visible, "Clicking the laptop opens the shop")
+        game.shop.supplier_pick.select(4)
+        game.shop._fill_items()
+        game.shop.item_pick.select(3)
+        game.shop.count.value = 1
+        game.shop._order()
+        check(is_equal_approx(game.workshop.model.cash, 2850.0) and game.shop.model.orders.size() == 1 and game.shop.model.orders[0].item == "kettle", "A kettle is ordered on the laptop")
+        game.shop.model.step(241 * 60)
+        check(not game.shop.model.truck.is_empty() and not game.shop.truck_rect().has_area(), "The van is still driving up")
+        game.shop.model.step(3 * 60)
+        check(game.shop.truck_at(Vector2i(390, 96)) and not game.shop.truck_at(Vector2i(370, 96)), "The van parks at the curb")
+        game.shop.click_truck()
+        check(not game.shop.model.truck.is_empty() and game.inspector_label.text.begins_with("Walk over"), "The van is out of reach from the shack")
+        game.shop.model.unload()
+        game._refresh_kit()
+        check(game.shop.model.crates.get("kettle", 0) == 1 and game.kit_buttons[10].text == "Kettle ×1", "The kettle's crate waits in the kit")
+        game._set_kit_mode(true)
+        game._select_kit(10)
+        var cash_now: float = game.workshop.model.cash
+        check(game._equipment_click(Vector2i(276, 99), false) and game.world.equipment_at(276, 99) >= 0 and game.shop.model.crates.is_empty() and game.workshop.model.cash == cash_now, "The kettle is unpacked from its crate")
+        var kettle: int = game.world.equipment_at(276, 99)
+        game.kitchen.open(kettle)
+        check(game.kitchen.flame_row.visible and game.kitchen.flame_buttons[1].text == "Simmer" and game.kitchen.place_text.text.contains("2 ports"), "The kettle has its own burner and two drains")
+        game.kitchen._set_flame(3)
+        check(int(game.world.equipment_info(kettle).setting) == 3, "Its flame turns up to high")
+        game.kitchen._set_flame(0)
+        check(game._equipment_click(Vector2i(276, 99), true) and game.shop.model.crates.get("kettle", 0) == 1 and game.workshop.model.cash == cash_now, "Picking the kettle up packs it back in its crate")
+        game._equipment_click(Vector2i(276, 99), false)
+        kettle = game.world.equipment_at(276, 99)
+        game.kitchen.open(kettle)
+        game.workshop.model.store("sugar_beet", 20000.0)
+        game.kitchen._buy_tool("shredder")
+        game.kitchen.ingredient.select(3)
+        game.kitchen.grams.value = 10000
+        game.kitchen._add()
+        var kettle_info: Dictionary = game.world.equipment_info(kettle)
+        check(float(kettle_info.beet_g) > 9999.0 and float(kettle_info.shredded) > 0.99 and game.kitchen.note.text.begins_with("Shredded"), "Beets go through the shredder into the kettle as cossettes")
+        game.kitchen._buy_tool("ph_meter")
+        game.kitchen.ingredient.select(2)
+        game.kitchen.grams.value = 12000
+        game.kitchen._add()
+        game.kitchen.refresh()
+        check(game.kitchen.readings.text.contains("pH 7") and game.kitchen.contents_text.text.contains("cossettes"), "The pH meter reads the beets in water")
+        game._set_kit_mode(false)
+        var build_index := {}
+        for i in game.build_items.size():
+            build_index[int(game.build_items[i].code)] = i
+        game._select_build(build_index[1006])
+        game.removing = false
+        game.last_build = Vector2i(-1, -1)
+        cash_now = game.workshop.model.cash
+        game._campaign_build(Vector2i(282, 92))
+        game._campaign_build(Vector2i(285, 92))
+        check(game.world.inspect(283, 92).solid == 25 and game.world.inspect(285, 92).solid == 25 and is_equal_approx(game.workshop.model.cash, cash_now - 4.0), "Dragging lays pipe cell by cell without gaps")
+        game.removing = true
+        game.last_build = Vector2i(-1, -1)
+        game._campaign_build(Vector2i(285, 92))
+        check(game.world.inspect(285, 92).solid == 0 and game.world.inspect(284, 92).solid == 25 and is_equal_approx(game.workshop.model.cash, cash_now - 3.5), "Removing takes out one pipe cell for half its cost")
+        game.removing = false
+        game._select_build(build_index[1007])
+        game.last_build = Vector2i(-1, -1)
+        game._campaign_build(Vector2i(285, 92))
+        check(game.world.inspect(285, 92).solid == 26 and is_equal_approx(game.workshop.model.cash, cash_now - 11.5), "A valve goes in at the end of the run")
+        var valve_open: bool = game.world.inspect(285, 92).open
+        check(game._toggle_fitting(Vector2i(285, 92)), "Clicking a valve works it")
+        game.world.advance(1)
+        check(game.world.inspect(285, 92).open != valve_open, "The valve opens or shuts")
+        game._select_build(build_index[1008])
+        game.last_build = Vector2i(-1, -1)
+        game._campaign_build(Vector2i(282, 96))
+        check(int(game.world.stats().pending_inlet) == 96 * 512 + 282 and is_equal_approx(game.workshop.model.cash, cash_now - 51.5), "The pump's inlet goes down and the pump is paid for")
+        game.last_build = Vector2i(-1, -1)
+        game._campaign_build(Vector2i(282, 93))
+        check(int(game.world.stats().pending_inlet) == -1 and game.world.inspect(282, 93).solid == 9 and is_equal_approx(game.workshop.model.cash, cash_now - 51.5), "The outlet connects the pump at no extra cost")
+        check(game._toggle_fitting(Vector2i(282, 96)) and game.world.stats().message == "Pump off", "Clicking a pump end switches it")
+        var plot_world: EcologistWorld = game.campaign_world
+        var tote_id: int = plot_world.equipment_place("tote", 360, 99).id
+        var coupling_id: int = plot_world.equipment_place("coupling", 370, 99).id
+        for y in range(90, 98):
+            plot_world.build(370, y, 1006)
+        for x in range(362, 370):
+            plot_world.build(x, 90, 1006)
+        for y in range(91, 94):
+            plot_world.build(362, y, 1006)
+        check(tote_id >= 0 and coupling_id >= 0 and plot_world.inspect(362, 93).solid == 25, "A tote and a fill coupling by the road, piped together")
+        game.shop.model.order("brackwater", 1, 2)
+        game.shop.model.step(244 * 60)
+        var hooked := false
+        for i in 1200:
+            game.shop.step()
+            hooked = hooked or (game.shop.hooked == coupling_id and int(plot_world.equipment_info(coupling_id).setting) == 1)
+            plot_world.advance(1)
+            if not game.shop.model.tanker_here():
+                break
+        check(hooked and not game.shop.model.tanker_here() and game.shop.model.message.contains("200 L"), "The tanker hooks up to the coupling and pumps 200 L")
+        game.shop.step()
+        for i in 120:
+            plot_world.advance(1)
+        check(float(plot_world.equipment_info(tote_id).mass) > 180000.0 and int(plot_world.equipment_info(coupling_id).setting) == 0 and game.shop.hooked == -1, "The sea water ends up in the tote and the coupling is unhooked")
+        game.shop.save_path = "res://../.test-artifacts/logistics-save-test.json"
+        game.shop.model.order("calcium", 0, 1)
+        check(game.shop.save() == "", "Deliveries save")
+        game.shop.model.order("calcium", 0, 2)
+        check(game.shop.load_save() == "" and game.shop.model.orders.size() == 1 and int(game.shop.model.orders[0].count) == 1, "Deliveries load")
         game.free()
     print("Ecologist integration: %d checks, %d failures" % [checks, failures])
     quit(1 if failures else 0)

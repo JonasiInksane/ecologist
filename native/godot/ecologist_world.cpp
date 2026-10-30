@@ -169,7 +169,25 @@ Dictionary summary(const ecologist::World &w, const ecologist::Sandbox &s, int i
     d["height"] = spec.height;
     d["setting"] = e.setting;
     d["vessel"] = spec.capacity > 0;
+    d["closed"] = spec.closed;
     d["resting_on"] = ecologist::resting_on(w, s, id);
+    // Ports (M2): where each fitting is, which way it faces, and whether a pipe or pump is coupled to it.
+    Array ports;
+    const auto &fittings = ecologist::equipment_ports(e.kind);
+    for (std::size_t i = 0; i < fittings.size(); i++) {
+        const auto &p = fittings[i];
+        const int cell = (e.y + p.dy) * w.width + e.x + p.dx, outside = s.neighbor(w, cell, p.dir);
+        const int b = outside >= 0 ? w.solid[outside] : 0;
+        Dictionary port;
+        port["x"] = e.x + p.dx;
+        port["y"] = e.y + p.dy;
+        port["dir"] = p.dir;
+        port["aux"] = p.aux;
+        port["connected"] = b == ecologist::B_PIPE || b == ecologist::B_VALVE || b == ecologist::B_FILTER ||
+                            b == ecologist::B_PUMP_IN || b == ecologist::B_PUMP_OUT;
+        ports.push_back(port);
+    }
+    d["ports"] = ports;
     if (spec.capacity <= 0)
         return d;
     const double mass = ecologist::vessel_mass(v);
@@ -182,6 +200,14 @@ Dictionary summary(const ecologist::World &w, const ecologist::Sandbox &s, int i
     d["crystals"] = mass > 0 ? (v.sugar_crystal + v.salt_crystal + v.bittern_crystal) / mass : 0.0;
     d["burnt"] = mass > 0 ? v.burnt / mass : 0.0;
     d["sugar"] = mass > 0 ? v.dissolved[ecologist::SOL_SUGAR] / mass : 0.0;
+    const double tissue = v.beet + v.beet_water + v.beet_sugar + v.beet_colloid + v.beet_ash;
+    d["beets"] = mass > 0 ? tissue / mass : 0.0;
+    d["mud"] = mass > 0 ? v.mud / mass : 0.0;
+    d["cloudy"] = v.water > 0 ? v.dissolved[ecologist::SOL_SILT] / v.water : 0.0;
+    if (spec.aux > 0) {
+        d["casing_mass"] = ecologist::vessel_mass(e.aux);
+        d["casing_capacity"] = spec.aux;
+    }
     return d;
 }
 } // namespace
@@ -195,6 +221,9 @@ Array EcologistWorld::equipment_kinds() const {
         d["height"] = spec.height;
         d["capacity"] = spec.capacity;
         d["support"] = spec.support;
+        d["closed"] = spec.closed;
+        d["aux"] = spec.aux;
+        d["ports"] = static_cast<int>(ecologist::equipment_ports(k).size());
         result.push_back(d);
     }
     return result;
@@ -257,13 +286,39 @@ Dictionary EcologistWorld::equipment_info(int id) const {
     d["stage"] = String(ecologist::candy_stage(v).c_str());
     d["brix"] = v.water + sugar > 1e-9 ? sugar / (v.water + sugar) : 0.0;
     d["salinity"] = v.water + salts > 1e-9 ? salts / (v.water + salts) : 0.0;
+    // Beet sugar (M2): the cossettes, the juice's colloids, ash and lime, and the centrifuge's casing.
+    d["beet_g"] = v.beet + v.beet_water + v.beet_sugar + v.beet_colloid + v.beet_ash;
+    d["beet_sugar_g"] = v.beet_sugar;
+    d["shredded"] = v.beet_cut;
+    d["colloid_g"] = v.dissolved[ecologist::SOL_SILT];
+    d["ash_g"] = v.dissolved[ecologist::SOL_METAL];
+    d["lime_g"] = v.dissolved[8];
+    d["mud_g"] = v.mud;
+    d["crystal_dirt_g"] = v.crystal_dirt;
+    d["ph"] = ecologist::vessel_ph(v);
+    // Sugar's saturation at this temperature, as a Brix: above it, seed crystals grow.
+    const double t = v.temperature, ratio = 1.8 + 0.01 * t + 0.00018 * t * t;
+    d["saturation_brix"] = ratio / (1 + ratio);
+    if (ecologist::equipment_spec(it->second.kind).aux > 0) {
+        const auto &c = it->second.aux;
+        d["casing_water"] = c.water;
+        d["casing_sugar"] = c.dissolved[ecologist::SOL_SUGAR];
+        d["casing_temperature"] = c.temperature;
+    }
     return d;
 }
+// Stoves and the kettle take a flame of 0 to 3; the coupling (the tanker pumping) and the centrifuge are off or on.
 bool EcologistWorld::equipment_set(int id, int setting) {
     auto it = sandbox.equipment.find(id);
-    if (it == sandbox.equipment.end() || it->second.kind != ecologist::EQ_STOVE)
+    if (it == sandbox.equipment.end())
         return false;
-    it->second.setting = std::clamp(setting, 0, 3);
+    const int kind = it->second.kind;
+    if (kind == ecologist::EQ_STOVE || kind == ecologist::EQ_KETTLE)
+        it->second.setting = std::clamp(setting, 0, 3);
+    else if (kind == ecologist::EQ_COUPLING || kind == ecologist::EQ_CENTRIFUGE)
+        it->second.setting = std::clamp(setting, 0, 1);
+    else
+        return false;
     return true;
 }
 String EcologistWorld::vessel_add(int id, const String &ingredient, double grams, double temperature) {
@@ -528,6 +583,7 @@ Dictionary EcologistWorld::stats() const {
     d["pumps"] = static_cast<int>(sandbox.pumps.size());
     d["message"] = String(sandbox.message.c_str());
     d["pending_wire"] = sandbox.pending_wire;
+    d["pending_inlet"] = sandbox.pending_inlet;
     d["shake"] = sandbox.shake;
     d["explosions"] = sandbox.explosions;
     int burning = 0;

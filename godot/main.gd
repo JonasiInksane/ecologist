@@ -8,6 +8,9 @@ const WORLD_SAVE := "user://world-v1.ecosave"
 const PLAYER_ART := "res://art/player.png"
 const DOOR_CODE := 1004
 const REMOVE_CODE := 1000
+const PIPE_CODE := 1006
+const VALVE_CODE := 1007
+const PUMP_CODE := 1008
 var TOOLS: Array = [
     ["Water", 1, Color("5daee7")], ["Oil", 9, Color("b6a16b")],
     ["Honey", 3, Color("edb151")], ["Steam", 8, Color("c3d5da")],
@@ -36,12 +39,15 @@ var kit_buttons: Array[Button] = []
 var kit_mode := false
 var kit_button: Button
 var kitchen: PanelContainer
+var shop: PanelContainer
 var equipment_view: Array = []
 var build_bar: HBoxContainer
 var palette: HBoxContainer
 var mode_button: Button
 var sandbox_only: Array[Button] = []
+var campaign_only: Array[Button] = []
 var hud_label: Label
+var clock_label: Label
 var player_texture: Texture2D
 var player: Dictionary = {}
 var walk_clock := 0.0
@@ -195,12 +201,15 @@ func _build_ui() -> void:
     column.add_theme_constant_override("separation", 12)
     panel.add_child(column)
     var heading := HBoxContainer.new()
-    heading.add_theme_constant_override("separation", 16)
+    heading.add_theme_constant_override("separation", 10)
     column.add_child(heading)
     heading.add_child(_label("ecologist", 28, Color("e1f2e5")))
-    var subtitle := _label("MATERIALS & MACHINES", 12, Color("8cb8aa"))
-    subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    heading.add_child(subtitle)
+    heading.add_child(_label("MATERIALS & MACHINES", 12, Color("8cb8aa")))
+    # The campaign clock and the next delivery; it takes the free width and clips rather than pushing buttons off.
+    clock_label = _label("", 14, Color("e1f2e5"))
+    clock_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    clock_label.clip_text = true
+    heading.add_child(clock_label)
     mode_button = _button("Sandbox  ·  Tab", func(): _set_mode(not campaign))
     heading.add_child(mode_button)
     heading.add_child(_button("Day / night", _toggle_day))
@@ -210,6 +219,10 @@ func _build_ui() -> void:
     for button in sandbox_only:
         heading.add_child(button)
     heading.add_child(_button("Workshop", _toggle_workshop))
+    campaign_only.append(_button("Save · F5", _save_world))
+    campaign_only.append(_button("Load · F9", _load_world))
+    for button in campaign_only:
+        heading.add_child(button)
     pause_button = _button("Pause  ·  Space", _toggle_pause)
     heading.add_child(pause_button)
     sandbox_only.append(_button("Step  ·  N", _single_step))
@@ -227,20 +240,15 @@ func _build_ui() -> void:
     for i in kit_items.size():
         var item: Dictionary = kit_items[i]
         var kit_item_button := _button("%s %d" % [item.short, int(item.cost)], _select_kit.bind(i))
-        kit_item_button.tooltip_text = "%s · key %d · %d credits · %s" % [item.name, i + 1, int(item.cost), item.note]
+        kit_item_button.tooltip_text = "%s · key %d · %s · %s" % [item.name, i + 1, "delivered in a crate; order it on the laptop" if item.get("crate", false) else "%d credits" % int(item.cost), item.note]
         kit_buttons.append(kit_item_button)
         build_bar.add_child(kit_item_button)
     for i in build_items.size():
         var item: Dictionary = build_items[i]
         var build_button := _button("%s %d" % [item.short, int(item.cost)], _select_build.bind(i))
-        build_button.tooltip_text = "%s · key %d · %d credits per tile" % [item.name, (i + 1) % 10, int(item.cost)]
+        build_button.tooltip_text = "%s · key %d · %d credits per %s" % [item.name, (i + 1) % 10, int(item.cost), "cell" if item.get("cell", false) else "tile"]
         build_buttons.append(build_button)
         build_bar.add_child(build_button)
-    var build_spacer := Control.new()
-    build_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    build_bar.add_child(build_spacer)
-    build_bar.add_child(_button("Save · F5", _save_world))
-    build_bar.add_child(_button("Load · F9", _load_world))
     material_picker.custom_minimum_size.x = 220
     for category in ["All", "Liquids", "Terrain", "Powders", "Machines", "Tools"]:
         category_picker.add_item(category)
@@ -295,6 +303,14 @@ func _build_ui() -> void:
     kitchen.offset_top = 124
     kitchen.offset_bottom = -66
     layer.add_child(kitchen)
+    shop = preload("res://shop_panel.gd").new()
+    shop.setup(self)
+    shop.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+    shop.offset_left = -440
+    shop.offset_top = 124
+    shop.offset_bottom = -66
+    layer.add_child(shop)
+    _refresh_kit()
     _filter_tools()
     _select(0)
 
@@ -317,6 +333,11 @@ func _select(index: int) -> void:
         tool_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == selected else Color("1d3036"), Color("91bdae") if i == selected else Color.TRANSPARENT))
 
 func _select_build(index: int) -> void:
+    if build_selected != clampi(index, 0, build_items.size() - 1) and campaign and inspector_label != null:
+        match int(build_items[clampi(index, 0, build_items.size() - 1)].code):
+            PIPE_CODE: _notice("Pipe: drag to lay it cell by cell. Ends next to a tank's port couple to it.")
+            VALVE_CODE: _notice("Valve: place it in a pipe run; click a valve to open or shut it.")
+            PUMP_CODE: _notice("Pump: click the inlet cell, then the outlet cell. Click either end to switch it.")
     build_selected = clampi(index, 0, build_items.size() - 1)
     for i in build_buttons.size():
         build_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == build_selected else Color("1d3036"), Color("91bdae") if i == build_selected else Color.TRANSPARENT))
@@ -325,6 +346,13 @@ func _select_kit(index: int) -> void:
     kit_selected = clampi(index, 0, kit_items.size() - 1)
     for i in kit_buttons.size():
         kit_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == kit_selected else Color("1d3036"), Color("91bdae") if i == kit_selected else Color.TRANSPARENT))
+
+# Crated pieces show how many delivered crates wait to be placed.
+func _refresh_kit() -> void:
+    for i in kit_items.size():
+        var item: Dictionary = kit_items[i]
+        if item.get("crate", false):
+            kit_buttons[i].text = "%s ×%d" % [item.short, int(shop.model.crates.get(item.id, 0))]
 
 # The build bar shows either building tiles or the kitchen kit.
 func _set_kit_mode(on: bool) -> void:
@@ -387,6 +415,9 @@ func _set_mode(on: bool) -> void:
     hud_label.visible = on
     for button in sandbox_only:
         button.visible = not on
+    for button in campaign_only:
+        button.visible = on
+    clock_label.visible = on
     _label_pause()
     drawing = false
     panning = false
@@ -422,6 +453,74 @@ func _item_for(code: int) -> Dictionary:
             return item
     return {}
 
+# The pipe, valve or pump build item at a cell, if one is there.
+func _fitting_at(cell: Vector2i) -> Dictionary:
+    var solid := int(world.inspect(cell.x, cell.y).get("solid", 0))
+    for item in build_items:
+        if item.get("cell", false) and (int(item.solid) == solid or (int(item.solid) == 8 and solid == 9)):
+            return item
+    return {}
+
+# A click on a valve opens or shuts it; on a pump end it switches the pump (or cancels a lone inlet, refunded).
+func _toggle_fitting(cell: Vector2i) -> bool:
+    var solid := int(world.inspect(cell.x, cell.y).get("solid", 0))
+    if solid != 26 and solid != 8 and solid != 9:
+        return false
+    if not _in_reach(_tile_at(cell)):
+        _notice("Too far away to reach it.")
+        return true
+    var pending: bool = int(world.stats().pending_inlet) == cell.y * WIDTH + cell.x
+    var was_open: bool = world.inspect(cell.x, cell.y).get("open", false)
+    world.device_action(cell.x, cell.y, -26 if solid == 26 else 301, 1)
+    if pending:
+        workshop.model.cash += float(_item_for(PUMP_CODE).cost)
+        _notice("Pump cancelled · refunded.")
+    elif solid == 26:
+        _notice("Valve shut." if was_open else "Valve open.")
+    else:
+        _notice(world.stats().message + ".")
+    dirty = true
+    return true
+
+# Pipes are laid cell by cell along the drag, four-connected so a fast drag leaves no gaps; a valve or pump end
+# goes down once per click. A pump is paid for when its inlet goes down.
+func _lay(cell: Vector2i, item: Dictionary) -> void:
+    var code := int(item.code)
+    var steps: Array[Vector2i] = []
+    if last_build == Vector2i(-1, -1):
+        steps.append(cell)
+    elif code == PIPE_CODE:
+        var at := last_build
+        while at != cell and steps.size() < 64:
+            var gap := cell - at
+            if absi(gap.x) >= absi(gap.y):
+                at.x += signi(gap.x)
+            else:
+                at.y += signi(gap.y)
+            steps.append(at)
+    if steps.is_empty():
+        return
+    last_build = cell
+    var model: WorkshopModel = workshop.model
+    for at in steps:
+        if not _in_reach(_tile_at(at)):
+            _notice("Too far away to build there.")
+            return
+        var inlet := code == PUMP_CODE and int(world.stats().pending_inlet) < 0
+        var cost: float = float(item.cost) if code != PUMP_CODE or inlet else 0.0
+        if model.cash + 0.000001 < cost:
+            _notice("Not enough credits for %s (%.2f)." % [item.name, cost])
+            return
+        if world.build(at.x, at.y, code) > 0:
+            model.cash = maxf(0.0, model.cash - cost)
+            dirty = true
+            if code == PUMP_CODE:
+                _notice(("Pump inlet placed · %.2f credits. Click the outlet cell." % cost) if inlet else "Pump connected. Click either end to switch it.")
+            else:
+                _notice("Built %s · %.2f credits" % [item.short.to_lower(), cost])
+        elif steps.size() == 1:
+            _notice("Fittings go in empty cells.")
+
 # Credits returned for removing a tile, worked out cell by cell in the order the native remove follows.
 func _salvage(tile: Vector2i) -> float:
     var cells: Array[Dictionary] = []
@@ -456,14 +555,27 @@ func _salvage(tile: Vector2i) -> float:
 
 func _campaign_build(cell: Vector2i) -> void:
     var tile := _tile_at(cell)
-    if tile == last_build:
+    var single: bool = removing and not _fitting_at(cell).is_empty()
+    if not removing and build_items[build_selected].get("cell", false):
+        if cell != last_build:
+            _lay(cell, build_items[build_selected])
         return
-    last_build = tile
+    if (cell if single else tile) == last_build:
+        return
+    last_build = cell if single else tile
     if not _in_reach(tile):
         _notice("Too far away to build there.")
         return
     var model: WorkshopModel = workshop.model
     if removing:
+        var fitting := _fitting_at(cell)
+        if not fitting.is_empty():
+            var refund := float(fitting.cost) * float(fitting.salvage)
+            if world.build(cell.x, cell.y, REMOVE_CODE) > 0:
+                model.cash += refund
+                _notice("Removed the %s · %.2f credits back" % [String(fitting.short).to_lower(), refund])
+                dirty = true
+            return
         var refund := _salvage(tile)
         if world.build(tile.x, tile.y, REMOVE_CODE) > 0:
             model.cash += refund
@@ -493,6 +605,8 @@ func _save_world() -> void:
         if DirAccess.rename_absolute(path + ".tmp", path) != OK:
             error = "could not replace the old save"
     workshop._save()
+    if error.is_empty():
+        error = shop.save()
     _notice("Game saved." if error.is_empty() else "Could not save the world: " + error)
 
 func _load_world() -> void:
@@ -505,8 +619,10 @@ func _load_world() -> void:
         return
     workshop._load_save()
     kitchen.reset()
+    var deliveries: String = shop.load_save()
+    _refresh_kit()
     _set_mode(true)
-    _notice("Game loaded.")
+    _notice("Game loaded." if deliveries.is_empty() else "Game loaded, but not the deliveries: " + deliveries + ".")
 
 func _resize_brush(change: int) -> void:
     radius = clampi(radius + change, 1, 16)
@@ -538,6 +654,7 @@ func _toggle_workshop() -> void:
     workshop.visible = not workshop.visible
     if workshop.visible:
         kitchen.close()
+        shop.close()
     drawing = false
     panning = false
 
@@ -564,7 +681,7 @@ func _toggle_momentum() -> void:
 
 func _pointer_over_ui() -> bool:
     var pointer := get_viewport().get_mouse_position()
-    var side := (workshop != null and workshop.visible) or (kitchen != null and kitchen.visible)
+    var side := (workshop != null and workshop.visible) or (kitchen != null and kitchen.visible) or (shop != null and shop.visible)
     return pointer.y < 124 or pointer.y > get_viewport_rect().size.y - 66 or (side and pointer.x > get_viewport_rect().size.x - 440)
 
 func _input(event: InputEvent) -> void:
@@ -596,6 +713,7 @@ func _unhandled_input(event: InputEvent) -> void:
             _toggle_pause()
         elif event.keycode == KEY_ESCAPE:
             kitchen.close()
+            shop.close()
             kitchen.carrying = -1
         elif event.physical_keycode == KEY_K:
             _set_kit_mode(not kit_mode)
@@ -620,7 +738,14 @@ func _unhandled_input(event: InputEvent) -> void:
     if campaign and event is InputEventMouseButton and event.pressed and not _pointer_over_ui():
         match event.button_index:
             MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT:
-                if _equipment_click(Vector2i((get_global_mouse_position() / CELL).floor()), event.button_index == MOUSE_BUTTON_RIGHT):
+                var clicked := Vector2i((get_global_mouse_position() / CELL).floor())
+                if kitchen.carrying < 0 and shop.truck_at(clicked):
+                    if event.button_index == MOUSE_BUTTON_LEFT:
+                        shop.click_truck()
+                    return
+                if _equipment_click(clicked, event.button_index == MOUSE_BUTTON_RIGHT):
+                    return
+                if not kit_mode and event.button_index == MOUSE_BUTTON_LEFT and _toggle_fitting(clicked):
                     return
                 drawing = true
                 removing = event.button_index == MOUSE_BUTTON_RIGHT
@@ -696,6 +821,7 @@ func _physics_process(_delta: float) -> void:
         workshop.model.step(1)
         if campaign:
             kitchen.bill()
+            shop.step()
         dirty = true
 
 func _process(delta: float) -> void:
@@ -721,7 +847,10 @@ func _process(delta: float) -> void:
         var stats := world.stats()
         status_label.text = "%s · %d fps · %d grains" % ["Paused" if paused else "Running", Engine.get_frames_per_second(), stats.grains]
         if campaign and player.get("active", false):
+            var delivery: String = shop.model.status()
+            clock_label.text = "   %s%s" % [LogisticsModel.clock_text(shop.model.minute), "   ·   " + delivery if not delivery.is_empty() else ""]
             hud_label.text = "%.2f credits   ·   Health %d   ·   Breath %d   ·   %s   " % [workshop.model.cash, ceili(player.health), ceili(player.breath), "Removing" if removing and drawing else _item_name()]
+            _refresh_kit()
         var cell := Vector2i((get_global_mouse_position() / CELL).floor())
         var sample: Dictionary = world.inspect(cell.x, cell.y)
         var label: String = _item_name() if campaign else TOOLS[selected][0]
@@ -852,14 +981,18 @@ func _player_frame() -> int:
     return 0
 
 func _draw_campaign() -> void:
+    shop.draw_trucks(self, animation_time)
     kitchen.draw_equipment(self, equipment_view, animation_time)
     var pointer_cell := Vector2i((get_global_mouse_position() / CELL).floor())
+    var inlet := int(world.stats().pending_inlet)
+    if inlet >= 0:
+        draw_line(Vector2(inlet % WIDTH, inlet / WIDTH) * CELL + Vector2(4, 4), get_global_mouse_position(), Color("87d2ec"), 1.0 / camera.zoom.x)
     if not _pointer_over_ui() and (kit_mode or kitchen.carrying >= 0) and world.equipment_at(pointer_cell.x, pointer_cell.y) < 0:
         var kind: String = kit_items[kit_selected].id
         if kitchen.carrying >= 0:
             kind = String(world.equipment_info(kitchen.carrying).get("kind", kind))
         var spot: Rect2 = kitchen.footprint(kind, pointer_cell)
-        var fits: bool = _in_reach(_tile_at(pointer_cell)) and (kitchen.carrying >= 0 or workshop.model.cash + 0.000001 >= float(kit_items[kit_selected].cost))
+        var fits: bool = _in_reach(_tile_at(pointer_cell)) and (kitchen.carrying >= 0 or kitchen.can_place(kind))
         var shade := Color(0.55, 0.95, 0.65) if fits else Color(1.0, 0.45, 0.4)
         draw_rect(spot, Color(shade, 0.18))
         draw_rect(spot, Color(shade, 0.8), false, 1.0 / camera.zoom.x)
@@ -867,7 +1000,9 @@ func _draw_campaign() -> void:
         var tile := _tile_at(pointer_cell)
         var item: Dictionary = build_items[build_selected]
         var rect := Rect2(Vector2(tile) * CELL, Vector2(2, 2) * CELL)
-        if int(item.code) == DOOR_CODE and not removing:
+        if item.get("cell", false) or (removing and not _fitting_at(pointer_cell).is_empty()):
+            rect = Rect2(Vector2(pointer_cell) * CELL, Vector2.ONE * CELL)
+        elif int(item.code) == DOOR_CODE and not removing:
             rect = Rect2(Vector2(tile.x, tile.y - 4) * CELL, Vector2(2, 6) * CELL)
         var ok: bool = _in_reach(tile) and (removing or workshop.model.cash + 0.000001 >= float(item.cost))
         var tint := Color(0.55, 0.95, 0.65) if ok else Color(1.0, 0.45, 0.4)

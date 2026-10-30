@@ -43,6 +43,13 @@ and press **E**) to open the kitchen panel: set the flame, add sugar, sea water 
 and collect. Make syrup, hard candy and sea salt, then sell them in the **Workshop** panel. **K** swaps the build
 bar to the kitchen kit for placing more equipment. See [M1 shack slice](docs/design/m1-shack-slice.md).
 
+Supplies come by truck. Click the **laptop** on the table to order from the suppliers; a van parks at the curb
+after the lead time (the clock and the next delivery are in the top bar) and you walk over and click it to unload.
+Drums, totes, a fill coupling, a jacketed kettle and a centrifuge arrive in crates and are placed from the kit.
+Lay **pipes**, **valves** and **pumps** from the build bar: pipe ends couple to the ports on tanks and kettles,
+and a sea water tanker pumps through a coupling by the road. With a kettle, lime and a centrifuge, beets become
+white sugar, molasses and pulp. See [M2 logistics](docs/design/m2-logistics.md).
+
 In the sandbox:
 
 Paint with left drag; select a material with **1–8** or the toolbar. **Ignite** brings fuel under the brush

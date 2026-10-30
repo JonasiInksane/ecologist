@@ -44,7 +44,12 @@ no survival needs, staff, Steam on Windows and macOS, solo at about 2 hours a da
   salt graded A to C and sold through the workshop; thermometer and refractometer; gas and tap water bills; every
   joule booked. Open vessels vent their vapour outside (the world has no humidity yet).
   See [M1 shack slice](docs/design/m1-shack-slice.md). (Gate G1 after M2.)
-- [ ] M2 Logistics: shop, trucks, couplings, tanks, beet sugar.
+- [x] M2 Logistics: a laptop shop with fictional suppliers, a game clock, vans unloaded at the curb with return
+  fees, crated equipment; pipes, valves and pumps built cell by cell; drums, totes, a fill coupling, a jacketed
+  kettle and a basket centrifuge with ports that pipes couple to; a sea water tanker pumping uphill through the
+  coupling; beet sugar from cossettes through liming, seeded boiling and spinning to white sugar, with pulp, lime mud
+  and molasses; pH meter and shredder; gas and electricity bills; world saves v3 and delivery saves.
+  See [M2 logistics](docs/design/m2-logistics.md). Next: gate G1 (twenty minutes in the shack without help).
 - [ ] M3 Property · M4 Farming · M5 Police and risk (gate G2) · M6 Hazards · M7 Scale up · M8 Polish and launch (gate G3).
 
 ## Game direction: chemistry, manufacturing and trade
