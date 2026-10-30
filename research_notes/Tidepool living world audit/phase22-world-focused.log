@@ -1,0 +1,273 @@
+Final-source focused verification
+Started: 2026-10-29T23:39:42.006Z
+Finished: 2026-10-29T23:41:35.166Z
+Commands: 21; executed: 19; reused: 2
+Peak concurrent check children: 2
+Failures: 0
+Simtest and build excluded as requested; bundled startup uses the already built dist.
+
+========================================================================
+Command: node tools/check-ecology.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-ecology.log
+Exit status: 0; signal: none
+Elapsed ms: 1361.5
+
+PASS 217 finite ecology and C/N/P accounting checks
+
+========================================================================
+Command: node tools/check-cold-ecology.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-cold-ecology.log
+Exit status: 0; signal: none
+Elapsed ms: 734.3
+
+{"producer":[{"temperature":20,"made":0.1,"respired":0.019999999999996618,"change":0.08000000000000185},{"temperature":10,"made":0.05,"respired":0.009999999999998309,"change":0.03999999999999915},{"temperature":0,"made":0,"respired":0.005000000000005219,"change":-0.015000000000000568}],"darkLoss":[0.05999999999999872,0.030000000000001137,0.015000000000000568],"starvation":[{"temperature":20,"ticks":11100,"foodAdded":0},{"temperature":10,"ticks":22201,"foodAdded":0},{"temperature":0,"ticks":44401,"foodAdded":0}]}
+Cold ecology checks: 159 passed
+
+========================================================================
+Command: node tools/check-ice-light.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-ice-light.log
+Exit status: 0; signal: none
+Elapsed ms: 370.2
+
+53 clear-ice light and finite photosynthesis checks pass
+
+========================================================================
+Command: node tools/check-erosion-accounting.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-erosion-accounting.log
+Exit status: 0; signal: none
+Elapsed ms: 112026.7
+
+PASS wet-bank erosion preserves mixed parcels (48 river, 106 pore)
+PASS wet-bank erosion preserves mixed parcels (250 river, 255 pore)
+PASS wet-bank erosion preserves mixed parcels (255 river, 73 pore)
+PASS wet-bank erosion preserves mixed parcels (17 river, 0 pore)
+PASS wet-bank erosion preserves mixed parcels (1 river, 255 pore)
+PASS fractional wet bank retains its unrepresentable porewater and soil
+PASS sand erosion retains the actual partial-powder thermal charge (0)
+PASS sand erosion retains the actual partial-powder thermal charge (63.5)
+PASS sand erosion retains the actual partial-powder thermal charge (255)
+PASS slump uses actual finite water (200 river, 0 pore)
+PASS slump uses actual finite water (100 river, 80 pore)
+PASS slump uses actual finite water (1 river, 255 pore)
+PASS slump uses actual finite water (160 river, 0 pore)
+PASS slump uses actual finite water (25 river, 160 pore)
+PASS slump defers absent or fractional carrier (159 river, 0 pore)
+PASS slump defers absent or fractional carrier (79 river, 80 pore)
+PASS slump defers absent or fractional carrier (255 river, 37.5 pore)
+PASS washing whole mud retains water and every component (1)
+PASS washing whole mud retains water and every component (48)
+PASS washing whole mud retains water and every component (255)
+PASS repeated settling/washing retains its first sediment load (12.5)
+PASS repeated settling/washing retains its first sediment load (255)
+PASS repeated settling/washing retains its first sediment load (413.75)
+PASS silt sinking conserves amount across unequal/full carriers (255/17, 250)
+PASS silt sinking conserves amount across unequal/full carriers (17/255, 23)
+PASS silt sinking conserves amount across unequal/full carriers (47/93, 255)
+PASS silt sinking conserves amount across unequal/full carriers (47/93, 320)
+PASS bed deposition transfers real whole carrier with all contents (48/254)
+PASS bed deposition transfers real whole carrier with all contents (3/240)
+PASS bed deposition transfers real whole carrier with all contents (255/255)
+PASS bed deposition transfers real whole carrier with all contents (53/177)
+PASS settling keeps the entire water parcel (1)
+PASS settling keeps the entire water parcel (32)
+PASS settling keeps the entire water parcel (255)
+PASS packing retains porewater, solutes and existing soil (1)
+PASS packing retains porewater, solutes and existing soil (73)
+PASS packing retains porewater, solutes and existing soil (255)
+PASS empty/incorrect/out-of-world parcels do not trigger transformations
+PASS live erosion tick reproduces the wet-bank carrier-mixing case conservatively
+PASS whole-parcel wash retains the legacy expected-volume probability
+{"exposedBank":true,"sterile":false,"ticks":3000,"maximumAbsoluteDrift":{"c":4.656612873077393e-10,"n":4.973799150320701e-14,"p":3.1086244689504383e-15}}
+PASS original exposed woodland bank closes C/N/P at every actual step (ordinary finite microbes)
+{"exposedBank":true,"sterile":true,"ticks":3000,"maximumAbsoluteDrift":{"c":4.0745362639427185e-10,"n":3.552713678800501e-14,"p":2.6645352591003757e-15}}
+PASS original exposed woodland bank closes C/N/P at every actual step (microbial banks removed)
+42 erosion accounting checks passed
+
+========================================================================
+Command: node tools/check-feeding.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-feeding.log
+Exit status: 0; signal: none
+Elapsed ms: 643.9
+
+Feeding checks: 62 passed
+
+========================================================================
+Command: node tools/check-roots.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-roots.log
+Exit status: 0; signal: none
+Elapsed ms: 590.7
+
+57 connected-root checks pass
+
+========================================================================
+Command: node tools/check-plant-air.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-plant-air.log
+Exit status: 0; signal: none
+Elapsed ms: 847.5
+
+Plant air checks: 111 passed
+
+========================================================================
+Command: node tools/check-habitats.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-habitats.log
+Exit status: 0; signal: none
+Elapsed ms: 2871.3
+
+157 generated habitat checks pass
+
+========================================================================
+Command: node tools/check-woodland-moisture.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-woodland-moisture.log
+Exit status: 0; signal: none
+Elapsed ms: 13949.1
+
+{"watered":{"height":5,"flower":true,"nectarCollected":2.8000000000000003,"honeyStored":2.8000000000000003},"dry":{"height":1,"flower":false,"nectarCollected":0,"honeyStored":0}}
+150 woodland moisture checks pass
+
+========================================================================
+Command: node tools/check-fish-recovery.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-fish-recovery.log
+Exit status: 0; signal: none
+Elapsed ms: 308.8
+
+23 fish recovery checks pass
+
+========================================================================
+Command: node tools/check-hive-sites.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-hive-sites.log
+Exit status: 0; signal: none
+Elapsed ms: 1057.8
+
+85 generated hive placement checks pass
+
+========================================================================
+Command: node tools/check-hives.mjs
+Mode: reused; original log: .test-artifacts/phase22-world-hives-final.log
+Individual log: .test-artifacts/phase22-world-focused-hives.log
+Exit status: 0; signal: none
+
+{"fed":{"bees":3,"honey":0.6252179955080884,"heat":1617.3840538980553,"deaths":{},"lowest":-4},"unfed":{"bees":0,"honey":0,"heat":0,"deaths":{"bee:cold":3},"lowest":-10},"winter":{"bees":3,"honey":0.6138345406449018,"heat":1753.9855122568329,"deaths":{},"outdoorMin":-12.499277669344666,"outdoorMax":4.084942070791646}}
+Hive checks: 129 passed
+
+========================================================================
+Command: node tools/check-bee-routing.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-bee-routing.log
+Exit status: 0; signal: none
+Elapsed ms: 726.3
+
+Bee routing checks: 121 passed
+
+========================================================================
+Command: node tools/check-sky.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-sky.log
+Exit status: 0; signal: none
+Elapsed ms: 1735.3
+
+{"ok":true,"checks":51,"note":"Exact full-frame parity for thresholds, fog, day/night, every world row/column, fractional views and terrain/liquid blockers"}
+
+========================================================================
+Command: node tools/check-ecosystem-metrics.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-ecosystem-metrics.log
+Exit status: 0; signal: none
+Elapsed ms: 111.8
+
+PASS ecosystem acceptance rejects lost matter, replenishment, leaks, invalid stores, missing fixed seeds and unrecorded fish changes
+
+========================================================================
+Command: node tools/check-generated-ecosystem-metrics.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-generated-ecosystem-metrics.log
+Exit status: 0; signal: none
+Elapsed ms: 125.7
+
+68 generated ecosystem acceptance checks pass
+
+========================================================================
+Command: node tools/check-bundle.mjs
+Mode: reused; original log: .test-artifacts/phase22-world-startup-final.log
+Individual log: .test-artifacts/phase22-world-focused-bundle.log
+Exit status: 0; signal: none
+
+PASS bundled initialization and first animation frame under DOM/canvas stubs
+
+========================================================================
+Command: node tools/check-accounting.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-accounting.log
+Exit status: 0; signal: none
+Elapsed ms: 633.2
+
+PASS 51 focused accounting checks
+
+========================================================================
+Command: node tools/check-oxygen.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-oxygen.log
+Exit status: 0; signal: none
+Elapsed ms: 324.7
+
+PASS temperature and salinity change equilibrium, not dissolved inventory
+PASS fractional respiration and photosynthesis preserve gas molecule counts
+PASS respiration cannot spend absent oxygen or overflow product storage
+PASS water respiration accounts for fractional products and oxygen shortfalls
+PASS sealed air and a partial water tile conserve both gases during exchange
+PASS exchange cannot draw gas from an empty headspace
+PASS a sealed pair of air cells mixes without gas creation
+PASS direct atmosphere exchange has a named boundary total
+PASS pore water carries every dissolved component through soil and back into a pool
+PASS sponge soaking and cold wringing preserve salt and dissolved oxygen
+PASS pore transfers conserve water, dissolved and dry-matrix sensible heat
+PASS mud respiration credits only the oxygen actually present
+PASS roots store taken nitrogen and transpiration retains the remaining contents
+PASS roots withdraw pure water and store nitrogen from damp soil too
+PASS a plant without oxygen retains unmetabolized sugar and accumulates stress
+PASS moss cannot respire without a reserve and removed moss loses its saved reserve explicitly
+PASS surface evaporation retains both salt and sugar in a mixed residue
+PASS plain water can dry after releasing its gases into finite headspace
+PASS a drying living puddle preserves its algae in a one-unit film
+PASS the last drop waits when its gas products have no storage room
+PASS wind drift carries dissolved ingredients and pending energy with gas
+PASS steam entering open weather records the components it carries out
+PASS rain dilutes existing solutes and records its atmospheric oxygen
+PASS rain and evaporation retain dissolved sensible heat and record carrier boundary heat
+PASS electrolysis retains salt, sugar and actual dissolved oxygen in its remaining water
+PASS electrolysis reserves product space and leaves the final carrier unit
+All 26 focused oxygen checks passed.
+
+========================================================================
+Command: node tools/check-thermal.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-thermal.log
+Exit status: 0; signal: none
+Elapsed ms: 333.1
+
+Thermal accounting checks passed (144 assertions).
+
+========================================================================
+Command: node tools/check-devices.mjs
+Mode: executed
+Individual log: .test-artifacts/phase22-world-focused-devices.log
+Exit status: 0; signal: none
+Elapsed ms: 257.5
+
+Device accounting checks passed (157 assertions).
+
+========================================================================
+RESULT: PASS (21/21 commands; 19 new executions, 2 reused root checks)
+
+Reported numeric totals: 1562 checks and 301 assertions. Ecosystem-metrics and bundled startup also passed; those scripts report no numeric total.
+Reused hives and bundled startup exit statuses were explicitly confirmed as 0 by root.

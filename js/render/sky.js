@@ -79,10 +79,21 @@ const CLOUD_WOBBLE = 0.3, CLOUD_EDGE = CLOUD_WOBBLE / 2 + 1e-12;
 function cloudAt(px, py, time) {
   return cloudBaseAt(px, py) + (vnoise(px / 22 + time * 0.03, py / 14, 7) - 0.5) * CLOUD_WOBBLE;
 }
+// Fixed pixel-to-air-cell geometry. Keep fractions in Float64 and the original arithmetic
+// order below; cloud values themselves are read live for every frame.
+const CLOUD_LEFT = new Uint16Array(PW), CLOUD_RIGHT = new Uint16Array(PW);
+const CLOUD_FX = new Float64Array(PW), CLOUD_ONE_MINUS_FX = new Float64Array(PW);
+const CLOUD_EMPTY_ROW = new Float32Array(AW);
+for (let px = 0; px < PW; px++) {
+  const gx = px / (CELL * T) - 0.5, ix = Math.floor(gx), fx = gx - ix;
+  CLOUD_LEFT[px] = ((ix % AW) + AW) % AW; CLOUD_RIGHT[px] = (((ix + 1) % AW) + AW) % AW;
+  CLOUD_FX[px] = fx; CLOUD_ONE_MINUS_FX[px] = 1 - fx;
+}
 // Clouds as flat shapes in three tones: a pale fringe, a white body and a dark grey storm core, dimmed at night. Low
 // cloud lying on the ground is drawn as thin fog.
 function drawClouds(time) {
   const h = sunHeight(), day = Math.max(0.3, Math.min(1, (h + 0.25) / 0.5)), cs = CELL * T;
+  const viewX0 = Math.ceil(VIEW.x), viewY0 = Math.ceil(VIEW.y);
   const cx0 = Math.max(0, (VIEW.x / cs | 0) - 1), cx1 = Math.min(AW - 1, ((VIEW.x + VIEW.w) / cs | 0) + 1);
   const cy0 = Math.max(0, (VIEW.y / cs | 0) - 1), cy1 = Math.min(AH - 1, ((VIEW.y + VIEW.h) / cs | 0) + 1);
   for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++) {
@@ -93,19 +104,30 @@ function drawClouds(time) {
     }
     if (near < 40) continue;
     const fog = cy + 1 < AH && open[(cy + 1) * AW + cx] < 0.5;
-    for (let py = cy * cs; py < cy * cs + cs; py++) {
-      if (py < VIEW.y || py >= VIEW.y + VIEW.h) continue;
-      for (let px = cx * cs; px < cx * cs + cs; px++) {
-        if (px < VIEW.x || px >= VIEW.x + VIEW.w || !openSky(px, py)) continue;
-        const base = cloudBaseAt(px, py);
-        // Noise only matters near a palette boundary. Else its bounded wobble cannot change the pixel's tone.
-        const edge = Math.abs(base - 0.25) <= CLOUD_EDGE || Math.abs(base - 0.6) <= CLOUD_EDGE || (!fog && Math.abs(base - 1.6) <= CLOUD_EDGE);
-        const d = edge ? base + (vnoise(px / 22 + time * 0.03, py / 14, 7) - 0.5) * CLOUD_WOBBLE : base;
-        if (d < 0.25) continue;
-        if (fog) { blend(py * PW + px, 222 * day, 228 * day, 236 * day, d > 0.6 ? 0.5 : 0.3); continue; }
-        if (d > 1.6) blend(py * PW + px, 118 * day, 124 * day, 138 * day, 0.93);
-        else if (d > 0.6) blend(py * PW + px, 238 * day, 242 * day, 248 * day, 0.9);
-        else blend(py * PW + px, 208 * day, 215 * day, 226 * day, 0.62);
+    // Terrain and liquid occupancy are constant across each tile. Clip and test them once,
+    // rather than repeating the same sky lookup and view bounds for every covered pixel.
+    for (let ty = cy * CELL; ty < (cy + 1) * CELL; ty++) for (let tx = cx * CELL; tx < (cx + 1) * CELL; tx++) {
+      const k = ty * W + tx;
+      if (under[k] || solid[k] || liq[k]) continue;
+      const x0 = Math.max(tx * T, viewX0), x1 = Math.min((tx + 1) * T, VIEW.x + VIEW.w);
+      const y0 = Math.max(ty * T, viewY0), y1 = Math.min((ty + 1) * T, VIEW.y + VIEW.h);
+      for (let py = y0; py < y1; py++) {
+        const gy = py / cs - 0.5, iy = Math.floor(gy), fy = gy - iy, oneMinusFy = 1 - fy;
+        const top = iy < 0 ? CLOUD_EMPTY_ROW : cloud, topRow = iy < 0 ? 0 : iy * AW;
+        const bottom = iy + 1 >= AH ? CLOUD_EMPTY_ROW : cloud, bottomRow = iy + 1 >= AH ? 0 : (iy + 1) * AW;
+        for (let px = x0; px < x1; px++) {
+          const left = CLOUD_LEFT[px], right = CLOUD_RIGHT[px], fx = CLOUD_FX[px], oneMinusFx = CLOUD_ONE_MINUS_FX[px];
+          const base = (top[topRow + left] * oneMinusFx * oneMinusFy + top[topRow + right] * fx * oneMinusFy
+            + bottom[bottomRow + left] * oneMinusFx * fy + bottom[bottomRow + right] * fx * fy) / 255;
+          // Noise only matters near a palette boundary. Else its bounded wobble cannot change the pixel's tone.
+          const edge = Math.abs(base - 0.25) <= CLOUD_EDGE || Math.abs(base - 0.6) <= CLOUD_EDGE || (!fog && Math.abs(base - 1.6) <= CLOUD_EDGE);
+          const d = edge ? base + (vnoise(px / 22 + time * 0.03, py / 14, 7) - 0.5) * CLOUD_WOBBLE : base;
+          if (d < 0.25) continue;
+          if (fog) { blend(py * PW + px, 222 * day, 228 * day, 236 * day, d > 0.6 ? 0.5 : 0.3); continue; }
+          if (d > 1.6) blend(py * PW + px, 118 * day, 124 * day, 138 * day, 0.93);
+          else if (d > 0.6) blend(py * PW + px, 238 * day, 242 * day, 248 * day, 0.9);
+          else blend(py * PW + px, 208 * day, 215 * day, 226 * day, 0.62);
+        }
       }
     }
   }

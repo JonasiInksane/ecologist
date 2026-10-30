@@ -31,6 +31,7 @@ button.mini{padding:5px 8px;gap:6px}
 .grid button{justify-content:flex-start;min-width:0}
 .grid button .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .grid button kbd{margin-left:auto}
+.fantasy-tag{color:#b98cf5;font-size:11px;flex:none}
 .empty{margin:0;color:var(--muted);font-family:var(--mono);font-size:13px}
 /* display & world: a dropdown over the playfield */
 .menu{position:relative}
@@ -67,6 +68,13 @@ input[type=range]{accent-color:var(--water);width:90px}
 .goal .done{color:var(--acid)}
 .goal .failed{color:var(--lava)}
 .goal .actions{display:flex;gap:6px}
+.terrarium{display:grid;gap:8px;background:var(--panel);border:1px solid var(--line);padding:10px 12px;font-family:var(--mono);font-size:13px}
+.terrarium .row{gap:8px 12px}
+.terrarium .row>button:first-of-type{margin-left:auto}
+.jar-reading{margin:0;font-variant-numeric:tabular-nums;color:var(--fg);line-height:1.65}
+.fantasy-summary{background:var(--panel);border:1px solid var(--line);padding:8px 12px;font-family:var(--mono);font-size:12.5px}
+.fantasy-summary summary{cursor:pointer;color:var(--fg)}
+.fantasy-summary p{margin:8px 0 0;line-height:1.6;font-variant-numeric:tabular-nums}
 .editor{display:grid;gap:8px;background:var(--panel);border:1px solid var(--line);padding:8px 12px;font-family:var(--mono);font-size:13px}
 .editor .row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
 .editor input[type=text],.editor input[type=number],.editor textarea{font-family:var(--mono);font-size:13px;color:var(--fg);background:#0f1522;border:1px solid var(--line);padding:5px 8px;min-width:0}

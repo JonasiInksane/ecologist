@@ -5,7 +5,8 @@ import { CRYSTAL, GLASS, H, MOSS, PW, T, W } from '../config.js';
 import { skyLight } from '../daynight.js';
 import { LIQ } from '../liquids.js';
 import { charged } from '../power.js';
-import { VIEW, bodies, deco, devices, fire, liq, solid, temp, typ, under } from '../world.js';
+import { S, VIEW, bodies, deco, devices, fire, liq, solid, temp, typ, under } from '../world.js';
+import { TERRARIUM_BOUNDS } from '../terrarium-data.js';
 import { lanternTile } from './render.js';
 import { GEM, LAMP, PIXEL } from '../config.js';
 import { PIXEL_COLOURS } from '../devices.js';
@@ -54,7 +55,10 @@ function computeLight() {
       if (temp[k] > 450) { const h = Math.min(1, (temp[k] - 450) / 500); r = Math.max(r, h); g = Math.max(g, h * 0.35); bl = Math.max(bl, h * 0.08); }
     } else {
       DEC[k] = b ? 0.86 : a ? LIQ[typ[k]].ldecay : 0.9;   // glass lets light through, a little dimmer than air
-      if (!under[k]) { const c = 1 - 0.35 * shade[k % W]; r = sky[0] * c; g = sky[1] * c; bl = sky[2] * c; }   // clouds shade what's under them
+      // The shared closed-jar fixture uses the cave mask for atmosphere isolation. Its glass
+      // admits daylight in the biological model; show the same day/night light in this display.
+      const jarDaylight = S.terrarium && x >= TERRARIUM_BOUNDS.x0 && x <= TERRARIUM_BOUNDS.x1 && y >= TERRARIUM_BOUNDS.y0 && y <= TERRARIUM_BOUNDS.y1;
+      if (!under[k] || jarDaylight) { const c = 1 - 0.35 * shade[k % W]; r = sky[0] * c; g = sky[1] * c; bl = sky[2] * c; }   // clouds shade what's under them
       if (a && LIQ[typ[k]].emit) {
         const e = LIQ[typ[k]].emit, s = Math.min(1, 0.35 + a / 180);
         r = Math.max(r, e[0] * s); g = Math.max(g, e[1] * s); bl = Math.max(bl, e[2] * s); EMI[k] = 1;

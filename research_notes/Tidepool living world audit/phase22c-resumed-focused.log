@@ -1,0 +1,37 @@
+PASS 51 focused accounting checks
+PASS temperature and salinity change equilibrium, not dissolved inventory
+PASS fractional respiration and photosynthesis preserve gas molecule counts
+PASS respiration cannot spend absent oxygen or overflow product storage
+PASS water respiration accounts for fractional products and oxygen shortfalls
+PASS sealed air and a partial water tile conserve both gases during exchange
+PASS exchange cannot draw gas from an empty headspace
+PASS a sealed pair of air cells mixes without gas creation
+PASS direct atmosphere exchange has a named boundary total
+PASS pore water carries every dissolved component through soil and back into a pool
+PASS sponge soaking and cold wringing preserve salt and dissolved oxygen
+PASS pore transfers conserve water, dissolved and dry-matrix sensible heat
+PASS mud respiration credits only the oxygen actually present
+PASS roots store taken nitrogen and transpiration retains the remaining contents
+PASS roots withdraw pure water and store nitrogen from damp soil too
+PASS a plant without oxygen retains unmetabolized sugar and accumulates stress
+PASS moss cannot respire without a reserve and removed moss loses its saved reserve explicitly
+PASS surface evaporation retains both salt and sugar in a mixed residue
+PASS plain water can dry after releasing its gases into finite headspace
+PASS a drying living puddle preserves its algae in a one-unit film
+PASS the last drop waits when its gas products have no storage room
+PASS wind drift carries dissolved ingredients and pending energy with gas
+PASS steam entering open weather records the components it carries out
+PASS rain dilutes existing solutes and records its atmospheric oxygen
+PASS rain and evaporation retain dissolved sensible heat and record carrier boundary heat
+PASS electrolysis retains salt, sugar and actual dissolved oxygen in its remaining water
+PASS electrolysis reserves product space and leaves the final carrier unit
+All 26 focused oxygen checks passed.
+Thermal accounting checks passed (144 assertions).
+Device accounting checks passed (157 assertions).
+Feeding checks: 58 passed
+PASS 217 finite ecology and C/N/P accounting checks
+PASS ecosystem acceptance rejects lost matter, replenishment, leaks, invalid stores, missing fixed seeds and unrecorded fish changes
+PASS life diagnostics, local crowding, hypoxia, aerated control and bounded history
+dist/tidepool.html: 57 modules, 575.1 KB
+PASS bundled startup schedules first frame
+.test-artifacts/phase22c-preview-final.png: 512 × 288, seed 7, view at tile 0, 34

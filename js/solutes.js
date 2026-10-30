@@ -25,6 +25,7 @@ import { ECO_DISSOLVED_C } from './ecology.js';
 import { bioTissue } from './ecology-core.js';
 import { ECO_COST, ECO_QUOTA, ECO_RATE } from './ecology-data.js';
 import { SOL_PHOSPHATE } from './config.js';
+import { recordFantasyUse, withFantasyEffect } from './fantasy.js';
 
 const SOL_NAMES = ['salt', 'sugar', 'essence', 'red ink', 'yellow ink', 'blue ink', 'silt', 'acid', 'alkali', 'fertiliser', 'algae', 'metal salts', 'oxygen deficit', 'soap', 'oil', 'ammonium', 'yeast', 'alcohol', 'CO₂', 'phosphate', 'acetate'];
 const DIFFUSE = [0.01, 0.01, 0.1, 0.12, 0.12, 0.12, 0.01, 0.08, 0.08, 0.05, 0.03, 0.01, 0.005, 0.05, 0.05, 0.05, 0.02, 0.08, 0.005, 0.05, 0.08];
@@ -171,7 +172,13 @@ function soluteTick() {
         if (have - take > 1e-12) held[o] = have - take; else { solid[o] = 0; held[o] = 0; }
         markDirty(o % W, (o / W) | 0);
       }
-      for (const r of RECIPES) if (brews(k, r) && Math.random() < 0.05) { typ[k] = r.makes; clearSol(k); wake(k); puff(k, r.fx); break; }
+      for (const r of RECIPES) if (brews(k, r) && Math.random() < 0.05) {
+        withFantasyEffect(`brew-${r.name}`, [k], () => {
+          for (const [channel, concentration] of Object.entries(r.need)) takeSoluteAmount(k, +channel, concentration * liq[k] / 255);
+          typ[k] = r.makes; wake(k); puff(k, r.fx);
+        });
+        break;
+      }
       if (typ[k] === WATER) { surfaceOx(k, p); chemistry(k, x, p); emulsify(k, x, p); nitrogen(k, p); ferment(k, p); }
     }
     // spread into the tile to the right and the one below when they hold the same liquid
@@ -189,9 +196,10 @@ function chemistry(k, x, p) {
   algae(k, x, p);
   if (sol[p + SOL_FERT] >= 30 && Math.random() < 0.004) {   // fertilised water greens the stone it touches with moss
     const o = nbr(x, (k / W) | 0, Math.floor(Math.random() * 4));
-    const cost = ECO_COST.moss;
-    if (o >= 0 && solid[o] === STONE && lit(k, x) && soluteAmount(k, SOL_FERT) >= cost * ECO_QUOTA.n && soluteAmount(k, SOL_PHOSPHATE) >= cost * ECO_QUOTA.p && soluteAmount(k, SOL_CO2) * ECO_DISSOLVED_C >= cost) {
+    const cost = ECO_COST.moss; let illumination = 0;
+    if (o >= 0 && solid[o] === STONE && (illumination = algaeLightSource(k, x)) && soluteAmount(k, SOL_FERT) >= cost * ECO_QUOTA.n && soluteAmount(k, SOL_PHOSPHATE) >= cost * ECO_QUOTA.p && soluteAmount(k, SOL_CO2) * ECO_DISSOLVED_C >= cost) {
       const fixed = ecoFixWater(k, cost);
+      if (illumination === 2 && fixed > 0) recordFantasyUse('liquid-light-moss');
       takeSoluteAmount(k, SOL_FERT, fixed * ECO_QUOTA.n); takeSoluteAmount(k, SOL_PHOSPHATE, fixed * ECO_QUOTA.p);
       solid[o] = MOSS; ecoInstallTissue(o, MOSS, bioTissue(fixed, ECO_QUOTA)); markDirty(o % W, (o / W) | 0);
     }
@@ -232,15 +240,18 @@ function precipitateSalt(k, x, p) {
 // grows more slowly in cool water and dies outside its temperature/salinity range (ecology-data.js).
 const ALGAE_WILD = 24, ALGAE_CROWDED = 200, SPORE = 0.01, FED_AT = 5, ALGAE_COLD = 8, ALGAE_COOL = 15;
 let daylight = false;   // set once per solute pass
-function lit(k, x) {
-  if (daylight && skyAbove(k)) return true;
-  for (let d = 0; d < 4; d++) { const o = nbr(x, (k / W) | 0, d); if (o >= 0 && liq[o] && typ[o] === LIGHT) return true; }
-  return false;
+function algaeLightSource(k, x) {
+  if (daylight && skyAbove(k)) return 1;
+  for (let d = 0; d < 4; d++) { const o = nbr(x, (k / W) | 0, d); if (o >= 0 && liq[o] && typ[o] === LIGHT) return 2; }
+  return 0;
 }
+function lit(k, x) { return algaeLightSource(k, x) > 0; }
 // Runs for every water tile; an empty tile can receive a finite starter, otherwise ecology handles its budget.
 function algae(k, x, p) {
   if (!sol[p + SOL_ALGAE]) { if (daylight && Math.random() < SPORE) ecoSpore(k, SOL_ALGAE); return; }
-  ecoAlgae(k, lit(k, x));
+  const source = algaeLightSource(k, x);
+  if (source === 2) recordFantasyUse('liquid-light-algae');
+  ecoAlgae(k, source > 0);
 }
 // pH of a tile's liquid: its own for most liquids; water's from the acid and alkali dissolved in it.
 function phOf(k) {

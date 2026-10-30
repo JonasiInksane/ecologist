@@ -704,11 +704,45 @@ See `reports/Tidepool living world audit.md` for the researched gaps and materia
   nutrient recycling and substrate-limited decay/fermentation. Saved inventories include hive,
   bag, bucket, pump and river stores. Rules, tunables and verification:
   `docs/design/phase22b-life-cycles.md`. Quantities remain game-scale archetypes.
-- **22C, ecosystem completion:** controlled long-duration survival and collapse experiments,
-  including the proposed ten-day gate, plus performance and player feedback.
+- **22C, ecosystem completion (jar and seasonal headless gates verified):**
+  three ten-day seeded habitats plus matched dark/unfed/overfed controls pass with closed C/N/P
+  and water inventories. Concentration-dependent
+  grazing permits producer renewal without adding food; satiated pike retain prey. The acceptance
+  harness checks fixed seeds, individual stores and species-specific mortality bookkeeping.
+  Births retain parental reserves and local crowding has equal reach in both axes.
+  Generated worlds pass eight actual days for seeds 7, 73 and 31337, retaining fish and producers;
+  the stocked hive retains its bees and collects nectar using physical flight and paid winter heat.
+  Rules, evidence and limits: `docs/design/phase22c-generated-habitats.md`. Interactive browser
+  feedback and responsiveness remain open; storm rendering averages 18.18 ms. Outdoor recorded
+  boundaries do not establish closure for legacy fantasy reactions.
 - **Later material expansion:** sand mineralogy and grain properties; sugar extraction,
   crystallization and milling; additional powders and processing chains. These depend on the
   quantity foundations and are not implemented by 22A/22B.
+
+### Phase 23: Showcase (core implemented; player validation open)
+
+Expose the proven sealed jar as a saved terrarium mode, add puzzles about oxygen-limited fire
+and freshwater distillation, and declare the existing fantasy sources and sinks. Ordinary
+closed ecosystem budgets and magical effects must remain distinguishable.
+Contract: `docs/design/phase23-showcase.md`.
+
+The saved terrarium, puzzles 10/11, magical budget panel and material descriptions are built.
+Shared-jar parity, focused controls, final affected regressions and bundled startup pass.
+Interactive browser playtesting remains unavailable in this run. Latest quiet storm rendering
+averages 18.30 ms; optimization and player feedback remain open rather than a 60-fps claim.
+
+### Proposed extensions after Showcase
+
+There is no numbered Phase 24 in the existing plan. Useful next increments are:
+
+- **Terrarium experiments:** expose the already-tested unfed/overfed controls as selectable
+  finite setups, with oxygen/food histories and cause-of-loss explanations.
+- **Material processing:** implement sand mineralogy and grain settling, then a finite crop-to-
+  syrup-to-sugar chain with crystallization and milling, as proposed by the audit.
+- **Broader budgets:** account for fantasy creature powers and replace remaining industrial
+  ingredient erasure/yield shortcuts with explicit reagent/product rules and adverse controls.
+- **Seasonal colonies:** pollen, queen/brood and finite insulation/honey logistics, with causes
+  of winter loss visible to the player.
 
 ### Phase 21: Air and water
 

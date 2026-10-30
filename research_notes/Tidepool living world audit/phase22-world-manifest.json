@@ -1,0 +1,209 @@
+{
+  "recordedAt": "2026-10-30T00:01:07.388Z",
+  "runtimeDigest": "8547d33396ba9a1d8ce43fc15b45571ef0a55ed8ee2e57145ee8dc59639a3915",
+  "generated": {
+    "days": 8,
+    "ticksPerSeed": 86400,
+    "seeds": [
+      7,
+      73,
+      31337
+    ],
+    "checks": 78,
+    "completionGate": true
+  },
+  "regressionScope": "81 scenes plus five affected-scene reruns after final hive-only edits",
+  "interactiveBrowser": "unverified; computer-use URL policy guard stopped browser automation",
+  "localComparisonSource": ".test-artifacts/phase22-verified-source (ignored; retain for Phase23 parity)",
+  "evidence": [
+    {
+      "name": "phase22-world-seasonal.jsonl",
+      "role": "passing current-source seasonal gate",
+      "origin": "phase22-world-seasonal.jsonl",
+      "bytes": 1627267,
+      "sha256": "017512a84c1b3459d033246c34b3f0fd10c8dfddb35ee13313a0bffd5ca70d3f"
+    },
+    {
+      "name": "phase22-world-seasonal-summary.jsonl",
+      "role": "independently reassessed seasonal summary",
+      "origin": "phase22-world-seasonal-summary.jsonl",
+      "bytes": 1945,
+      "sha256": "e024f39cddb566d6c433004b219a4a6e5a3d85a4a3a00eafe86f19d3ab077850"
+    },
+    {
+      "name": "phase22-world-jars.jsonl",
+      "role": "passing six-case jar suite; final hive-only code is unused by these fixtures",
+      "origin": "phase22-world-jars-final.jsonl",
+      "bytes": 255835,
+      "sha256": "b8e9c838d54f6b62ba5d0ab64681f954d5c2e56e895d3d4727c16a9ccb244615"
+    },
+    {
+      "name": "phase22-world-jars-summary.jsonl",
+      "role": "derived jar inventories and renewal",
+      "origin": "phase22-world-jars-summary.jsonl",
+      "bytes": 1916,
+      "sha256": "12a2380de7fcf06992992d622c2b6c18f361f373ff1ba3253562f1fa430b3c2f"
+    },
+    {
+      "name": "phase22-world-regressions.log",
+      "role": "81 scenes before final hive-only changes",
+      "origin": "phase22-world-full-final.log",
+      "bytes": 46780,
+      "sha256": "6d77568c22f521fbe743daa74651ac806e9f2d664161de20cb7b844bd2ad2bc6"
+    },
+    {
+      "name": "phase22-world-affected.log",
+      "role": "five affected scenes after final hive-only changes",
+      "origin": "phase22-world-affected-final.log",
+      "bytes": 4066,
+      "sha256": "b481ef21636d1a721529d53c1053e3d83bbd0ed1e59b16a6ace46d7210c84934"
+    },
+    {
+      "name": "phase22-world-build.log",
+      "role": "final build",
+      "origin": "phase22-world-build-final.log",
+      "bytes": 42,
+      "sha256": "d462356219badbbc92f508fd7f85158d05caf2d101e610dba715bdd443918393"
+    },
+    {
+      "name": "phase22-world-startup.log",
+      "role": "final compiled first frame under stubs",
+      "origin": "phase22-world-startup-final.log",
+      "bytes": 78,
+      "sha256": "adc5fceec9ed8eac3a1fc5c81209700e9e332b14702d88f82dd0b6ee77c39793"
+    },
+    {
+      "name": "phase22-world-source.json",
+      "role": "verified Phase22 JavaScript source hashes",
+      "origin": "phase22-world-source-seasonal.json",
+      "bytes": 5431,
+      "sha256": "ac449b4f99a580b5202019c033577c36a9bcd3b5ed8c49932ec5805554dddeac"
+    },
+    {
+      "name": "phase22-world-focused-results.json",
+      "role": "21 successful focused command statuses",
+      "origin": "phase22-world-focused-results.json",
+      "bytes": 7907,
+      "sha256": "d5d47402b69fc30cb35417aeda65cfb295daad080c7dc1ddd34d3d2362aac74a"
+    },
+    {
+      "name": "phase22-world-canopy-repair.json",
+      "role": "repair on exact failed state with no material added",
+      "origin": "phase22-real-canopy-repair.json",
+      "bytes": 399,
+      "sha256": "4740a3de4b4d50cba329821b411e8afebbc2b2a21dc16616c51b0b57fc650c63"
+    },
+    {
+      "name": "phase22-world-root-access-diagnostic.json",
+      "role": "65 matched observations and failed-state metadata",
+      "origin": "phase22-root-failure-seed73.meta.json",
+      "bytes": 7292,
+      "sha256": "bb249f37d6797e117fa3564ad427a6590f66b403bdc6ecc50a3fdb25f4a26aff"
+    },
+    {
+      "name": "phase22-world-hive-access-diagnostic.json",
+      "role": "23 matched observations and copied-grid causal controls",
+      "origin": "phase22-bee-failure-seed7-analysis.json",
+      "bytes": 39496,
+      "sha256": "8c6240474a417dea4a2c29db33669f60fe46d214e7a989b33666c3b01224b4b9"
+    },
+    {
+      "name": "phase22-world-bank-sites.jsonl",
+      "role": "dry-only lower bank candidates",
+      "origin": "phase22-bank-layout-counterfactual.jsonl",
+      "bytes": 797,
+      "sha256": "e4da59fc881899511f5aaeb05f9ac468d5cda7cacb002b1a7e8664a7203f1535"
+    },
+    {
+      "name": "phase22-world-hive-envelope.jsonl",
+      "role": "copied maximum tree-growth connectivity",
+      "origin": "phase22-hive-regrowth-envelope.jsonl",
+      "bytes": 974,
+      "sha256": "5f0d3c89bf5775bf3c400f68ddd819e0040df1f69df6cc7026b099c7b0af4fe7"
+    },
+    {
+      "name": "phase22-world-demo-shade.jsonl",
+      "role": "copied-grid opaque tank shade",
+      "origin": "phase22-demo-shade.jsonl",
+      "bytes": 1793,
+      "sha256": "f2f0d72dab9c185a265cfc38bb76ffaeb0cbd6fadbebfba9e5b3454fc8a64403"
+    },
+    {
+      "name": "phase22-world-demo-glass.jsonl",
+      "role": "copied-grid glass tank light",
+      "origin": "phase22-demo-glass.jsonl",
+      "bytes": 1754,
+      "sha256": "595ddb5083e22a048eca0e04f9aa64be5d4441e38eda0e57556f10c5b98ecf2a"
+    },
+    {
+      "name": "phase22-world-start.png",
+      "role": "headless initial world frame",
+      "origin": "phase22-world-start-final.png",
+      "bytes": 121122,
+      "sha256": "97460359f7a502f22110de17ee05c4c6c3a957b5648fae7dee1c577600375b73"
+    },
+    {
+      "name": "phase22-world-canopy-source.json",
+      "role": "historical failed canopy source hashes",
+      "origin": "phase22-world-canopy-source.json",
+      "bytes": 5431,
+      "sha256": "6b29afd13b3660d58f17f7843cd63275b0ddaae64097123734544a43a72f0f8b"
+    },
+    {
+      "name": "phase22-world-hive-access-source.json",
+      "role": "historical failed hive-access source hashes",
+      "origin": "phase22-world-source-final.json",
+      "bytes": 5431,
+      "sha256": "8645612ad023382407b51d4c2b121937c7c894f232a0a93317f881f22a4a536c"
+    },
+    {
+      "name": "phase22-world-shaded-diagnostic.jsonl.gz",
+      "role": "failed/interrupted opaque-tank run",
+      "origin": "phase22-generated-shaded-diagnostic.jsonl",
+      "bytes": 125379,
+      "sha256": "cac096b67cea6232c3b6b50110a081f3b485c254414fe0fbabec1fecfb0228fd"
+    },
+    {
+      "name": "phase22-world-cold-diagnostic.jsonl.gz",
+      "role": "failed old cold-water rules",
+      "origin": "phase22-generated-cold-diagnostic.jsonl",
+      "bytes": 216952,
+      "sha256": "6d578edbc77b30b04b2a3c006c2de1f3068fe9bd32409e56fbd78eb8e4d12623"
+    },
+    {
+      "name": "phase22-world-canopy-diagnostic.jsonl.gz",
+      "role": "failed final-day plant renewal",
+      "origin": "phase22-generated-canopy-diagnostic.jsonl",
+      "bytes": 286005,
+      "sha256": "8ebdf2a0a69a0ec0f2a28ebe9649790c5a8a1ce7bd70a38e5b9753f5d2870e42"
+    },
+    {
+      "name": "phase22-world-hive-access-diagnostic.jsonl.gz",
+      "role": "failed naturally sealed hive",
+      "origin": "phase22-generated-final.jsonl",
+      "bytes": 199103,
+      "sha256": "afcde28b0b2b170e251fa5b9f1b834a7eeef6c7bbcf7794cb7a45d1e0a45312f"
+    },
+    {
+      "name": "phase22-world-root-access-trace.jsonl.gz",
+      "role": "exact root/canopy failure replay",
+      "origin": "phase22-root-failure-seed73.jsonl",
+      "bytes": 102063,
+      "sha256": "325a529d975e8850049b43ebdbddabc89166a48aa97931cc72f0d0a4982dfdfe"
+    },
+    {
+      "name": "phase22-world-bee-access-trace.jsonl.gz",
+      "role": "exact bee and local-grid failure replay",
+      "origin": "phase22-bee-failure-seed7-trace.jsonl",
+      "bytes": 1058611,
+      "sha256": "9474fb2f326abdc808880aa53d96c9fee1841c108b08679285c289875a5b1d1d"
+    },
+    {
+      "name": "phase22-world-performance.log",
+      "role": "four sequential quiet headless profiles",
+      "origin": "phase22-world-profile-*.log",
+      "bytes": 5983,
+      "sha256": "2e305c0974ba81d01e1ecc0997eeb70c25e50456ba64067805a3c082a91ead5b"
+    }
+  ]
+}

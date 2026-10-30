@@ -1,6 +1,6 @@
 // Finite biology adapter. C uses airCarb's molecule-equivalent reference; N/P use explicit game nutrient units.
 import { CO2, COMB, CRISP, DIRT, FLOWER, H, HONEY, ICE, LEAF, METHANE, MOSS, MUD, NSOL, PLANT, SOL_ACETATE, SOL_ACID, SOL_ALGAE, SOL_AMMONIA, SOL_CO2, SOL_ETHANOL, SOL_FERT, SOL_O2, SOL_PHOSPHATE, SOL_SUGAR, SOL_YEAST, SUGAR, W, WATER, WETDIRT, WETSPONGE, WOOD } from './config.js';
-import { ECO_ANIMALS, ECO_C, ECO_COST, ECO_QUOTA, ECO_RATE } from './ecology-data.js';
+import { ECO_ANIMALS, ECO_C, ECO_COST, ECO_QUOTA, ECO_RATE, aquaticActivity } from './ecology-data.js';
 import { bioAdd, bioCanPay, bioGrowth, bioPool, bioScale, bioTissue, bioTransfer } from './ecology-core.js';
 import { AIR_CO2_EQ_MG_PER_UNIT, CARB_PER_OX, MAX_AIR_CARB, MAX_AIR_OX, MG_PER_UNIT, breatheWater, fixCarbon, oxygenIn, respire, skyAbove, wakeAir } from './oxygen.js';
 import { addSoluteAmount, soluteAmount, takeSoluteAmount } from './solutes.js';
@@ -157,17 +157,18 @@ function ecoMaintain(b, k) {
     const sip = Math.min(b.load, a.reserve / ECO_C.honey); b.load -= sip; ecoFeed(b, ecoFood(sip), k);
   }
   const available = Math.max(0, pool.c - a.body);
+  const burn = a.burn * ((b.kind === 'fish' || b.kind === 'pike') && liq[k] && typ[k] === WATER ? aquaticActivity(temp[k]) : 1);
   // A trace meal cannot pay a whole tick of maintenance. Retain unpaid energy as stress, and
   // require later food to pay it through actual respiration before recovery. Migrate old stress counts.
   const debt = b.metabolicDebt ?? (b.starving || 0) * a.burn;
-  const foodBudget = Math.min(a.burn + debt, available);
+  const foodBudget = Math.min(burn + debt, available);
   const paid = ecoRespire(k, foodBudget);
   pool.c -= paid;
   // Oxygen shortages have their own hypoxia/choking checks. Only food that is missing adds
   // starvation stress; old stress is repaid only by actual metabolism beyond current maintenance.
-  b.metabolicDebt = Math.max(0, debt + Math.max(0, a.burn - foodBudget) - Math.max(0, paid - a.burn));
+  b.metabolicDebt = Math.max(0, debt + Math.max(0, burn - foodBudget) - Math.max(0, paid - burn));
   if (b.metabolicDebt < ECO_RATE.epsilon) b.metabolicDebt = 0;
-  b.starving = b.metabolicDebt / a.burn;
+  b.starving = b.metabolicDebt / a.burn;   // retain an energy debt; temperature never resets or rescales old debt
   return b.starving <= ECO_RATE.starvingGrace;
 }
 function ecoFeed(b, meal, k) {
@@ -202,7 +203,10 @@ function ecoEatLeaf(b, k) {
 }
 function ecoBirth(parent, create) {
   const pool = ecoEnsureBody(parent), cost = ecoInitialBody(parent.kind), a = ECO_ANIMALS[parent.kind];
-  if (!pool || !bioCanPay(pool, bioPool(cost.c + a.body, cost.n + a.body * a.n, cost.p + a.body * a.p))) return null;
+  // Ordinary archetypes reproduce repeatedly: offspring allocation must leave the parent's
+  // normal food reserve, not just its structural body with no maintenance fuel. Recent
+  // trace meals can reset hunger, but cannot replace this measured reproductive budget.
+  if (!pool || !bioCanPay(pool, bioPool(cost.c + a.body + a.reserve, cost.n + a.body * a.n, cost.p + a.body * a.p))) return null;
   const child = create(parent.kind, parent.x, parent.y, { bio: cost });
   if (!child) return null;
   bioTransfer(pool, child.bio = bioPool(), cost); return child;
@@ -274,9 +278,26 @@ function ecoRootMinerals(k, volume, p) {
   p.nitrogen = (p.nitrogen || 0) + n; p.phosphorus = (p.phosphorus || 0) + phos;
 }
 function ecoRootSoil(k, p) {
-  const pool = ecoState().soil[k]; if (!pool) return;
-  const n = Math.min(pool.n, 0.1), phos = Math.min(pool.p, 0.01);
-  pool.n -= n; pool.p -= phos; p.nitrogen += n; p.phosphorus += phos;
+  // Roots explore connected soil within their existing drinking reach. More source cells
+  // extend access, not the per-update uptake budget; rock and gaps interrupt that access.
+  const rootSoil = block => block === DIRT || block === WETDIRT || block === MOSS;
+  if (k < 0 || k >= W * H || !rootSoil(solid[k])) return;
+  const soil = ecoState().soil, queue = [[k, 0]], seen = new Set([k]);
+  let nitrogen = ECO_RATE.rootNitrogen, phosphorus = ECO_RATE.rootPhosphorus;
+  for (let i = 0; i < queue.length && (nitrogen > ECO_RATE.epsilon || phosphorus > ECO_RATE.epsilon); i++) {
+    const [cell, distance] = queue[i], pool = soil[cell];
+    if (pool) {
+      const n = Math.min(Math.max(0, pool.n), nitrogen), phos = Math.min(Math.max(0, pool.p), phosphorus);
+      pool.n -= n; pool.p -= phos; p.nitrogen += n; p.phosphorus += phos;
+      nitrogen -= n; phosphorus -= phos;
+    }
+    if (distance >= ECO_RATE.rootReach) continue;
+    const x = cell % W;
+    for (const next of [cell - W, cell + W, x ? cell - 1 : -1, x < W - 1 ? cell + 1 : -1]) {
+      if (next < 0 || next >= W * H || seen.has(next) || !rootSoil(solid[next])) continue;
+      seen.add(next); queue.push([next, distance + 1]);
+    }
+  }
 }
 function ecoDecay(k, target = k, requested) {
   if (temp[target] < 0 || temp[target] > ECO_RATE.microbeMaxTemp) return 0;
@@ -313,14 +334,17 @@ function ecoAlgae(k, light) {
   if (temp[k] > ECO_RATE.algaeMaxTemp || sol[k * NSOL + SOL_SALT] > ECO_RATE.algaeMaxSalt) {
     takeSoluteAmount(k, SOL_ALGAE, amount); ecoDeposit(k, bioTissue(amount, ECO_QUOTA)); return;
   }
+  // Cooling slows both production and losses. A growth-only winter penalty otherwise
+  // overwhelms the cool-water producer's normal day/night budget.
+  const activity = aquaticActivity(temp[k]);
   // Maintenance spends biomass carbon; its structural nutrients return to the mineral pool.
-  const used = ecoRespire(k, amount * ECO_RATE.algaeRespire);
+  const used = ecoRespire(k, amount * ECO_RATE.algaeRespire * activity);
   if (used) { takeSoluteAmount(k, SOL_ALGAE, used); ecoMinerals(k, used * ECO_QUOTA.n, used * ECO_QUOTA.p); }
   if (!light || temp[k] < ECO_RATE.algaeMinTemp) {
-    const dead = takeSoluteAmount(k, SOL_ALGAE, amount * ECO_RATE.algaeDeath);
+    const dead = takeSoluteAmount(k, SOL_ALGAE, amount * ECO_RATE.algaeDeath * activity);
     ecoDeposit(k, bioTissue(dead, ECO_QUOTA)); return;
   }
-  const want = Math.min((255 - sol[k * NSOL + SOL_ALGAE]) * liq[k] / 255, amount * ECO_RATE.algaeGrow * (temp[k] < ECO_RATE.algaeCoolTemp ? 0.5 : 1));
+  const want = Math.min((255 - sol[k * NSOL + SOL_ALGAE]) * liq[k] / 255, amount * ECO_RATE.algaeGrow * activity);
   const n = soluteAmount(k, SOL_FERT) + soluteAmount(k, SOL_AMMONIA), p = soluteAmount(k, SOL_PHOSPHATE);
   const made = ecoFixWater(k, Math.max(0, Math.min(want, n / ECO_QUOTA.n, p / ECO_QUOTA.p)));
   if (!made) return;
@@ -551,8 +575,8 @@ function ecoInspection(k) {
   const x = (k % W) * T, y = ((k / W) | 0) * T;
   const animal = bodies.find(b => b.bio && b.x < x + T && b.x + b.w > x && b.y < y + T && b.y + b.h > y);
   if (animal) {
-    const a = ECO_ANIMALS[animal.kind], food = Math.max(0, animal.bio.c - a.body) / (a.burn * 10800);
-    text += ` · ${animal.kind}: food ${food.toFixed(2)} days${animal.starving ? ' · starving' : ''}`;
+    const a = ECO_ANIMALS[animal.kind], food = Math.max(0, animal.bio.c - a.body);
+    text += ` · ${animal.kind}: food reserve ${food.toFixed(2)} C${animal.starving ? ' · starving' : ''}`;
   }
   return text;
 }

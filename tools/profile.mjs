@@ -16,19 +16,23 @@ globalThis.matchMedia = () => ({ matches: false });
 
 const profileOption = (name, fallback) => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const profileScene = profileOption('scene', 'generated');
-if (!['generated', 'calm', 'storm', 'burning', 'crowded'].includes(profileScene)) throw new Error('Unknown profiling scene');
+if (!['generated', 'calm', 'storm', 'burning', 'crowded', 'terrarium'].includes(profileScene)) throw new Error('Unknown profiling scene');
 const { S, solid, liq, typ, temp, markDirty } = await import('../js/world.js');
 const { W, H, T, WATER, WOOD } = await import('../js/config.js');
 const { seededRandom } = await import('../js/util.js');
 const { generate } = await import('../js/generate.js');
 const { step } = await import('../js/sim.js');
 const { render } = await import('../js/render/render.js');
-const { setZoom, snapToExplorer } = await import('../js/render/camera.js');
+const { centerOn, setZoom, snapToExplorer } = await import('../js/render/camera.js');
 const ticks = +process.argv.find(a => /^\d+$/.test(a)) || 600, hot = process.argv.includes('--hot');
 
 let t0 = performance.now();
 S.seed = Number(profileOption('seed', String(S.seed)));
 generate(); setZoom(1); snapToExplorer();
+if (profileScene === 'terrarium') {
+  const { startTerrarium } = await import('../js/terrarium.js');
+  startTerrarium(S.seed); S.follow = false; setZoom(2); centerOn(45 * T, 43 * T);
+}
 console.log(`generate  ${(performance.now() - t0).toFixed(0)} ms`);
 Math.random = seededRandom(S.seed);
 if (profileScene === 'calm') { S.weather = false; S.wind = S.windTarget = 0; }

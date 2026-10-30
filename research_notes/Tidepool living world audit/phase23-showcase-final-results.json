@@ -1,0 +1,82 @@
+[
+  {
+    "command": "node tools/check-terrarium.mjs",
+    "code": 0,
+    "seconds": 1.5319834,
+    "tail": [
+      "Terrarium checks: 189 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-fantasy.mjs",
+    "code": 0,
+    "seconds": 6.6113943,
+    "tail": [
+      "1240 fantasy boundary checks passed"
+    ]
+  },
+  {
+    "command": "node tools/check-showcase-puzzles.mjs",
+    "code": 0,
+    "seconds": 23.9462839,
+    "tail": [
+      "Showcase puzzle checks: 166 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-showcase-ui.mjs",
+    "code": 0,
+    "seconds": 1.5839694000000017,
+    "tail": [
+      "PASS 43 Showcase UI checks (in-memory DOM events; browser interaction remains unverified)"
+    ]
+  },
+  {
+    "command": "node tools/build.mjs",
+    "code": 0,
+    "seconds": 0.29603729999999634,
+    "tail": [
+      "dist/tidepool.html: 63 modules, 634.8 KB"
+    ]
+  },
+  {
+    "command": "node tools/check-bundle.mjs",
+    "code": 0,
+    "seconds": 0.6590030000000042,
+    "tail": [
+      "PASS bundled initialization and first animation frame under DOM/canvas stubs"
+    ]
+  },
+  {
+    "command": "node tools/check-accounting.mjs",
+    "code": 0,
+    "seconds": 0.6025022000000027,
+    "tail": [
+      "PASS 51 focused accounting checks"
+    ]
+  },
+  {
+    "command": "node tools/check-oxygen.mjs",
+    "code": 0,
+    "seconds": 0.25376729999999953,
+    "tail": [
+      "All 26 focused oxygen checks passed."
+    ]
+  },
+  {
+    "command": "node tools/check-thermal.mjs",
+    "code": 0,
+    "seconds": 0.25697799999999554,
+    "tail": [
+      "Thermal accounting checks passed (144 assertions)."
+    ]
+  },
+  {
+    "command": "node tools/check-devices.mjs",
+    "code": 0,
+    "seconds": 0.2849225999999981,
+    "tail": [
+      "Device accounting checks passed (160 assertions)."
+    ]
+  }
+]

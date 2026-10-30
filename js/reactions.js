@@ -7,13 +7,15 @@ import { charged } from './power.js';
 import { nbr } from './pumps.js';
 import { addSol, clearSol } from './solutes.js';
 import { addSoluteAmount } from './solutes.js';
-import { ecoDeposit, ecoFood, ecoHoneyCaramel, ecoHoneyComb } from './ecology.js';
+import { ecoDeposit, ecoFood, ecoHoneyCaramel, ecoHoneyComb, ecoInstallTissue } from './ecology.js';
+import { ECO_COST, ECO_QUOTA } from './ecology-data.js';
 import { S, deco, drop, held, liq, markDirty, meltAmount, sol, solid, temp, typ, wake } from './world.js';
 import { CO2, LYE, SOL_ACID, SOL_BASE } from './config.js';
 import { SODA } from './config.js';
 import { COOLANT, FERRO, FERT, MIMIC, SOL_FERT, VOID } from './config.js';
 import { BLEACHED, CORAL, FUSE, POROUS, SPONGE, WETDIRT, WETSPONGE, WOOL } from './config.js';
 import { EMULSION, SOL_OIL, SOL_SOAP, BLEACH, HYDROGEN, MSLAG, OXYGEN, RUST, SLAG, SOL_ALGAE, SUGAR } from './config.js';
+import { spendFantasyCarrier, withFantasyEffect } from './fantasy.js';
 
 
 
@@ -28,10 +30,15 @@ import { EMULSION, SOL_OIL, SOL_SOAP, BLEACH, HYDROGEN, MSLAG, OXYGEN, RUST, SLA
 
 const NITRO_DROP = 6;   // rows of free fall that set nitro off when it lands
 const SOAPY = 20;   // soap in water (or an emulsion) that lets oil mix in and stay mixed
+function installMagicalMoss(k) {
+  // Explicit tissue funded by the enclosing magic receipt, never ordinary ecoIntroduce.
+  ecoInstallTissue(k, MOSS, { c: ECO_COST.moss, n: ECO_COST.moss * ECO_QUOTA.n, p: ECO_COST.moss * ECO_QUOTA.p });
+}
 
 const SWAP = { swap: true };
 const REACT = new Array(NLIQ * NLIQ).fill(null);
 function setR(a, b, r) { REACT[a * NLIQ + b] = r; REACT[b * NLIQ + a] = r; }
+const setFantasyR = (a, b, id, rule) => setR(a, b, { ...rule, fantasy: id });
 // gases trade places with everything; which way depends on density, so they layer
 for (let t = 1; t < LIQ.length; t++) for (const s of [AETHER, QUICK, STEAM, SMOKE, METHANE, POISON, CHLORINE, CO2, HYDROGEN, OXYGEN]) setR(s, t, SWAP);
 setR(AETHER, STEAM, null);   // both rise: let them sit side by side
@@ -48,12 +55,12 @@ setR(WATER, HONEY, { fn(k, o, t, above) {
   return h === k && !liq[h];
 } });
 // bloomwater dissolves into water as essence
-setR(WATER, BLOOM, { fn(k, o, t) { const b = t === BLOOM ? k : o; typ[b] = WATER; clearSol(b); addSol(b, SOL_ESSENCE, 255); return b === k; } });
+setFantasyR(WATER, BLOOM, 'bloom-essence', { fn(k, o, t) { const b = t === BLOOM ? k : o; typ[b] = WATER; clearSol(b); addSol(b, SOL_ESSENCE, 255); return b === k; } });
 setR(LAVA, HONEY, { fn(k, o, t) { const honey = t === HONEY ? k : o; ecoHoneyCaramel(honey); solidify(honey, CRISP); puff(honey, 'smoke'); return honey === k; } });
-setR(AETHER, LAVA, { block: CRYSTAL, fx: 'spark' });
-setR(FROST, LAVA, { block: OBSIDIAN, fx: 'steam' });
-setR(FROST, HONEY, { fn(k, o, t) { const honey = t === HONEY ? k : o; ecoHoneyComb(honey); return honey === k; } });
-setR(FROST, ACID, { block: ICE });
+setFantasyR(AETHER, LAVA, 'aether-crystal', { block: CRYSTAL, fx: 'spark' });
+setFantasyR(FROST, LAVA, 'frost-quench', { block: OBSIDIAN, fx: 'steam' });
+setFantasyR(FROST, HONEY, 'frost-honeycomb', { fn(k, o, t) { const honey = t === HONEY ? k : o; ecoHoneyComb(honey); return honey === k; } });
+setFantasyR(FROST, ACID, 'frost-acid', { block: ICE });
 // acid dilutes into water, and diluting it gives off heat
 // Acid and lye dissolve into water as concentrations that spread and weaken (js/solutes.js), warming it as they do.
 setR(WATER, ACID, { fn(k, o, t) { const a = t === ACID ? k : o; typ[a] = WATER; temp[a] += 25; sol.fill(0, a * NSOL, a * NSOL + NSOL); sol[a * NSOL + SOL_ACID] = 220; return a === k; } });
@@ -64,19 +71,18 @@ setR(ACID, LYE, { fn(k, o) {
   puff(o, 'steam'); return true;
 } });
 setR(LYE, OIL, { fn(k, o, t) { const f = t === OIL ? k : o; typ[f] = FOAM; clearSol(f); sol[f * NSOL + SOL_SOAP] = 200; puff(f, 'fizz'); return f === k; } });   // lye turns oil into soap: a soapy foam
-setR(LYE, SLIME, { fn(k, o, t) { const s = t === SLIME ? k : o; liq[s] = 0; typ[s] = 0; puff(s, 'fizz'); return s === k; } });
+setFantasyR(LYE, SLIME, 'slime-lye', { fn(k, o, t) { const s = t === SLIME ? k : o; spendFantasyCarrier(s, 0); puff(s, 'fizz'); return s === k; } });
 // mimic becomes whatever liquid it touches first
-for (let t = 1; t < LIQ.length; t++) if (t !== MIMIC) setR(MIMIC, t, { fn(k, o, t2) { const m = t2 === MIMIC ? k : o, other = m === k ? o : k; typ[m] = typ[other]; wake(m); return false; } });
+for (let t = 1; t < LIQ.length; t++) if (t !== MIMIC) setFantasyR(MIMIC, t, 'mimic-copy', { fn(k, o, t2) { const m = t2 === MIMIC ? k : o, other = m === k ? o : k; typ[m] = typ[other]; wake(m); return m === k; } });
 // void ink deletes any liquid it touches, using itself up; meeting aether, both vanish in a flash
-for (let t = 1; t < LIQ.length; t++) if (t !== VOID) setR(VOID, t, { fn(k, o, t2) {
+for (let t = 1; t < LIQ.length; t++) if (t !== VOID) setFantasyR(VOID, t, t === AETHER ? 'void-aether' : 'void-annihilation', { fn(k, o, t2) {
   const v = t2 === VOID ? k : o, other = v === k ? o : k;
-  if (typ[other] === AETHER) { liq[v] = 0; typ[v] = 0; S.flash = Math.max(S.flash || 0, 6); puff(v, 'spark'); }
-  else liq[v] = Math.max(0, liq[v] - 48);
-  liq[other] = 0; typ[other] = 0; sol.fill(0, other * NSOL, other * NSOL + NSOL); puff(other, 'mote');
-  if (!liq[v]) typ[v] = 0;
+  if (typ[other] === AETHER) { spendFantasyCarrier(v, 0); S.flash = Math.max(S.flash || 0, 6); puff(v, 'spark'); }
+  else spendFantasyCarrier(v, liq[v] - 48);
+  spendFantasyCarrier(other, 0); puff(other, 'mote');
   return true;
 } });
-setR(COOLANT, LAVA, { block: BASALT, fx: 'steam' });   // coolant quenches lava into basalt
+setFantasyR(COOLANT, LAVA, 'coolant-quench', { block: BASALT, fx: 'steam' });   // enhanced coolant quenches lava into basalt
 for (const t of [WATER, OIL, ACID, LYE, HONEY]) setR(FERRO, t, SWAP);   // ferrofluid layers with them by density: under water and oil, over honey, lye and acid
 setR(WATER, FERT, { fn(k, o, t) { const f = t === FERT ? k : o; typ[f] = WATER; sol.fill(0, f * NSOL, f * NSOL + NSOL); sol[f * NSOL + SOL_FERT] = 200; return f === k; } });   // dissolves into water
 setR(LYE, LAVA, { fn(k, o, t) { const a = t === LYE ? k : o; liq[a] = 0; typ[a] = 0; puff(a, 'steam'); return a === k; } });
@@ -87,9 +93,10 @@ setR(HONEY, ACID, { fn(k, o, t) {
   liq[h] = 0; typ[h] = 0; liq[a] = Math.max(0, liq[a] - 40); if (!liq[a]) typ[a] = 0;
   puff(h, 'fizz'); return true;
 } });
-setR(WATER, FROST, { fn(k, o, t) {
+setFantasyR(WATER, FROST, 'frost-water', { eligible(k, o, t) {
+  return sol[(t === WATER ? k : o) * NSOL + SOL_SALT] <= 100;
+}, fn(k, o, t) {
   const w = t === WATER ? k : o;
-  if (sol[w * NSOL + SOL_SALT] > 100) return false;   // strong brine doesn't freeze
   solidify(w, ICE); puff(w, 'snow'); return w === k;
 } });
 // oil floats on anything denser; lava sets it alight
@@ -97,26 +104,26 @@ for (const t of [WATER, HONEY, ACID, FROST, SLIME, BLOOM, MUD, TONIC, FOAM, STOR
 setR(OIL, LAVA, { fn(k, o, t) { temp[t === OIL ? k : o] = 1000; return false; } });
 // slime sinks through water; acid and lava kill it; frost freezes it; bloomwater calms it into moss
 setR(SLIME, WATER, SWAP);
-setR(SLIME, ACID, { fn(k, o, t) { const s = t === SLIME ? k : o, a = s === k ? o : k; liq[s] = 0; typ[s] = 0; liq[a] = Math.max(0, liq[a] - 40); if (!liq[a]) typ[a] = 0; puff(s, 'fizz'); return true; } });
-setR(SLIME, LAVA, { fn(k, o, t) { const s = t === SLIME ? k : o; liq[s] = 0; typ[s] = 0; puff(s, 'smoke'); return s === k; } });
-setR(SLIME, FROST, { block: ICE, fx: 'snow' });
-setR(SLIME, BLOOM, { block: MOSS, fx: 'spark' });
+setFantasyR(SLIME, ACID, 'slime-acid', { fn(k, o, t) { const s = t === SLIME ? k : o, a = s === k ? o : k; spendFantasyCarrier(s, 0); spendFantasyCarrier(a, liq[a] - 40); puff(s, 'fizz'); return true; } });
+setFantasyR(SLIME, LAVA, 'slime-lava', { fn(k, o, t) { const s = t === SLIME ? k : o; spendFantasyCarrier(s, 0); puff(s, 'smoke'); return s === k; } });
+setFantasyR(SLIME, FROST, 'slime-freeze', { block: ICE, fx: 'snow' });
+setFantasyR(SLIME, BLOOM, 'slime-moss', { block: MOSS, fx: 'spark' });
 // bloomwater neutralises acid, freezes with frost, and boils away on lava
-setR(BLOOM, ACID, { fn(k, o, t) { const a = t === ACID ? k : o; typ[a] = BLOOM; return a === k; } });
-setR(BLOOM, FROST, { block: ICE, fx: 'snow' });
-setR(BLOOM, LAVA, { fn(k, o, t) { const b = t === BLOOM ? k : o; liq[b] = 0; typ[b] = 0; puff(b, 'steam'); return b === k; } });
-setR(TONIC, LAVA, { fn(k, o, t) { const b = t === TONIC ? k : o; liq[b] = 0; typ[b] = 0; puff(b, 'steam'); return b === k; } });
+setFantasyR(BLOOM, ACID, 'bloom-acid', { fn(k, o, t) { const a = t === ACID ? k : o; typ[a] = BLOOM; return a === k; } });
+setFantasyR(BLOOM, FROST, 'bloom-freeze', { block: ICE, fx: 'snow' });
+setFantasyR(BLOOM, LAVA, 'bloom-lava', { fn(k, o, t) { const b = t === BLOOM ? k : o; spendFantasyCarrier(b, 0); puff(b, 'steam'); return b === k; } });
+setFantasyR(TONIC, LAVA, 'tonic-lava', { fn(k, o, t) { const b = t === TONIC ? k : o; spendFantasyCarrier(b, 0); puff(b, 'steam'); return b === k; } });
 // mud sinks through water and bakes into brick against lava; foam floats on water and under oil
 setR(MUD, WATER, SWAP);
 setR(MUD, FOAM, SWAP);
 setR(MUD, LAVA, { block: BRICK, fx: 'steam' });
 setR(FOAM, WATER, SWAP);
 // stormwater sets like water against lava and frost
-setR(STORM, LAVA, { block: OBSIDIAN, fx: 'steam' });
-setR(STORM, FROST, { block: ICE, fx: 'snow' });
+setFantasyR(STORM, LAVA, 'storm-quench', { block: OBSIDIAN, fx: 'steam' });
+setFantasyR(STORM, FROST, 'storm-freeze', { block: ICE, fx: 'snow' });
 // molten metal sinks through lava, sets into metal where water or stormwater quench it, and caramelises honey
 setR(MOLTEN, LAVA, SWAP);
-for (const w of [WATER, STORM]) setR(w, MOLTEN, { fn(k, o, t) {
+for (const w of [WATER, STORM]) setR(w, MOLTEN, { fantasy: w === STORM ? 'storm-metal-quench' : null, fn(k, o, t) {
   const m = t === MOLTEN ? k : o, q = m === k ? o : k;
   solidify(m, METAL); typ[q] = STEAM; temp[q] = 110; clearSol(q); puff(q, 'steam');
   return true;
@@ -124,7 +131,7 @@ for (const w of [WATER, STORM]) setR(w, MOLTEN, { fn(k, o, t) {
 setR(MOLTEN, HONEY, { block: CRISP, fx: 'smoke' });
 // molten slag (from smelting ore) floats on molten metal and lava, and water quenches it into slag
 setR(MSLAG, LAVA, SWAP); setR(MSLAG, MOLTEN, SWAP);
-for (const w of [WATER, STORM]) setR(w, MSLAG, { fn(k, o, t) {
+for (const w of [WATER, STORM]) setR(w, MSLAG, { fantasy: w === STORM ? 'storm-slag-quench' : null, fn(k, o, t) {
   const m = t === MSLAG ? k : o, q = m === k ? o : k;
   solidify(m, SLAG); typ[q] = STEAM; temp[q] = 110; clearSol(q); puff(q, 'steam');
   return true;
@@ -173,11 +180,16 @@ function react(k, o, t, above) {
   const r = REACT[t * NLIQ + typ[o]];
   if (!r || r.swap) return false;
   wake(k); wake(o);
-  if (r.fn) return r.fn(k, o, t, above);
-  const target = above ? k : o;
-  solidify(target, r.block);
-  if (r.fx) puff(target, r.fx);
-  return target === k;
+  if (r.eligible && !r.eligible(k, o, t)) return false;   // strong brine has no mutation to measure
+  const apply = () => {
+    if (r.fn) return r.fn(k, o, t, above);
+    const target = above ? k : o;
+    solidify(target, r.block);
+    if (r.fantasy && r.block === MOSS) installMagicalMoss(target);
+    if (r.fx) puff(target, r.fx);
+    return target === k;
+  };
+  return r.fantasy ? withFantasyEffect(r.fantasy, [k, o], apply) : apply();
 }
 function reactAll(x, y, k, t) {
   const g = LIQ[t].grav;
@@ -206,7 +218,7 @@ function blockEffects(x, y, k, t, a) {
     }
     if (y > 0 && !liq[k - W] && !solid[k - W] && Math.random() < 0.004) puff(k, 'ember');
   } else if (t === FROST) {
-    if (a < 64 && (y === H - 1 || solid[k + W]) && Math.random() < 0.004) { solidify(k, ICE); return -1; }
+    if (a < 64 && (y === H - 1 || solid[k + W]) && Math.random() < 0.004) { withFantasyEffect('frost-solidification', [k], () => solidify(k, ICE)); return -1; }
   } else if (t === AETHER) {
     if (Math.random() < 0.003) puff(k, 'mote');
   } else if (t === SLIME) {
@@ -214,13 +226,17 @@ function blockEffects(x, y, k, t, a) {
     for (let i = 0; i < 4; i++) {
       const o = nbr(x, y, i);
       if (o < 0 || (solid[o] !== DIRT && solid[o] !== MOSS) || S.slimeCount > 400 || Math.random() > 0.003) continue;
-      solid[o] = AIR; liq[o] = 120; typ[o] = SLIME; temp[o] = AMBIENT; clearSol(o); markDirty(o % W, (o / W) | 0); puff(o, 'fizz');
+      withFantasyEffect('slime-terrain', [o], () => {
+        solid[o] = AIR; liq[o] = 120; typ[o] = SLIME; temp[o] = AMBIENT; clearSol(o); markDirty(o % W, (o / W) | 0); puff(o, 'fizz');
+      });
     }
     // rotting slime bubbles methane into the open tile above it
     const up = y > 0 ? k - W : -1;
     if (up >= 0 && !solid[up] && (!liq[up] || (typ[up] === METHANE && liq[up] < 200)) && Math.random() < 0.0015) {
-      if (!liq[up]) { clearSol(up); temp[up] = temp[k]; }
-      liq[up] += 48; typ[up] = METHANE; wake(up);
+      withFantasyEffect('slime-methane', [up], () => {
+        if (!liq[up]) { clearSol(up); temp[up] = temp[k]; }
+        liq[up] += 48; typ[up] = METHANE; wake(up);
+      });
     }
   } else if (t === BLOOM) {
     // bloomwater turns stone to moss and sprouts glowcaps on dirt, using itself up
@@ -228,8 +244,12 @@ function blockEffects(x, y, k, t, a) {
     for (let i = 0; i < 4; i++) {
       const o = nbr(x, y, i);
       if (o < 0) continue;
-      if (solid[o] === STONE && Math.random() < 0.01) { solid[o] = MOSS; markDirty(o % W, (o / W) | 0); a -= 24; }
-      else if (solid[o] === DIRT && o >= W && !solid[o - W] && !deco[o - W] && (!liq[o - W] || typ[o - W] === BLOOM) && Math.random() < 0.004) { deco[o - W] = 1; a -= 32; }
+      if (solid[o] === STONE && Math.random() < 0.01) withFantasyEffect('bloom-moss', [k, o], () => {
+        solid[o] = MOSS; installMagicalMoss(o); markDirty(o % W, (o / W) | 0); a -= 24; spendFantasyCarrier(k, a); wake(k);
+      });
+      else if (solid[o] === DIRT && o >= W && !solid[o - W] && !deco[o - W] && (!liq[o - W] || typ[o - W] === BLOOM) && Math.random() < 0.004) withFantasyEffect('bloom-glowcaps', [k, o - W], () => {
+        deco[o - W] = 1; a -= 32; spendFantasyCarrier(k, a); wake(k);
+      });
       if (a <= 0) return 0;
     }
   } else if (t === TONIC) {
@@ -238,8 +258,12 @@ function blockEffects(x, y, k, t, a) {
     for (let i = 0; i < 4; i++) {
       const o = nbr(x, y, i);
       if (o < 0) continue;
-      if (solid[o] === STONE && Math.random() < 0.05) { solid[o] = MOSS; markDirty(o % W, (o / W) | 0); a -= 6; }
-      else if (solid[o] === DIRT && o >= W && !solid[o - W] && !deco[o - W] && (!liq[o - W] || typ[o - W] === TONIC) && Math.random() < 0.03) { deco[o - W] = 1; a -= 8; }
+      if (solid[o] === STONE && Math.random() < 0.05) withFantasyEffect('tonic-moss', [k, o], () => {
+        solid[o] = MOSS; installMagicalMoss(o); markDirty(o % W, (o / W) | 0); a -= 6; spendFantasyCarrier(k, a); wake(k);
+      });
+      else if (solid[o] === DIRT && o >= W && !solid[o - W] && !deco[o - W] && (!liq[o - W] || typ[o - W] === TONIC) && Math.random() < 0.03) withFantasyEffect('tonic-glowcaps', [k, o - W], () => {
+        deco[o - W] = 1; a -= 8; spendFantasyCarrier(k, a); wake(k);
+      });
       if (a <= 0) return 0;
     }
   } else if (t === POISON) {

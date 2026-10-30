@@ -14,8 +14,19 @@ const ECO_RATE = { decay: 0.02, algaeGrow: 0.005, algaeRespire: 0.001, algaeDeat
   algaeMaxTemp: 40, algaeMaxSalt: 50, microbeMaxTemp: 45,
   decayScale: 10,
   beeLoad: 0.2, beeMinNectar: 0.02, nectarMax: 200, sporeBank: 5,
-  leafBite: 1.5,
-  yeastMax: 200, yeastTolerance: 36, nitrateCarbon: 1.25, algaeMinTemp: 8, algaeCoolTemp: 15,
+  leafBite: 1.5, grazeHalf: 20,
+  aquaticReferenceTemp: 20, aquaticQ10: 2,
+  pikeHuntReserve: 0.5, fishThermalMin: 5, fishThermalMax: 35,
+  rootReach: 3, rootNitrogen: 0.1, rootPhosphorus: 0.01,
+  hiveTarget: 12, hiveBurn: 0.001, hiveJoulesPerCarbon: 200, hiveWeatherRadius: 3, hiveCells: 64,
+  hiveRouteReach: 40, hiveRouteNodes: 2048, hiveRouteRetry: 120,
+  yeastMax: 200, yeastTolerance: 36, nitrateCarbon: 1.25, algaeMinTemp: 8,
   soilCarbon: 2, soilN: 1, soilP: 0.1, waterN: 3, waterP: 0.3, yeastYield: 0.1,
   anaerobicYeastYield: 0.05, growthLimit: 255, starvingGrace: 300, epsilon: 1e-10 };
-export { ECO_DAY, ECO_QUOTA, ECO_ANIMALS, ECO_C, ECO_COST, ECO_RATE };
+// Shared cold-water pacing, not a species calibration. Retain the existing warm rates;
+// cooling slows producer gains/losses and aquatic maintenance together. Lethal heat,
+// growth's lower temperature limit and oxygen availability remain separate constraints.
+function aquaticActivity(temperature) {
+  return Math.min(1, ECO_RATE.aquaticQ10 ** ((temperature - ECO_RATE.aquaticReferenceTemp) / 10));
+}
+export { ECO_DAY, ECO_QUOTA, ECO_ANIMALS, ECO_C, ECO_COST, ECO_RATE, aquaticActivity };

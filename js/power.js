@@ -11,6 +11,7 @@ import { liq, sol, solid, temp, typ, wake } from './world.js';
 import { ALUMINIUM, CHLORINE, COPPER, GOLD, HYDROGEN, OXYGEN, PATINA, QUICK, SOL_BASE, ZINC } from './config.js';
 import { mixSol, removeCarrier } from './solutes.js';
 import { OXYGEN_REFERENCE, MG_PER_UNIT } from './oxygen.js';
+import { spendFantasyCarrier, withFantasyEffect } from './fantasy.js';
 
 const BRINE_SALT = 60, NET_LIMIT = 8000;
 const netOf = new Int32Array(W * H), netStamp = new Uint32Array(netOf.length), netQueue = new Int32Array(netOf.length);
@@ -97,7 +98,7 @@ function netsTouching(k) {
   }
   return out;
 }
-function charged(k) { return reachStamp[k] === reachGen && netAt(k) >= 0; }
+function charged(k) { return reachGen > 0 && reachStamp[k] === reachGen && netAt(k) >= 0; }
 // Live liquid kills slime it touches and throws off sparks.
 function shockTick() {
   for (const net of nets) {
@@ -108,7 +109,7 @@ function shockTick() {
       const x = k % W, y = (k / W) | 0;
       for (let d = 0; d < 4; d++) {
         const n = nbr(x, y, d);
-        if (n >= 0 && liq[n] && typ[n] === SLIME) { liq[n] = 0; typ[n] = 0; wake(n); puff(n, 'zap'); }
+        if (n >= 0 && liq[n] && typ[n] === SLIME) withFantasyEffect('slime-shock', [n], () => { spendFantasyCarrier(n, 0); wake(n); puff(n, 'zap'); });
       }
       if (Math.random() < 0.02 && y > 0 && !liq[k - W] && !solid[k - W]) puff(k, 'zap');
     }

@@ -1,0 +1,267 @@
+{
+  "started": "2026-10-29T23:39:42.006Z",
+  "finished": "2026-10-29T23:41:35.166Z",
+  "aggregate": "research_notes/Tidepool living world audit/phase22-world-focused.log",
+  "peakChildren": 2,
+  "failed": 0,
+  "results": [
+    {
+      "command": "node tools/check-ecology.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-ecology.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 1361.4796999999999,
+      "summary": [
+        "PASS 217 finite ecology and C/N/P accounting checks"
+      ],
+      "reportedChecks": 217
+    },
+    {
+      "command": "node tools/check-cold-ecology.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-cold-ecology.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 734.317,
+      "summary": [
+        "Cold ecology checks: 159 passed"
+      ],
+      "reportedChecks": 159
+    },
+    {
+      "command": "node tools/check-ice-light.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-ice-light.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 370.1732999999999,
+      "summary": [],
+      "reportedChecks": 53
+    },
+    {
+      "command": "node tools/check-erosion-accounting.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-erosion-accounting.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 112026.7222,
+      "summary": [
+        "PASS original exposed woodland bank closes C/N/P at every actual step (microbial banks removed)",
+        "42 erosion accounting checks passed"
+      ],
+      "reportedChecks": 42
+    },
+    {
+      "command": "node tools/check-feeding.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-feeding.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 643.8723,
+      "summary": [
+        "Feeding checks: 62 passed"
+      ],
+      "reportedChecks": 62
+    },
+    {
+      "command": "node tools/check-roots.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-roots.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 590.6967999999997,
+      "summary": [],
+      "reportedChecks": 57
+    },
+    {
+      "command": "node tools/check-plant-air.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-plant-air.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 847.5398,
+      "summary": [
+        "Plant air checks: 111 passed"
+      ],
+      "reportedChecks": 111
+    },
+    {
+      "command": "node tools/check-habitats.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-habitats.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 2871.3388000000004,
+      "summary": [],
+      "reportedChecks": 157
+    },
+    {
+      "command": "node tools/check-woodland-moisture.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-woodland-moisture.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 13949.129,
+      "summary": [],
+      "reportedChecks": 150
+    },
+    {
+      "command": "node tools/check-fish-recovery.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-fish-recovery.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 308.8029999999999,
+      "summary": [],
+      "reportedChecks": 23
+    },
+    {
+      "command": "node tools/check-hive-sites.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-hive-sites.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 1057.7834999999977,
+      "summary": [],
+      "reportedChecks": 85
+    },
+    {
+      "command": "node tools/check-hives.mjs",
+      "mode": "reused",
+      "source": ".test-artifacts/phase22-world-hives-final.log",
+      "log": ".test-artifacts/phase22-world-focused-hives.log",
+      "exitCode": 0,
+      "signal": null,
+      "summary": [
+        "Hive checks: 129 passed"
+      ],
+      "reportedChecks": 129
+    },
+    {
+      "command": "node tools/check-bee-routing.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-bee-routing.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 726.2528999999995,
+      "summary": [
+        "Bee routing checks: 121 passed"
+      ],
+      "reportedChecks": 121
+    },
+    {
+      "command": "node tools/check-sky.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-sky.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 1735.3100000000013,
+      "summary": [],
+      "reportedChecks": 51
+    },
+    {
+      "command": "node tools/check-ecosystem-metrics.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-ecosystem-metrics.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 111.84149999999863,
+      "summary": [
+        "PASS ecosystem acceptance rejects lost matter, replenishment, leaks, invalid stores, missing fixed seeds and unrecorded fish changes"
+      ]
+    },
+    {
+      "command": "node tools/check-generated-ecosystem-metrics.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-generated-ecosystem-metrics.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 125.71089999999822,
+      "summary": [],
+      "reportedChecks": 68
+    },
+    {
+      "command": "node tools/check-bundle.mjs",
+      "mode": "reused",
+      "source": ".test-artifacts/phase22-world-startup-final.log",
+      "log": ".test-artifacts/phase22-world-focused-bundle.log",
+      "exitCode": 0,
+      "signal": null,
+      "summary": [
+        "PASS bundled initialization and first animation frame under DOM/canvas stubs"
+      ]
+    },
+    {
+      "command": "node tools/check-accounting.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-accounting.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 633.2295000000013,
+      "summary": [
+        "PASS 51 focused accounting checks"
+      ],
+      "reportedChecks": 51
+    },
+    {
+      "command": "node tools/check-oxygen.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-oxygen.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 324.72049999999945,
+      "summary": [
+        "PASS electrolysis reserves product space and leaves the final carrier unit",
+        "All 26 focused oxygen checks passed."
+      ],
+      "reportedChecks": 26
+    },
+    {
+      "command": "node tools/check-thermal.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-thermal.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 333.0622000000003,
+      "summary": [
+        "Thermal accounting checks passed (144 assertions)."
+      ],
+      "reportedAssertions": 144
+    },
+    {
+      "command": "node tools/check-devices.mjs",
+      "mode": "executed",
+      "log": ".test-artifacts/phase22-world-focused-devices.log",
+      "exitCode": 0,
+      "signal": null,
+      "spawnError": null,
+      "elapsedMs": 257.4871000000021,
+      "summary": [
+        "Device accounting checks passed (157 assertions)."
+      ],
+      "reportedAssertions": 157
+    }
+  ],
+  "reportedCheckTotal": 1562,
+  "reportedAssertionTotal": 301,
+  "reusedStatusesConfirmedByRoot": true
+}

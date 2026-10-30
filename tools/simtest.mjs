@@ -1001,7 +1001,7 @@ scene('puzzle levels can be solved, and fail when they should', () => {
   const { LEVELS, startLevel, checkLevel } = Lvl;
   const lever = (x, y) => devices.get(at(x, y));
   const play = (i, solve, ticks) => { startLevel(i); checkLevel(); const fresh = !S.level.done && !S.level.failed; solve(); for (let t = 0; t < ticks && !S.level.done && !S.level.failed; t += 30) { run(30); checkLevel(); } return fresh; };
-  check('there are nine levels', LEVELS.length === 9);
+  check('there are eleven levels', LEVELS.length === 11);
   check('1. Glassworks: opening the hopper over the lava makes enough glass', play(0, () => { lever(30, 79).on = true; }, 3000) && S.level.done, S.level.text);
   check('2. The cauldron: water, heat, honey and bloomwater brew tonic', play(1, () => {}, 0) && brew(lever), S.level.text);
   check('3. The lower chamber: the valve route fills it safely', play(2, () => { devices.get(at(32, 60)).manual = true; }, 3000) && S.level.done && !S.level.failed, S.level.text);
@@ -1819,9 +1819,11 @@ scene('ecology: seasonal algae, spreading plants, pike and moths', () => {
   lake(10, 80, 50, 90, false);   // dark, so the small fish can't graze and breed meanwhile
   for (let i = 0; i < 6; i++) Bd.addBody('fish', (14 + i * 5) * C.T, 87 * C.T);
   const pike = Bd.addBody('pike', 30 * C.T, 86 * C.T);
+  // Exercise actual food demand: a fresh pike retains its initial reserve until it needs prey.
+  pike.bio.c = EcoData.ECO_ANIMALS.pike.body + EcoData.ECO_ANIMALS.pike.reserve * 0.4;
   run(3000);
   const fishLeft = bodies.filter(b => b.kind === 'fish').length;
-  check('a pike hunts down the small fish', fishLeft < 6 && pike.hunger < Cr.PIKE_STARVE, `${fishLeft} of 6 fish left, ${pike.fed || 0} eaten since it last bred`);
+  check('a hungry pike hunts down the small fish', fishLeft < 6 && pike.hunger < Cr.PIKE_STARVE, `${fishLeft} of 6 fish left, ${pike.fed || 0} eaten since it last bred`);
   clear(); devices.clear();
   lake(10, 80, 30, 90, false);
   const starving = Bd.addBody('pike', 20 * C.T, 86 * C.T);
@@ -1914,6 +1916,9 @@ scene('water landscapes: groundwater, valleys and deltas, floating ice', () => {
 });
 
 scene('a generated river keeps flowing and keeps its pond full', () => {
+  // Isolate finite spring/channel hydraulics with weather disabled (20°C sky air), retaining
+  // generated temperatures. Generation preserves viewer preferences; an earlier scene must not choose this climate.
+  clear(); S.timeMode = 'cycle'; S.timeShift = 0; S.heldPhase = 0;
   let seed = 0;
   for (let i = 1; i <= 30 && !seed; i++) { S.seed = i * 7919; Gen.generate(); if (Bio.rivers.length) seed = S.seed; }
   const r = Bio.rivers[0], sx = r.src % W, dir = Math.sign(r.mouth - sx);
@@ -1922,7 +1927,7 @@ scene('a generated river keeps flowing and keeps its pond full', () => {
   const full = pond(), store = r.store;
   run(3000);
   check('water runs down the whole channel', flowing() >= Math.abs(r.mouth - dir * 8 - sx) - 3, `${flowing()} of ${Math.abs(r.mouth - dir * 8 - sx) - 1} columns wet (seed ${seed})`);
-  check('the pond stays mostly full and the spring keeps its water (the sun evaporates some, which comes back as rain)', pond() > full * 0.7 && r.store > store * 0.85, `pond ${(full / 255).toFixed(1)} → ${(pond() / 255).toFixed(1)} tiles, spring ${(store / 255).toFixed(0)} → ${(r.store / 255).toFixed(0)}`);
+  check('with weather disabled the pond and finite spring retain their hydraulic stores', pond() > full * 0.7 && r.store > store * 0.85, `pond ${(full / 255).toFixed(1)} → ${(pond() / 255).toFixed(1)} tiles, spring ${(store / 255).toFixed(0)} → ${(r.store / 255).toFixed(0)}`);
 });
 
 scene('the time of day can be held at day or night, or stopped, and carries on from there', () => {

@@ -9,8 +9,11 @@ import { placeDevice } from './devices.js';
 import { resetWorld } from './generate.js';
 import { ecoInitializeWorld } from './ecology.js';
 import { LIQ } from './liquids.js';
-import { S, bodies, devices, liq, sol, solid, temp, typ, under, wakeAll } from './world.js';
+import { S, airOx, bodies, devices, fire, held, liq, sol, solid, temp, typ, under, wakeAll } from './world.js';
 import { CHARCOAL, BRICK, DEPTH, FUSE, LAMP, NSOL, ORE, PIXEL, SOL_SALT, WOOD } from './config.js';
+import { GEM, ICE, SALT } from './config.js';
+import { FIRE_OX } from './oxygen.js';
+import { observeLevel, setBuiltInLevelObserver } from './level-observer.js';
 
 const at = (x, y) => y * W + x;
 function rect(x0, y0, x1, y1, f) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) f(at(x, y), x, y); }
@@ -20,6 +23,17 @@ function device(kind, x, y) { solid[at(x, y)] = 0; placeDevice(kind, at(x, y)); 
 function wire(from, to) { devices.get(from).targets.push(to); }
 function countIn(r, pred) { let n = 0; rect(r.x0, r.y0, r.x1, r.y1, k => { if (pred(k)) n++; }); return n; }
 function countAll(pred) { let n = 0; for (let k = 0; k < W * H; k++) if (pred(k)) n++; return n; }
+// The still's target is actual liquid water; salt also counts while frozen or crystallized.
+function showcaseStillContents(r) {
+  let water = 0, salt = 0;
+  rect(r.x0, r.y0, r.x1, r.y1, k => {
+    if (!solid[k] && typ[k] === WATER) water += liq[k];
+    if (liq[k]) salt += sol[k * NSOL + SOL_SALT] * liq[k] / 255;
+    if (solid[k] === ICE) salt += sol[k * NSOL + SOL_SALT] * (held[k] || 255) / 255;
+    if (solid[k] === SALT || solid[k] === GEM) salt += held[k] || 255;
+  });
+  return { water, salt };
+}
 // Every level starts as a stone world with an open, sunlit room (x 20–140, y 20–79) and the explorer on its floor.
 function arena() {
   resetWorld();
@@ -188,7 +202,46 @@ const LEVELS = [
     },
     progress(r) { const n = countIn(r, k => solid[k] === METAL); return { text: `metal in the mould ${Math.min(n, 3)}/3`, done: n >= 3 }; },
   },
+  {
+    name: 'The last breath', goal: 'Keep the vent shut, then light the first log. Let the fire use up its limited air and go out while at least 8 pieces of fuel remain. Opening the vent feeds the flames.',
+    view: { x: 46, y: 46, zoom: 2 },
+    tools: ['lever', 'heat'],
+    build() {
+      blocks(40, 40, 52, 50, STONE); blocks(41, 41, 51, 49, 0); blocks(41, 49, 51, 49, WOOD);
+      device(GATE, 52, 45); device(LEVER, 36, 49); wire(at(36, 49), at(52, 45));
+      // A measured oxygen-limited charge: ordinary 21% air would burn this entire stack.
+      rect(41, 41, 51, 49, k => { airOx[k] = FIRE_OX + 0.1; });
+      return { x0: 41, y0: 41, x1: 51, y1: 49 };
+    },
+    observe(st) { if (!st.seenFire && devices.get(at(52, 45))?.open === false && countIn(st.region, k => fire[k] > 0)) st.seenFire = true; },
+    progress(r) {
+      const burning = countIn(r, k => fire[k] > 0), fuel = countIn(r, k => solid[k] === WOOD || solid[k] === CHARCOAL);
+      const shut = devices.get(at(52, 45))?.open === false;
+      return { text: `fuel ${fuel}/11 · vent ${shut ? 'shut' : 'open'} · ${burning ? 'burning' : S.level?.seenFire ? 'fire out' : 'light the first log'}`,
+        done: !!S.level?.seenFire && shut && !burning && fuel >= 8 };
+    },
+    failed(r) { return countIn(r, k => solid[k] === WOOD || solid[k] === CHARCOAL) < 8 ? 'Too much of the fuel was lost.' : null; },
+  },
+  {
+    name: 'Freshwater still', goal: 'Collect 10 tiles of fresh water in the left basin. Heat the brine and riser on the right, then chill the roof over the receiver. Keep its salt at 1 or less.',
+    view: { x: 50, y: 46, zoom: 2 },
+    tools: ['heat', 'chill'],
+    build() {
+      blocks(40, 40, 60, 52, STONE); blocks(41, 41, 59, 51, 0); blocks(50, 46, 50, 51, STONE);
+      blocks(40, 40, 60, 40, GLASS);
+      pour(51, 48, 59, 51, WATER);
+      rect(51, 48, 59, 51, k => { temp[k] = 20; sol[k * NSOL + SOL_SALT] = 80; });
+      return { x0: 41, y0: 46, x1: 49, y1: 51 };
+    },
+    progress(r) {
+      const { water, salt } = showcaseStillContents(r);
+      return { text: `fresh water ${Math.min(10, Math.floor(water / 255))}/10 · receiver salt ${salt.toFixed(2)}`,
+        done: water >= 10 * 255 && salt <= 1 };
+    },
+    failed(r) { return showcaseStillContents(r).salt > 1 ? 'Brine contaminated the receiver.' : null; },
+  },
 ];
+setBuiltInLevelObserver(st => LEVELS[st.index]?.observe?.(st));
 
 function startLevel(i) {
   const L = LEVELS[i];
@@ -259,5 +312,4 @@ function checkLevel() {
   st.failed = st.fainted ? 'The explorer fainted.' : L.failed ? L.failed(st.region) : null;   // a broken rule counts even if the goal was reached at the same time
   st.done = p.done && !st.failed;
 }
-
-export { inRegion, customCount, describe, customProgress, customFailed, startCustom, LEVELS, rect, blocks, pour, device, wire, countIn, countAll, arena, startLevel, checkLevel };
+export { inRegion, customCount, describe, customProgress, customFailed, startCustom, LEVELS, rect, blocks, pour, device, wire, countIn, countAll, arena, startLevel, checkLevel, observeLevel };

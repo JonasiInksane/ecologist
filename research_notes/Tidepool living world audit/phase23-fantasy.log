@@ -1,0 +1,50 @@
+PASS description, ledger, inventory and snapshot reads do not initialize state
+PASS new worlds have a stable zero ledger before reads or saves
+PASS pure local receipts match existing ecology and heat definitions across material states
+PASS void sink retains quantitative meaning (7/127)
+PASS void sink retains quantitative meaning (255/1)
+PASS void sink retains quantitative meaning (255/255)
+PASS void/aether destroys both parcels and their pending heat once
+PASS void priority annihilates mimic instead of copying the void identity
+PASS void light loss records material/thermal loss without inventing a radiative reserve
+PASS mimic copies only the first contacted liquid and stops this step
+PASS mimic identity 3 records its material/biological/heat delta
+PASS mimic identity 28 records its material/biological/heat delta
+PASS mimic identity 22 records its material/biological/heat delta
+PASS mimic identity 2 records its material/biological/heat delta
+PASS ordinary swaps, same-material contacts and blocked brine do not register magic
+PASS repeated frost cooling has measured heat sink (1)
+PASS repeated frost cooling has measured heat sink (127)
+PASS repeated frost cooling has measured heat sink (255)
+PASS aether-crystal records an actual representation change
+PASS frost-water records an actual representation change
+PASS coolant-quench records an actual representation change
+PASS slime-moss records an actual representation change
+PASS non-phase crystal retains injected pending heat through subsequent heat passes
+PASS storm boiling records transmutation and retains pending heat for ordinary steam balance
+PASS storm-metal-quench records both phase products and all passenger losses
+PASS storm-slag-quench records both phase products and all passenger losses
+PASS bloom-moss registers magical tissue exactly once
+PASS tonic-moss registers magical tissue exactly once
+PASS moss conjured before ordinary initialization is not introduced a second time
+PASS slime methane is distinct from ordinary finite detrital methanogenesis
+PASS heat-destroyed slime records all passengers and pending heat immediately
+PASS slime shock receipt requires actual powered contact (unpowered)
+PASS slime shock receipt requires actual powered contact (live)
+PASS tonic recipe preserves excess and unrelated stocks (17)
+PASS tonic recipe preserves excess and unrelated stocks (127)
+PASS tonic recipe preserves excess and unrelated stocks (255)
+PASS frost recipe and missing-reagent control retain unrelated nutrients
+PASS liquid light use is explicit and query helpers remain pure
+PASS liquid light supporting ordinarily paid moss records energy use without conjuring biomass
+PASS recorded unmetered power is named, finite, and zero uses are inert
+PASS solar query is pure; actual liquid-light power is separated from ordinary sunlight
+PASS hot coolant has measured cooling and separately unmetered boiler output (1)
+PASS hot coolant has measured cooling and separately unmetered boiler output (127)
+PASS hot coolant has measured cooling and separately unmetered boiler output (255)
+PASS cold coolant stops boiler without spending heat or recording abstract output
+PASS snapshots, binary/world codes, actual undo and missing-ledger baseline
+{"generatedSeed":7,"ticks":256,"bloomMossEvents":5,"magicalBiologicalSource":{"c":24,"n":2.4000000000000004,"p":0.24}}
+{"generatedSeed":73,"ticks":256,"bloomMossEvents":4,"magicalBiologicalSource":{"c":3779.7058823529414,"n":1.5000000000000002,"p":0.15}}
+{"generatedSeed":31337,"ticks":256,"bloomMossEvents":7,"magicalBiologicalSource":{"c":27,"n":2.7,"p":0.27}}
+1240 fantasy boundary checks passed

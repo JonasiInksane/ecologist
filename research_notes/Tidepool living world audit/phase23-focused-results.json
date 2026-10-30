@@ -1,0 +1,225 @@
+[
+  {
+    "command": "node tools/check-terrarium.mjs",
+    "code": 0,
+    "seconds": 0.9146297000000001,
+    "tail": [
+      "Terrarium checks: 187 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-fantasy.mjs",
+    "code": 0,
+    "seconds": 6.524456900000001,
+    "tail": [
+      "{\"generatedSeed\":31337,\"ticks\":256,\"bloomMossEvents\":7,\"magicalBiologicalSource\":{\"c\":27,\"n\":2.7,\"p\":0.27}}",
+      "1172 fantasy boundary checks passed"
+    ]
+  },
+  {
+    "command": "node tools/check-showcase-puzzles.mjs",
+    "code": 0,
+    "seconds": 24.1097162,
+    "tail": [
+      "{\"level\":10,\"seed\":31337,\"ticks\":121,\"carrier\":2871,\"salt\":0,\"text\":\"fresh water 10/10 · receiver salt 0.00\"}",
+      "Showcase puzzle checks: 166 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-showcase-ui.mjs",
+    "code": 0,
+    "seconds": 1.6277245999999976,
+    "tail": [
+      "PASS 40 Showcase UI checks (in-memory DOM events; browser interaction remains unverified)"
+    ]
+  },
+  {
+    "command": "node tools/check-ecology.mjs",
+    "code": 0,
+    "seconds": 1.1421748000000007,
+    "tail": [
+      "PASS 217 finite ecology and C/N/P accounting checks"
+    ]
+  },
+  {
+    "command": "node tools/check-cold-ecology.mjs",
+    "code": 0,
+    "seconds": 0.5498539000000019,
+    "tail": [
+      "{\"producer\":[{\"temperature\":20,\"made\":0.1,\"respired\":0.019999999999996618,\"change\":0.08000000000000185},{\"temperature\":10,\"made\":0.05,\"respired\":0.009999999999998309,\"change\":0.03999999999999915},{\"temperature\":0,\"made\":0,\"respired\":0.005000000000005219,\"change\":-0.015000000000000568}],\"darkLoss\":[0.05999999999999872,0.030000000000001137,0.015000000000000568],\"starvation\":[{\"temperature\":20,\"ticks\":11100,\"foodAdded\":0},{\"temperature\":10,\"ticks\":22201,\"foodAdded\":0},{\"temperature\":0,\"ticks\":44401,\"foodAdded\":0}]}",
+      "Cold ecology checks: 159 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-ice-light.mjs",
+    "code": 0,
+    "seconds": 0.32606980000000474,
+    "tail": [
+      "53 clear-ice light and finite photosynthesis checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-erosion-accounting.mjs",
+    "code": 0,
+    "seconds": 62.85174249999999,
+    "tail": [
+      "PASS original exposed woodland bank closes C/N/P at every actual step (microbial banks removed)",
+      "42 erosion accounting checks passed"
+    ]
+  },
+  {
+    "command": "node tools/check-feeding.mjs",
+    "code": 0,
+    "seconds": 0.36926170000000275,
+    "tail": [
+      "Feeding checks: 62 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-roots.mjs",
+    "code": 0,
+    "seconds": 0.38882530000001136,
+    "tail": [
+      "57 connected-root checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-plant-air.mjs",
+    "code": 0,
+    "seconds": 0.5089562000000005,
+    "tail": [
+      "Plant air checks: 111 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-habitats.mjs",
+    "code": 0,
+    "seconds": 2.3069899999999905,
+    "tail": [
+      "157 generated habitat checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-woodland-moisture.mjs",
+    "code": 0,
+    "seconds": 9.3437938,
+    "tail": [
+      "{\"watered\":{\"height\":5,\"flower\":true,\"nectarCollected\":2.8000000000000003,\"honeyStored\":2.8000000000000003},\"dry\":{\"height\":1,\"flower\":false,\"nectarCollected\":0,\"honeyStored\":0}}",
+      "150 woodland moisture checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-fish-recovery.mjs",
+    "code": 0,
+    "seconds": 0.27694449999999776,
+    "tail": [
+      "23 fish recovery checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-hive-sites.mjs",
+    "code": 0,
+    "seconds": 0.8592755000000034,
+    "tail": [
+      "85 generated hive placement checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-hives.mjs",
+    "code": 0,
+    "seconds": 58.12919020000001,
+    "tail": [
+      "{\"fed\":{\"bees\":3,\"honey\":0.6252179955080884,\"heat\":1617.3840538980553,\"deaths\":{},\"lowest\":-4},\"unfed\":{\"bees\":0,\"honey\":0,\"heat\":0,\"deaths\":{\"bee:cold\":3},\"lowest\":-10},\"winter\":{\"bees\":3,\"honey\":0.6138345406449018,\"heat\":1753.9855122568329,\"deaths\":{},\"outdoorMin\":-12.499277669344666,\"outdoorMax\":4.084942070791646}}",
+      "Hive checks: 129 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-bee-routing.mjs",
+    "code": 0,
+    "seconds": 0.5127219999999797,
+    "tail": [
+      "Bee routing checks: 121 passed"
+    ]
+  },
+  {
+    "command": "node tools/check-sky.mjs",
+    "code": 0,
+    "seconds": 1.2374990999999864,
+    "tail": [
+      "{\"ok\":true,\"checks\":51,\"note\":\"Exact full-frame parity for thresholds, fog, day/night, every world row/column, fractional views and terrain/liquid blockers\"}"
+    ]
+  },
+  {
+    "command": "node tools/check-ecosystem-metrics.mjs",
+    "code": 0,
+    "seconds": 0.09506159999998635,
+    "tail": [
+      "PASS ecosystem acceptance rejects lost matter, replenishment, leaks, invalid stores, missing fixed seeds and unrecorded fish changes"
+    ]
+  },
+  {
+    "command": "node tools/check-generated-ecosystem-metrics.mjs",
+    "code": 0,
+    "seconds": 0.11904610000000684,
+    "tail": [
+      "68 generated ecosystem acceptance checks pass"
+    ]
+  },
+  {
+    "command": "node tools/check-accounting.mjs",
+    "code": 0,
+    "seconds": 0.5869647000000113,
+    "tail": [
+      "PASS 51 focused accounting checks"
+    ]
+  },
+  {
+    "command": "node tools/check-oxygen.mjs",
+    "code": 0,
+    "seconds": 0.325909399999975,
+    "tail": [
+      "PASS electrolysis reserves product space and leaves the final carrier unit",
+      "All 26 focused oxygen checks passed."
+    ]
+  },
+  {
+    "command": "node tools/check-thermal.mjs",
+    "code": 0,
+    "seconds": 0.25975250000000233,
+    "tail": [
+      "Thermal accounting checks passed (144 assertions)."
+    ]
+  },
+  {
+    "command": "node tools/check-devices.mjs",
+    "code": 0,
+    "seconds": 0.24490420000001906,
+    "tail": [
+      "Device accounting checks passed (157 assertions)."
+    ]
+  },
+  {
+    "command": "node tools/check-life.mjs",
+    "code": 0,
+    "seconds": 0.2966343000000052,
+    "tail": [
+      "PASS life diagnostics, local crowding, hypoxia, aerated control and bounded history"
+    ]
+  },
+  {
+    "command": "node tools/build.mjs",
+    "code": 0,
+    "seconds": 0.3125149000000092,
+    "tail": [
+      "dist/tidepool.html: 62 modules, 633.8 KB"
+    ]
+  },
+  {
+    "command": "node tools/check-bundle.mjs",
+    "code": 0,
+    "seconds": 0.837577099999995,
+    "tail": [
+      "PASS bundled initialization and first animation frame under DOM/canvas stubs"
+    ]
+  }
+]

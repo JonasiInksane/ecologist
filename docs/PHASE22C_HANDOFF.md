@@ -1,7 +1,58 @@
-# Paused: Phase 22C
+# Phase 22C continuation
 
-Paused at the user's request on **29 October 2026**. All eight remaining task-owned ecosystem
-and regression-test processes were stopped. **Do not resume work or restart tests until the user asks.**
+**Resumed at the user's request on 29 October 2026**, in `C:\dev\ecologist` from commit
+`78cd3b1`. Current rules and verification are in [`design/phase22c-ecosystems.md`](design/phase22c-ecosystems.md).
+The historical paused checkpoint below explains the starting evidence; its pause is superseded.
+
+## Current continuation
+
+The generated-world and winter-hive headless gates passed on 30 October 2026. Current rules,
+numbers, evidence and limits are in
+[`design/phase22c-generated-habitats.md`](design/phase22c-generated-habitats.md).
+All three seeds (7, 73, 31337) pass eight actual days, finishing with 22, 15 and 14 fish.
+Seed 7 retains its three original bees and collects 1.818074 nectar units. Finite generated
+producers, a glass demo tank with an idle pump, retained banks, watered seedlings, connected
+roots, cold physiology, clear-ice light and physically reachable honey-funded shelter are
+implemented. The ten-day balanced jars finish with 5, 4 and 6 fish; all six cases and 109
+acceptance checks pass. Durable artifacts use the `phase22-world-*` prefix.
+
+The complete regression suite passes 81 scenes / 393 checks before the last hive-only edits;
+the five affected scenes pass again afterward. All 21 focused tools, build and stubbed first
+frame pass. Interactive browser checks remain unverified because the Windows URL policy
+guard stopped computer use. Storm rendering averages 18.18 ms, so responsiveness remains open.
+Outdoor recorded introduction counters do not establish global closure: the Phase 23 audit
+found pre-existing unrecorded bloom-created moss. Closed ordinary jars contain no magic.
+
+The user explicitly requested continuing the next phase. Phase 23 Showcase core is implemented;
+see [`design/phase23-showcase.md`](design/phase23-showcase.md). The exact verified Phase 22
+runtime is retained locally at `.test-artifacts/phase22-verified-source` for parity checks.
+Final Showcase evidence uses `phase23-*`: 273 model/parity checks, 1,240 fantasy checks,
+166 new-puzzle checks, 43 UI-event checks and bundled startup pass. The broad regression run
+passes 81 scenes / 393 checks while approved final fixes were landing; 20 affected scenes /
+94 checks pass again on unchanged final runtime. Latest storm mean rendering is 18.30 ms.
+Native frames are readable; interactive browser playtesting remains open. Proposed extensions
+after the last numbered phase are in `ROADMAP.md`.
+
+### Prior designed-jar milestone and pre-correction diagnostics
+
+- Fish grazing now tapers quadratically with dilute algae concentration, retaining finite
+  transfers and paid starvation. Satiated pike stop hunting until ordinary reserves decline.
+  Births retain parental food reserves; local crowding uses equal 64-pixel axis extents.
+- The test harness requires the documented fixed seeds, checks nectar/hive stores and matches
+  fish-only births/deaths to fish population changes. Falsification controls cover each rule.
+- Final ten-day balanced trials pass for seeds 7, 73 and 31337. End populations are 4, 4 and 5
+  fish, with plants/algae retained and positive final-day photosynthesis. The design document
+  records controls, conservation, regressions and performance limits. The complete six-case
+  suite passes all 109 acceptance checks with `completionGate: true`; it sustains populations
+  through turnover, not every original fish.
+- That earlier generated seed 7 source loses its ordinary fish within 1.25 days (2 predation,
+  6 stranding, 3 starvation, cumulative from generation). All three bees die of cold with
+  509.779 honey units left and no nectar collected. The current seasonal results above supersede these failures.
+
+## Historical paused checkpoint
+
+The earlier run was paused at the user's request on **29 October 2026**. Its eight remaining
+task-owned ecosystem and regression-test processes were stopped.
 
 ## Repository checkpoint
 
@@ -158,6 +209,6 @@ Interactive browser play remains unverified; the connected browser blocked local
 5. Finish rendering review, quiet performance measurements, build/startup/render checks,
    documentation and package commands. `package.json` has **not** yet gained a Phase 22C script.
 6. Do not mark Phase 22/22C complete until its stated gate actually passes. The paused checkpoint
-   publication is authorized; subsequent implementation remains paused until the user resumes it.
+   publication was authorized separately from implementation; the later user request resumed work.
 
-There is no active scheduled continuation or goal. Work is paused until the user resumes it.
+There is no active scheduled continuation or goal. The current continuation is described above.

@@ -1,0 +1,42 @@
+START ecology: algae, grazing fish, rot
+START ecology: seasonal algae, spreading plants, pike and moths
+DONE  ecology: algae, grazing fish, rot (15.1 s)
+START life: a sealed jar through two day and night cycles
+DONE  ecology: seasonal algae, spreading plants, pike and moths (28.8 s)
+START life: an overfed jar, bloom and recorded mortality
+DONE  life: a sealed jar through two day and night cycles (62.0 s)
+START life: local fish capacity and causal oxygen stress
+DONE  life: local fish capacity and causal oxygen stress (0.0 s)
+DONE  life: an overfed jar, bloom and recorded mortality (62.2 s)
+
+ecology: algae, grazing fish, rot  (15.1 s)
+  PASS  algae needs light, and grows thick on fertiliser but stays thin without  (fertilised 89, dark 0, plain 3.0)
+  PASS  algae dies in the dark and rots into fertiliser  (algae 55 of 100, fertiliser 1.5)
+  PASS  fish graze algae and stay fed  (hunger 61)
+  PASS  fish with nothing to eat go hungry and don’t breed  (hunger 1400, 2 fish)
+  PASS  a dead fish leaves finite organic matter and recycled nutrients
+  PASS  a wilted plant retains its material as organic residue  (1 organic deposits)
+
+ecology: seasonal algae, spreading plants, pike and moths  (28.8 s)
+  PASS  algae blooms in warm water and dies back in cold  (warm 176, cold 13 (both started at 40))
+  PASS  grown plants drop seeds that take root nearby, spaced apart  (4 plants at 34, 37, 40, 44)
+  PASS  a grown plant regrows leaves
+  PASS  a pike hunts down the small fish  (5 of 6 fish left, 1 eaten since it last bred)
+  PASS  a pike with exhausted food reserves starves and leaves finite remains
+  PASS  moths eat leaves  (18 of 18 leaves eaten)
+  PASS  a fish snaps up a moth just over the water
+  PASS  moths die in a hard frost
+
+life: a sealed jar through two day and night cycles  (62.0 s)
+  PASS  a balanced sealed jar retains its two original fish and plants through two days  (2 of 2 fish, 2 plants, water oxygen 6.3 mg/L, deaths {})
+
+life: an overfed jar, bloom and recorded mortality  (62.2 s)
+  PASS  an overfed glass jar supports an algae bloom  (algae 255 at thickest)
+  PASS  every original fish lost in the overfed jar has a recorded cause  (0 of 2 fish alive; [{"id":27,"kind":"fish","cause":"hypoxia","tick":53967,"tile":27171,"night":false,"oxygen":0.08547358696806562,"ammonia":17.37000002818464,"temperature":20},{"id":26,"kind":"fish","cause":"hypoxia","tick":60156,"tile":26659,"night":true,"oxygen":1.045050044404153,"ammonia":26.345668131487763,"temperature":20}])
+
+life: local fish capacity and causal oxygen stress  (0.0 s)
+  PASS  fish reproduce up to the local capacity, including the parents  (4 fish from 3; capacity 4)
+  PASS  nighttime algae deplete healthy water before a tagged hypoxic death  ({"id":9,"kind":"fish","cause":"hypoxia","tick":1000,"tile":22059,"night":true,"oxygen":2.0983178366447106,"ammonia":2.9614682501150553,"temperature":20})
+  PASS  the matched aerated control survives the same nighttime exposure
+
+all checks passed · matching ecology: algae, ecology: seasonal, life: local fish, life: an overfed, life: a sealed run, 5 scenes, 91.3 s

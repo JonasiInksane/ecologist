@@ -1,0 +1,4 @@
+PASS 38 Showcase UI checks (in-memory DOM events; browser interaction remains unverified)
+{"review":"puzzle-jar-sandbox","previous":{"seed":7,"weather":true,"pressure":false,"momentum":false,"timeMode":"cycle","heldPhase":0.44,"timeShift":0.32},"actual":{"weather":true,"pressure":false,"momentum":false,"timeMode":"cycle","timeShift":0.32,"heldPhase":0.44}}
+{"review":"old-sandbox-load-from-editor","editing":false,"level":null,"terrarium":null,"selectedMode":-1,"editorHidden":true}
+{"review":"telemetry-microbenchmark","calls":10000,"elapsedMs":40.840999999999894,"sum":16000000,"note":"Headless telemetry only, not a frame-rate measurement"}

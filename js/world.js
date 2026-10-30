@@ -27,6 +27,7 @@ const devices = new Map();   // tile index -> switch or target state
 S.mossSugar = {};
 S.ecology = null;
 S.nextPlantId = 0;
+S.terrarium = null;
 S.accounting = {};
 S.diagnostics = { deaths: [], deathCounts: {}, births: {} };
 const fire = new Uint8Array(W * H);   // burn time left on a burning tile

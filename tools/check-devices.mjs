@@ -4,6 +4,7 @@ import { C, Wd, at, clearWorld, fill } from './test-support.mjs';
 const D = await import('../js/devices.js');
 const { soluteAmount } = await import('../js/solutes.js');
 const { LCAP, BCAP } = await import('../js/matter.js');
+const { beginNets, charged, powerLeft } = await import('../js/power.js');
 const { liq, typ, sol, solid, temp, latent, held, S } = Wd;
 const k = at(40, 40), up = k - C.W, down = k + C.W, left = k - 1, right = k + 1;
 let assertions = 0;
@@ -14,6 +15,10 @@ function compareComponents(cells, before) { for (let i = 0; i < C.NSOL; i++) nea
 function sensible(cells) {
   return cells.reduce((n, o) => n + temp[o] * (LCAP[typ[o]] * liq[o] / 255 + BCAP[C.SALT] * soluteAmount(o, C.SOL_SALT) / 255 + BCAP[C.SUGAR] * soluteAmount(o, C.SOL_SUGAR) / 255), 0);
 }
+
+ok(!charged(k), 'a cold first frame has no phantom power from zero-valued generation stamps');
+near(powerLeft(k), 0);
+beginNets(); ok(!charged(k), 'a rebuilt empty network also has no supplied power');
 
 clearWorld();
 solid[k] = C.SPRING; fill(40, 41, 40, 41, C.WATER, 80, 100); sol[down * C.NSOL + C.SOL_SUGAR] = 120;

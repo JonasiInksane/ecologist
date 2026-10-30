@@ -96,11 +96,13 @@ function buildWorldMenu({ afterLoad }) {
     if (file) loadCode(await file.text(), file.name).catch(fail);
   });
   $('copySeed').addEventListener('click', async () => {
+    if (S.terrarium) return;
     const tag = `#seed-${S.seed}`;
     try { await navigator.clipboard.writeText(tag); say(`Copied ${tag}. Add it to the end of the page’s link to open this world as generated (later changes need a world code).`); }
     catch { seedInput.value = String(S.seed); seedInput.select(); say(`Add ${tag} to the end of the page’s link to open this world as generated.`); }
   });
   $('buildSeed').addEventListener('click', () => {
+    if (S.terrarium) return;
     const n = Number(String(seedInput.value).trim());
     if (!Number.isInteger(n) || n < 0 || n > 2147483647) { say('A seed is a whole number from 0 to 2147483647.'); return; }
     checkpoint(); S.seed = n; generate(); afterLoad();
@@ -121,6 +123,7 @@ function buildWorldMenu({ afterLoad }) {
     $('historyInfo').textContent = steps ? `${steps} step${steps > 1 ? 's' : ''} back${reach >= 1 ? `, up to ${reach.toFixed(0)} s of play` : ''}` : 'nothing to undo yet';
     $('seedText').textContent = `This world’s seed: ${S.seed}`;
     $('saveSections').hidden = !!S.level;
+    $('seedSharing').hidden = !!S.terrarium;
   }
   return { update, undoNow };
 }

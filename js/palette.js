@@ -10,7 +10,7 @@ function categoryOf(tl) {
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
 function recall(key, fallback) { try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; } catch { return fallback; } }
 
-function toolLabel(tl) { return `<span class="sw" style="background:${tl.color}"></span><span class="nm">${tl.name}</span>`; }
+function toolLabel(tl) { return `<span class="sw" style="background:${tl.color}"></span><span class="nm">${tl.name}</span>${tl.fantasy ? '<span class="fantasy-tag" aria-hidden="true">✦</span>' : ''}`; }
 
 // tools: the TOOLS table. pick(i) selects tool i (it calls markSelected back); allowed(tl) says whether the mode allows it.
 function buildPalette(tools, { pick, allowed }) {
@@ -25,6 +25,8 @@ function buildPalette(tools, { pick, allowed }) {
   const buttons = tools.map((tl, i) => {
     const b = document.createElement('button');
     b.type = 'button'; b.id = 'tool-' + tl.id;
+    if (tl.description) b.title = tl.description;
+    if (tl.fantasy) b.setAttribute('aria-label', `${tl.name}, fantasy material`);
     b.innerHTML = toolLabel(tl) + (tl.key ? ` <kbd>${tl.key}</kbd>` : '');
     b.setAttribute('aria-pressed', 'false');
     b.addEventListener('click', () => { pick(i); setOpen(false); });
@@ -51,7 +53,7 @@ function buildPalette(tools, { pick, allowed }) {
     let shown = 0;
     buttons.forEach((b, i) => {
       const tl = tools[i];
-      const match = q ? tl.name.toLowerCase().includes(q) || categoryOf(tl).startsWith(q) : categoryOf(tl) === category;
+      const match = q ? tl.name.toLowerCase().includes(q) || categoryOf(tl).startsWith(q) || (tl.fantasy && ('fantasy'.startsWith(q) || 'magic'.startsWith(q))) : categoryOf(tl) === category;
       b.hidden = !(match && allowed(tl));
       if (!b.hidden) shown++;
     });
@@ -63,6 +65,8 @@ function buildPalette(tools, { pick, allowed }) {
     recentEl.replaceChildren(...ids.map(id => tools.findIndex(t => t.id === id)).filter(i => i >= 0 && allowed(tools[i])).map(i => {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'mini';
+      if (tools[i].description) b.title = tools[i].description;
+      if (tools[i].fantasy) b.setAttribute('aria-label', `${tools[i].name}, fantasy material`);
       b.innerHTML = toolLabel(tools[i]) + (tools[i].key ? ` <kbd>${tools[i].key}</kbd>` : '');
       b.setAttribute('aria-pressed', i === current ? 'true' : 'false');
       b.addEventListener('click', () => pick(i));

@@ -19,7 +19,9 @@ import { setupHud, updateHud } from './hud.js';
 import { plantSeed } from './plants.js';
 import { charged, powerLeft } from './power.js';
 import { removePump, usePump } from './pumps.js';
-import { panBy, screenToWorld, setZoom, snapToExplorer } from './render/camera.js';
+import { centerOn, panBy, screenToWorld, setZoom, snapToExplorer } from './render/camera.js';
+import { leaveTerrarium, restartTerrarium, startTerrarium, terrariumReading } from './terrarium.js';
+import { fantasyInfo, fantasyLedger } from './fantasy.js';
 import { lastStats } from './render/render.js';
 import { step } from './sim.js';
 import { SOL_NAMES, clearSol } from './solutes.js';
@@ -29,7 +31,7 @@ import { CO2, LYE, SODA } from './config.js';
 import { HYDROGEN, MSLAG, ORE, OXYGEN, SLAG } from './config.js';
 import { DEPTH, FNITRO, PIXEL, RUST, SUGAR, THERMO } from './config.js';
 import { ALUMINIUM, ASH, BLEACH, CHARCOAL, CHLORINE, GOLD, LIME, LIMESTONE, QUICKLIME, SOL_O2, SOL_OIL, ZINC } from './config.js';
-import { oxygenIn, stifling } from './oxygen.js';
+import { FISH_GASPS, oxygenIn, stifling } from './oxygen.js';
 import { AIR_OX, airCarb, airOx } from './world.js';
 import { phOf } from './solutes.js';
 import { BATTERY, EMAGNET, LAMP, MOTOR, SOLAR } from './config.js';
@@ -170,6 +172,10 @@ const TOOLS = [
   { id: 'salamander', name: 'Salamander', place: 'salamander', color: '#ff7a2a' },
   { id: 'slimeling',  name: 'Slimeling',  place: 'slimeling',  color: '#4fc46a' },
 ];
+for (const tl of TOOLS) {
+  const fantasy = fantasyInfo({ liquid: tl.liquid, block: tl.block });
+  if (fantasy) { tl.description = fantasy.description; tl.fantasy = true; }
+}
 let tool = TOOLS[0];
 const palette = buildPalette(TOOLS, { pick: i => selectTool(i), allowed: tl => allowed(tl) });
 const toolBtns = palette.buttons;
@@ -199,7 +205,7 @@ const heatEl = document.getElementById('heatview');
 function setHeatView(v) { S.heatView = v; heatEl.setAttribute('aria-pressed', v ? 'true' : 'false'); }
 heatEl.addEventListener('click', () => setHeatView(!S.heatView));
 const pressureEl = document.getElementById('pressure');
-function setPressure(v) { S.pressure = v; pressureEl.setAttribute('aria-pressed', v ? 'true' : 'false'); }
+function setPressure(v) { if (!S.terrarium) S.pressure = v; pressureEl.setAttribute('aria-pressed', S.pressure ? 'true' : 'false'); }
 pressureEl.addEventListener('click', () => setPressure(!S.pressure));
 // View and sound toggles. Their state can change elsewhere (panning stops following), so updateStatus re-syncs them.
 const TOGGLES = [];
@@ -220,12 +226,12 @@ const toggleSound = toggle('sound', () => S.sound, v => enableSound(v));
 const toggleMusic = toggle('music', () => S.music, v => enableMusic(v));
 const timeEl = document.getElementById('timeMode');   // day and night, always day, always night, or stopped
 timeEl.addEventListener('change', () => setTimeMode(timeEl.value));
-const toggleWeather = toggle('weather', () => S.weather, v => { S.weather = v; });
-const toggleMomentum = toggle('momentum', () => S.momentum, v => { S.momentum = v; if (!v) vel.fill(0); });
-document.getElementById('rainNow').addEventListener('click', () => { if (!S.weather) toggleWeather(); startRain(); });
+const toggleWeather = toggle('weather', () => S.weather, v => { if (!S.terrarium) S.weather = v; });
+const toggleMomentum = toggle('momentum', () => S.momentum, v => { if (S.terrarium) return; S.momentum = v; if (!v) vel.fill(0); });
+document.getElementById('rainNow').addEventListener('click', () => { if (S.terrarium) return; if (!S.weather) toggleWeather(); startRain(); });
 document.getElementById('stepBtn').addEventListener('click', () => { setPaused(true); step(); });
-document.getElementById('drain').addEventListener('click', () => { checkpoint(); liq.fill(0); typ.fill(0); fire.fill(0); sol.fill(0); drop.fill(0); vel.fill(0); wakeAll(); });
-document.getElementById('regen').addEventListener('click', () => { checkpoint(); S.seed = (Math.random() * 1e9) | 0; generate(); enterMode(); });
+document.getElementById('drain').addEventListener('click', () => { if (S.terrarium) return; checkpoint(); liq.fill(0); typ.fill(0); fire.fill(0); sol.fill(0); drop.fill(0); vel.fill(0); wakeAll(); });
+document.getElementById('regen').addEventListener('click', () => { if (S.terrarium) return; checkpoint(); S.seed = (Math.random() * 1e9) | 0; generate(); enterMode(); });
 
 // Puzzle levels: the Mode menu switches between the sandbox and each level; a level shows only the tools it allows.
 const levelEl = document.getElementById('level'), goalEl = document.getElementById('goal');
@@ -233,11 +239,19 @@ LEVELS.forEach((L, i) => levelEl.add(new Option(`${i + 1}. ${L.name}`, i)));
 levelEl.addEventListener('change', () => {
   checkpoint();
   const v = levelEl.value;
-  if (v === 'edit') openEditor();   // the level editor works on the world as it is
+  const jarSettings = S.terrarium?.previousSettings;
+  if (S.terrarium) leaveTerrarium();
+  if (v === 'terrarium') { closeEditor(); startTerrarium(S.seed); }
+  else if (v === 'edit') openEditor();   // the level editor works on the world as it is
   else if (v === 'custom') return;
   else if (+v < 0) {
     if (S.editing && !S.level) closeEditor();   // leaving the editor keeps its world
-    else { if (S.level && !S.level.custom) { S.weather = S.sandboxWeather; S.pressure = S.sandboxPressure ?? true; } closeEditor(); generate(); }   // puzzles set weather and pressure; give the sandbox its settings back
+    else {
+      if (S.level && !S.level.custom) { S.weather = S.sandboxWeather; S.pressure = S.sandboxPressure ?? true; }
+      closeEditor(); generate();
+      // Generation starts a fresh clock. Retain the schedule promised by leaving the jar.
+      if (jarSettings) for (const key of ['timeMode', 'timeShift', 'heldPhase']) if (Object.hasOwn(jarSettings, key)) S[key] = jarSettings[key];
+    }
   } else { closeEditor(); startLevel(+v); }
   enterMode();
 });
@@ -248,24 +262,38 @@ document.getElementById('levelRestart').addEventListener('click', () => {
 });
 document.getElementById('levelEdit').addEventListener('click', () => { backToEditor(); enterMode(); });
 document.getElementById('levelNext').addEventListener('click', () => { if (S.level && S.level.done && S.level.index + 1 < LEVELS.length) { startLevel(S.level.index + 1); enterMode(); } });
-function allowed(tl) { return !S.level || S.level.tools.includes(tl.id); }
+function allowed(tl) { return !!tl && !S.terrarium && (!S.level || S.level.tools.includes(tl.id)); }
+document.getElementById('terrariumRestart').addEventListener('click', () => { if (!S.terrarium) return; checkpoint(); restartTerrarium(); enterMode(); });
+document.getElementById('terrariumLight').addEventListener('click', () => { if (!S.terrarium) return; checkpoint(); setTimeMode(S.timeMode === 'night' ? 'cycle' : 'night'); updateStatus(); });
 // Shows the tools and buttons that fit the current mode, and keeps the selected tool one of them.
 function enterMode() {
   const custom = !!(S.level && S.level.custom);
   levelEl.querySelector('[value="custom"]').hidden = !custom;
-  levelEl.value = S.editing ? 'edit' : custom ? 'custom' : S.level ? S.level.index : -1;
+  levelEl.value = S.terrarium ? 'terrarium' : S.editing ? 'edit' : custom ? 'custom' : S.level ? S.level.index : -1;
   document.getElementById('editor').hidden = !S.editing;
   document.getElementById('levelEdit').hidden = !canGoBack();
   if (S.editing) fillEditor();
-  palette.refresh(!!S.level);
-  for (const id of ['drain', 'regen', 'rainNow', 'weather', 'worldLabel']) document.getElementById(id).hidden = !!S.level;
+  palette.refresh(!!S.level || !!S.terrarium);
+  for (const id of ['drain', 'regen', 'rainNow', 'weather', 'worldLabel']) document.getElementById(id).hidden = !!S.level || !!S.terrarium;
+  for (const id of ['toolBar', 'brushGroup', 'pressure', 'momentum', 'follow', 'hudToggle']) document.getElementById(id).hidden = !!S.terrarium;
+  document.getElementById('terrariumPanel').hidden = !S.terrarium;
   goalEl.hidden = !S.level;
-  if (!allowed(tool)) selectTool(TOOLS.findIndex(allowed));
-  snapToExplorer();
+  if (!allowed(tool)) { const first = TOOLS.findIndex(allowed); if (first >= 0) selectTool(first); }
+  pressing = false; last = null;
+  cursor.x = -1;
+  hoverEl.textContent = S.terrarium ? 'Point at fish, water or plants to inspect the jar' : 'Point at a tile to read its level';
+  for (const key of Object.keys(keys)) keys[key] = false;
+  if (S.terrarium) { S.follow = false; setZoom(2); centerOn(45 * T, 43 * T); }
+  else {
+    const levelView = S.level && !S.level.custom && LEVELS[S.level.index]?.view;
+    if (levelView) { S.follow = false; setZoom(levelView.zoom); centerOn(levelView.x * T, levelView.y * T); }
+    else snapToExplorer();
+  }
 }
 
 function inBrush(dx, dy, r) { return dx * dx + dy * dy <= r * r + r * 0.6; }
 function applyAt(cx, cy, erase) {
+  if (S.terrarium || !allowed(tool)) return;
   if (erase && S.level && !S.level.tools.includes('dig')) return;   // right-click digs only where digging is allowed
   const r = +brushEl.value;
   for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
@@ -306,6 +334,7 @@ canvas.addEventListener('pointerdown', e => {
   }
   const p = toTile(e), px = toPixel(e);
   cursor.x = p.x; cursor.y = p.y;
+  if (S.terrarium) return;   // inspection and panning remain available; the sealed jar cannot be edited
   checkpoint();   // every click edits the world, so undo can take it back
   if (e.button === 2) {   // right-click removes a body (not in puzzles), otherwise it erases; it never uses the selected tool
     const i = S.level ? -1 : bodies.findIndex(b => px.x >= b.x && px.x < b.x + b.w && px.y >= b.y && px.y < b.y + b.h);
@@ -343,7 +372,7 @@ canvas.addEventListener('pointercancel', release);
 canvas.addEventListener('pointerleave', () => { if (!pressing) cursor.x = -1; });
 
 function paintStroke() {
-  if (!pressing || cursor.x < 0) return;
+  if (S.terrarium || !pressing || cursor.x < 0) return;
   const from = last || cursor;
   const n = Math.max(Math.abs(cursor.x - from.x), Math.abs(cursor.y - from.y), 1);
   for (let i = 1; i <= n; i++) applyAt(Math.round(from.x + (cursor.x - from.x) * i / n), Math.round(from.y + (cursor.y - from.y) * i / n), eraseBtn);
@@ -359,6 +388,7 @@ addEventListener('keyup', e => {
 addEventListener('blur', () => { for (const a of [...ARROWS, ...ACTIONS]) keys[a] = false; });
 addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('select,input')) return;
+  if (S.terrarium && (ACTIONS.includes(e.key) || ARROWS.includes(e.key))) return;
   if (ACTIONS.includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.target.closest && e.target.closest('button,summary,a')) && bodies.some(b => b.kind === 'explorer')) {
     e.preventDefault(); keys[e.key] = true; return;
   }
@@ -372,7 +402,7 @@ addEventListener('keydown', e => {
   const key = e.key.toLowerCase();
   const i = TOOLS.findIndex(tl => tl.key === key && allowed(tl));
   if (i >= 0) selectTool(i);
-  else if (e.key === '/' && !S.level) { e.preventDefault(); palette.focusSearch(); }
+  else if (e.key === '/' && !S.level && !S.terrarium) { e.preventDefault(); palette.focusSearch(); }
   else if (e.code === 'Space') { if (e.target.closest && e.target.closest('button')) return; e.preventDefault(); setPaused(!paused); }
   else if (key === 'l') setLighting(!S.lighting);
   else if (key === 'h') setHeatView(!S.heatView);
@@ -381,7 +411,7 @@ addEventListener('keydown', e => {
   else if (key === 'z') toggleZoom();
   else if (key === 'b') toggleChunks();
   else if (key === 'm') toggleSound();
-  else if (key === 'i' && !S.level) toggleWeather();
+  else if (key === 'i' && !S.level && !S.terrarium) toggleWeather();
   else if (e.key === '[') brushEl.value = Math.max(0, +brushEl.value - 1);
   else if (e.key === ']') brushEl.value = Math.min(5, +brushEl.value + 1);
 });
@@ -421,14 +451,33 @@ function updateStatus() {
     document.getElementById('goalText').innerHTML = `<b>${L.custom ? '' : `${L.index + 1}. `}${escapeHtml(L.name)}</b> · ${escapeHtml(L.goal)} · ${escapeHtml(L.text)}${state}`;   // custom levels' text comes from their maker
     document.getElementById('levelNext').hidden = !(L.done && !L.custom && L.index + 1 < LEVELS.length);
   }
+  const jar = terrariumReading();
+  const magic = fantasyLedger();
+  document.getElementById('fantasyPanel').hidden = !magic || !magic.events || !!jar;
+  if (magic && magic.events && !jar) {
+    const poolText = pool => `carbon ${pool.c.toFixed(2)}, nitrogen ${pool.n.toFixed(2)}, phosphorus ${pool.p.toFixed(3)}`;
+    const effects = Object.keys(magic.effects).join(', ').replaceAll('-', ' ');
+    document.getElementById('fantasyReading').textContent = `Biological matter added: ${poolText(magic.biologicalSource)}. Removed: ${poolText(magic.biologicalSink)}. Modeled heat added ${(magic.sensibleHeatSource + magic.latentHeatSource).toFixed(1)}, removed ${(magic.sensibleHeatSink + magic.latentHeatSink).toFixed(1)} game J. Unmetered energy uses: ${magic.unmeteredUses}. Effects: ${effects}.`;
+  }
+  if (jar) {
+    const oxygen = jar.fishOxygenMin === null ? 'no fish in water' : `${jar.fishOxygenMin.toFixed(1)} mg/L oxygen near fish${jar.fishOxygenMin < FISH_GASPS ? ' (low oxygen)' : ''}`;
+    const causes = jar.deathCauses.length ? ` · recorded losses: ${jar.deathCauses.map(item => `${item.count} ${item.cause}`).join(', ')}` : '';
+    document.getElementById('terrariumReading').textContent = `Day ${jar.elapsedDays.toFixed(2)} · ${jar.fish} fish · ${jar.plants} plants · ${oxygen} · algae ${(jar.algaeRatio * 100).toFixed(0)}% of start · reserves ${jar.foodState} · ${jar.births} births / ${jar.deaths} deaths${jar.fishOutsideWater ? ` · ${jar.fishOutsideWater} fish outside water` : ''}${causes}`;
+    document.getElementById('terrariumLight').textContent = S.timeMode === 'night' ? 'Restore day/night' : 'Switch to darkness';
+  }
   if (tool.pump && S.pendingIn >= 0) hoverEl.innerHTML = 'Inlet placed · click an open tile to place its outlet';
   else if (tool.wire && S.pendingLink >= 0) hoverEl.innerHTML = 'Click gates, springs, drains or pumps to link or unlink them · click the switch again to finish';
   else if (cursor.x >= 0 && cursor.x < W && cursor.y >= 0 && cursor.y < H) {
     const k = cursor.y * W + cursor.x;
-    const what = (devices.has(k) ? deviceState(k) : solid[k] ? BLOCKS[solid[k]] + (solid[k] === PUMP_IN || solid[k] === PUMP_OUT ? pumpState(k) : '') : liq[k] ? `${LIQ[typ[k]].name} <b>${liq[k]}</b>/255 · pH ${phOf(k).toFixed(1)}${solText(k)}` : airText(k)) + ecoInspection(k);
+    const fantasy = fantasyInfo({ liquid: liq[k] ? typ[k] : 0, block: solid[k] });
+    const what = (devices.has(k) ? deviceState(k) : solid[k] ? BLOCKS[solid[k]] + (solid[k] === PUMP_IN || solid[k] === PUMP_OUT ? pumpState(k) : '') : liq[k] ? `${LIQ[typ[k]].name} <b>${liq[k]}</b>/255 · pH ${phOf(k).toFixed(1)}${solText(k)}` : airText(k)) + ecoInspection(k) + (fantasy ? ` · ${escapeHtml(fantasy.description)}` : '');
     hoverEl.innerHTML = `tile ${cursor.x}, ${cursor.y} · ${what}${fall[k] ? ' · falling' : ''}${fire[k] ? ' · burning' : ''}${charged(k) ? ` · <b>live</b> (${Math.round(powerLeft(k) * 100)}% power)` : ''}${deco[k] ? ' · glowcaps' : ''} · ${Math.round(temp[k])}°`;
   }
-  statsEl.innerHTML = `wet tiles <b>${lastStats.cells}</b> · volume <b>${(lastStats.vol / 255).toFixed(1)}</b> full tiles · tick <b>${S.tick}</b> · ${clockText()}${S.level ? '' : ` · ${biomeAt((VIEW.x + VIEW.w / 2) / T).name}${spellAt((VIEW.x + VIEW.w / 2) / T) ? ` (${spellAt((VIEW.x + VIEW.w / 2) / T)} spell)` : ''}`}${S.weather ? ` · ${seasonName()}, day ${Math.floor(day()) + 1} · wind ${S.wind > 0.05 ? '→' : S.wind < -0.05 ? '←' : '·'}${Math.round(Math.abs(S.wind) * 10)}${S.rain > 0.05 ? ' · rain' : ''}` : ''}${S.showChunks ? ` · <b>${awake.reduce((n, v) => n + (v > 0), 0)}</b> of ${awake.length} chunks awake` : ''}`;
+  if (jar) statsEl.textContent = `${clockText()} · sealed matter · ${jar.light}`;
+  else {
+    const magicText = magic && magic.events ? ` · magic C +${magic.biologicalSource.c.toFixed(1)} / −${magic.biologicalSink.c.toFixed(1)}` : '';
+    statsEl.innerHTML = `wet tiles <b>${lastStats.cells}</b> · volume <b>${(lastStats.vol / 255).toFixed(1)}</b> full tiles · tick <b>${S.tick}</b> · ${clockText()}${S.level ? '' : ` · ${biomeAt((VIEW.x + VIEW.w / 2) / T).name}${spellAt((VIEW.x + VIEW.w / 2) / T) ? ` (${spellAt((VIEW.x + VIEW.w / 2) / T)} spell)` : ''}`}${S.weather ? ` · ${seasonName()}, day ${Math.floor(day()) + 1} · wind ${S.wind > 0.05 ? '→' : S.wind < -0.05 ? '←' : '·'}${Math.round(Math.abs(S.wind) * 10)}${S.rain > 0.05 ? ' · rain' : ''}` : ''}${magicText}${S.showChunks ? ` · <b>${awake.reduce((n, v) => n + (v > 0), 0)}</b> of ${awake.length} chunks awake` : ''}`;
+  }
 }
 
 export { TOOLS, tool, allowed, enterMode, toolBtns, solText, selectTool, brushEl, speedEl, pauseEl, lightEl, hoverEl, statsEl, paused, setPaused, setLighting, heatEl, setHeatView, pressureEl, setPressure, TOGGLES, toggle, syncToggles, toggleFollow, toggleZoom, toggleChunks, toggleHud, toggleSound, toggleMusic, toggleWeather, inBrush, applyAt, cursor, pressing, eraseBtn, last, panning, toTile, toPixel, release, paintStroke, ARROWS, BLOCKS, pumpState, updateStatus };

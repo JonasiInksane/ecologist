@@ -10,7 +10,7 @@ import { COMB, BASALT, BLOOM, BRICK, CLAY, DIRT, GEYSER, H, ICE, LAVA, LEAF, MOS
 import { DAY_TICKS, dayPhase } from './daynight.js';
 import { placeDevice } from './devices.js';
 import { LIQ } from './liquids.js';
-import { plantSeed } from './plants.js';
+import { plantSeed, plants } from './plants.js';
 import { hash, vnoise } from './util.js';
 import { S, latent, liq, markDirty, sol, solid, temp, typ, wake } from './world.js';
 import { mixSol } from './solutes.js';
@@ -218,6 +218,30 @@ function riversTick() {
   }
 }
 // Dresses each region with its features once the ground is laid.
+function placeWildHive(x, y) {
+  if (x < 2 || x >= W - 2 || y < 3 || y >= H - 2 || solid[y * W + x] !== WOOD) return false;
+  // Shrubs are commonly seeded on a tree's right. Try the opposite face first. Two horizontal
+  // cells put the outer flight face three columns from wood, beyond ordinary crown regrowth;
+  // both comb cells also reserve that flight space against existing and future seed envelopes.
+  for (const side of [-1, 1]) {
+    const hx = x + side, outer = hx + side, entrance = outer + side, home = y * W + hx, cells = [home, y * W + outer];
+    if (entrance < 0 || entrance >= W || cells.some(k => solid[k] || liq[k])) continue;
+    let clear = true;
+    for (let row = y - 2; row <= y + 1; row++) {
+      if (solid[row * W + entrance] || liq[row * W + entrance]) clear = false;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const nx = entrance + dx, ny = row + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H && solid[ny * W + nx] === WOOD) clear = false;
+      }
+    }
+    if (!clear || plants.some(p => cells.some(k => Math.abs(p.root % W - k % W) < 3) &&
+      ((p.root / W) | 0) >= y - 2 && ((p.root / W) | 0) - p.max <= y + 1)) continue;
+    for (const cell of cells) solid[cell] = COMB;
+    for (let i = 0; i < 3; i++) addBody('bee', entrance * T + 1, y * T + 1 + i * 2);
+    return true;
+  }
+  return false;
+}
 function features(surf) {
   for (const r of regions) {
     const B = BIOMES[r.b], { x0, x1 } = r, mid = (x0 + x1) >> 1, rnd = i => hash(r.x0 + i, 977);
@@ -241,11 +265,7 @@ function features(surf) {
       for (let i = 0; i < 3; i++) { const mx = x0 + 10 + ((rnd(40 + i) * (x1 - x0 - 20)) | 0); addBody('moth', mx * T, (surf[mx] - 4) * T); }   // moths among the trees
       for (let i = 0; i < 2; i++) { const bx = x0 + 20 + ((rnd(50 + i) * (x1 - x0 - 40)) | 0); addBody('bird', bx * T, (surf[bx] - 10) * T); }   // and birds that hunt them
       for (let x = (x0 + x1) >> 1; x < x1 - 2; x++) {   // a wild bees' nest: a little honeycomb against a trunk, and its bees
-        const y = surf[x] - 3, k = y * W + x;
-        if (solid[k] !== WOOD || solid[k + 1] || solid[k + 1 - W]) continue;
-        solid[k + 1] = COMB; solid[k + 1 - W] = COMB;
-        for (let i = 0; i < 3; i++) addBody('bee', (x + 2) * T, (y - 1 - i) * T);
-        break;
+        if (placeWildHive(x, surf[x] - 3)) break;
       }
     } else if (B.name === 'swamp') {
       for (let x = x0 + 6; x < x1 - 12; x += 14 + ((rnd(x) * 6) | 0)) {
@@ -421,4 +441,4 @@ function resetBiomes() { regions.length = 0; tide = null; rivers.length = 0; }
 function tideState() { return tide; }
 function setTideState(t) { tide = t; }
 
-export { CAVERNS, CAVERN_ROW, caverns, CLOUDBURST, cloudburst, RIVER_LONGEST, rivers, river, riversTick, RIVER_EVERY, RIVER_RATE, RIVER_START, DROUGHT_WARM, WET_COOL, WET_DRAW, TIDE_STORE, TIDE_EVERY, BASE, BLEND, SEA_ROW, START, BIOMES, regions, planBiomes, weights, regionAt, shapeColumns, groundBlock, tree, pool, features, underground, SPELL_EVERY, biomeTick, setSpell, tidesTick, biomeAt, spellAt, resetBiomes, tideState, setTideState };
+export { CAVERNS, CAVERN_ROW, caverns, CLOUDBURST, cloudburst, RIVER_LONGEST, rivers, river, riversTick, RIVER_EVERY, RIVER_RATE, RIVER_START, DROUGHT_WARM, WET_COOL, WET_DRAW, TIDE_STORE, TIDE_EVERY, BASE, BLEND, SEA_ROW, START, BIOMES, regions, planBiomes, weights, regionAt, shapeColumns, groundBlock, tree, pool, placeWildHive, features, underground, SPELL_EVERY, biomeTick, setSpell, tidesTick, biomeAt, spellAt, resetBiomes, tideState, setTideState };

@@ -4,12 +4,12 @@ import { resetAir, drifted } from './air.js';
 import { features, groundBlock, planBiomes, resetBiomes, shapeColumns, underground } from './biomes.js';
 import { addBody } from './bodies.js';
 import { ambient, rebuildAmbient, resetClimate, surface } from './climate.js';
-import { AETHER, AIR, AMBIENT, BLOOM, FROST, H, HONEY, LEAF, LEVER, OIL, PLANT, PUMP_IN, PUMP_OUT, QUICK, SAND, SLIME, STONE, T, W, WATER, WOOD } from './config.js';
+import { AETHER, AIR, AMBIENT, BLOOM, CLAY, FROST, GLASS, H, HONEY, LEAF, LEVER, NSOL, OIL, PLANT, PUMP_IN, PUMP_OUT, QUICK, SAND, SLIME, STONE, T, W, WATER, WOOD } from './config.js';
 import { placeDevice } from './devices.js';
 import { LIQ } from './liquids.js';
 import { parts } from './particles.js';
 import { plantSeed, plants } from './plants.js';
-import { step } from './sim.js';
+import { carryHeat, step } from './sim.js';
 import { vnoise, seededRandom } from './util.js';
 import { pipeShow, pipeTick } from './pipes.js';
 import { moved } from './momentum.js';
@@ -17,6 +17,8 @@ import { restorePristine } from './snapshot.js';
 import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, AIR_OX, AIR_CARB, airOx, airCarb, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
 import { resetPressure } from './pressure.js';
 import { ecoInitializeWorld } from './ecology.js';
+import { plantLakeBanks, seedGeneratedHabitats, seedWoodlandMoisture } from './habitats.js';
+import { initializeFantasyAccounting } from './fantasy.js';
 
 
 
@@ -36,10 +38,11 @@ function resetWorld() {
   S.nextPlantId = 0;
   S.mossSugar = {}; S.accounting = {}; S.diagnostics = { deaths: [], deathCounts: {}, births: {} };
   solid.fill(0); liq.fill(0); typ.fill(0); drop.fill(0); vel.fill(0); stamp.fill(0); S.tick = 0; parts.length = 0;
+  initializeFantasyAccounting();
   pumps.length = 0; bodies.length = 0; S.pendingIn = -1; temp.fill(AMBIENT); latent.fill(0); airOx.fill(AIR_OX); airCarb.fill(AIR_CARB); under.fill(0);
   devices.clear(); S.pendingLink = -1; fire.fill(0); deco.fill(0); sol.fill(0); held.fill(0); flux.fill(0); pipeTick.fill(0); pipeShow.fill(0); moved.fill(0); drifted.fill(0);   // tick stamps: the clock restarts
   plants.length = 0; afloat.fill(0); resetPressure();
-  S.level = null; S.dirtyAll = true;
+  S.level = null; S.terrarium = null; S.editing = false; S.dirtyAll = true;
   S.rain = 0; S.wind = 0; S.windTarget = 0; S.windTimer = 0; S.flash = 0; S.shake = 0; S.slimeCount = 0;   // a new world starts with still, dry air
   resetClimate(); resetAir(); resetBiomes();
 }
@@ -62,7 +65,39 @@ function generate() {
   const keep = { seed: S.seed, weather: S.weather, momentum: S.momentum, pressure: S.pressure, lastLiquid: S.lastLiquid, timeMode: S.timeMode, heldPhase: S.heldPhase };
   restorePristine();   // a blank slate: nothing from the previous world affects this one
   S.seed = keep.seed;
-  try { buildWorld(); ecoInitializeWorld(); } finally { Math.random = real; Object.assign(S, keep); }
+  try { buildWorld(); seedWoodlandMoisture(); ecoInitializeWorld(); seedGeneratedHabitats(); } finally { Math.random = real; Object.assign(S, keep); }
+}
+// The starter lake can cut above sloping ground, where the generic underground pocket liner
+// leaves an open downhill edge. A clay basin keeps an actual cool-water refuge without adding
+// water later; its open top still receives light, weather and the demo basin's returning water.
+function lineLakeBasin(cx, cy, rx, ry) {
+  for (let y = Math.max(0, cy - 3); y <= Math.min(H - 1, cy + ry + 2); y++) {
+    for (let x = Math.max(0, cx - rx - 4); x <= Math.min(W - 1, cx + rx + 4); x++) {
+      const dx = (x - cx) / rx, dy = (y - cy) / ry, d = dx * dx + dy * dy;
+      if (d < 1 || d >= 1.4) continue;
+      const k = y * W + x;
+      if (liq[k]) {
+        // A pre-existing aquifer may intersect the rim. Move its finite parcel inside first;
+        // never install a wall over water or discard its ingredients when the interior is full.
+        const targets = []; let room = 0;
+        for (let ty = Math.max(0, cy - ry + 1); ty < Math.min(H, cy + ry); ty++) {
+          for (let tx = Math.max(0, cx - rx + 1); tx < Math.min(W, cx + rx); tx++) {
+            const nx = (tx - cx) / rx, ny = (ty - cy) / ry, target = ty * W + tx;
+            if (nx * nx + ny * ny >= 1 || solid[target] || (liq[target] && typ[target] !== typ[k])) continue;
+            const available = 255 - liq[target]; if (available > 0) { targets.push(target); room += available; }
+          }
+        }
+        if (room < liq[k]) continue;
+        for (const target of targets) {
+          const moved = Math.min(liq[k], 255 - liq[target]);
+          carryHeat(k, target, moved, liq[target]); liq[target] += moved; typ[target] = typ[k]; liq[k] -= moved;
+          if (!liq[k]) break;
+        }
+        sol.fill(0, k * NSOL, (k + 1) * NSOL);
+      }
+      solid[k] = CLAY; liq[k] = 0; typ[k] = 0;
+    }
+  }
 }
 function buildWorld() {
   resetWorld();
@@ -100,6 +135,7 @@ function buildWorld() {
   };
   const lx = 64, ly = surf[lx] + 3;
   carve(lx, ly, 16, 8, (x, y) => y >= ly - 1 ? WATER : 0);                   // cave lake, under the start
+  lineLakeBasin(lx, ly, 16, 8);
   const hy = (H * 0.7) | 0;
   carve((W * 0.46) | 0, hy, 6, 4, (x, y) => y >= hy - 1 ? HONEY : 0);         // honey pocket
   const qy = (H * 0.8) | 0;
@@ -118,20 +154,23 @@ function buildWorld() {
   markUnderground();
   rebuildAmbient();
   for (let i = 0; i < W * H; i++) if (under[i] && (!liq[i] || typ[i] === WATER)) temp[i] = ambient[i];   // the ground starts at its resting temperature
-  // raised basin over the lake with a leak in its floor; a pump lifts lake water back into it
+  // Raised glass basin over the lake: the demo keeps its water circuit without roofing
+  // most of the producers in opaque stone. A pump lifts lake water back into its leaking tank.
   const bx0 = lx - 14, bx1 = lx + 2;
   let minS = H;
   for (let x = bx0 - 1; x <= bx1 + 1; x++) minS = Math.min(minS, surf[x]);
   const by = Math.max(7, Math.min(13, minS - 6));
-  for (let x = bx0; x <= bx1; x++) solid[by * W + x] = STONE;
-  for (let y = by - 5; y <= by; y++) { solid[y * W + bx0] = STONE; solid[y * W + bx1] = STONE; }
+  for (let x = bx0; x <= bx1; x++) solid[by * W + x] = GLASS;
+  for (let y = by - 5; y <= by; y++) { solid[y * W + bx0] = GLASS; solid[y * W + bx1] = GLASS; }
   solid[by * W + lx - 2] = AIR;
   for (let y = by - 3; y < by; y++) for (let x = bx0 + 1; x < bx1; x++) { liq[y * W + x] = 255; typ[y * W + x] = WATER; }
   let iy = ly;
   while (iy < H - 1 && !solid[iy * W + lx + 6]) iy++;
   solid[iy * W + lx + 6] = PUMP_IN;
   solid[by * W + bx0 + 2] = PUMP_OUT;
-  pumps.push({ in: iy * W + lx + 6, out: by * W + bx0 + 2, on: true, buf: 0, t: 0, active: 0, shown: 0 });
+  // Start the demo idle: pumping is a player intervention and can drain the stocked lake.
+  pumps.push({ in: iy * W + lx + 6, out: by * W + bx0 + 2, on: false, buf: 0, t: 0, active: 0, shown: 0,
+    sol: Array(NSOL).fill(0), temp: AMBIENT, latent: 0 });
   S.dirtyAll = true;
   wakeAll();
   for (let i = 0; i < 40; i++) step();
@@ -144,8 +183,9 @@ function buildWorld() {
   for (let i = 0; i < 5; i++) addBody('fish', (lx - 10 + i * 4) * T, (ly + 3) * T);   // fish in the cave lake
   addBody('salamander', ((W * 0.4) | 0) * T, (H - 6) * T);   // and a salamander in the magma sea
   for (let x = 30; x < 90; x += 23 + ((x * 7) % 11)) plantSeed((surf[x] - 1) * W + x);   // plants on the start's meadow
+  plantLakeBanks(lx, ly, 16, 8);   // finite, watered soil-bank seeds beside the retained lake
   const lk = (surf[18] - 1) * W + 18;   // a lever beside the explorer switches the lake pump
-  if (placeDevice(LEVER, lk)) { const lv = devices.get(lk); lv.on = true; lv.targets.push(pumps[0].in); }
+  if (placeDevice(LEVER, lk)) { const lv = devices.get(lk); lv.on = false; lv.targets.push(pumps[0].in); }
 }
 
-export { resetWorld, markUnderground, generate, buildWorld };
+export { resetWorld, markUnderground, generate, buildWorld, lineLakeBasin };

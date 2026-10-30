@@ -1,5 +1,5 @@
 // Renders one frame headlessly and saves the view as a PNG, to check how things look without a browser:
-// `node tools/shot.mjs [out.png] [--seed N] [--level N] [--at X,Y] [--ticks N] [--day D] [--hour H] [--zoom 2]`
+// `node tools/shot.mjs [out.png] [--seed N] [--level N | --terrarium] [--at X,Y] [--ticks N] [--day D] [--hour H] [--zoom 2]`
 // --level plays puzzle N (1 is the first) instead of the seed's world, centred on its room.
 // --at centres the view on tile X,Y (default: the explorer); --hour sets the time of day (0-24, default the start's);
 // --day moves the calendar on that many days (the year is 8 days, starting in spring: 2 is summer, 4 autumn, 6 winter).
@@ -31,14 +31,17 @@ const { S, VIEW } = await import('../js/world.js');
 
 S.seed = +arg('--seed', S.seed);
 generate();
-if (arg('--level')) { const { startLevel } = await import('../js/levels.js'); startLevel(+arg('--level') - 1); }
+let shotLevelView;
+if (arg('--level')) { const { LEVELS, startLevel } = await import('../js/levels.js'); const index = +arg('--level') - 1; startLevel(index); shotLevelView = LEVELS[index].view; }
+const jarShot = process.argv.includes('--terrarium');
+if (jarShot) { const { startTerrarium } = await import('../js/terrarium.js'); startTerrarium(S.seed); }
 if (arg('--hour')) S.tick = Math.round((((+arg('--hour') / 24 - 0.35) % 1 + 1) % 1) * DAY_TICKS);   // as the tests' setClock: phase 0.5 is noon
 S.tick += Math.round(+arg('--day', 0) * DAY_TICKS);
 const ticks = +arg('--ticks', 60);
 for (let i = 0; i < ticks; i++) step();
-setZoom(+arg('--zoom', 1));
+setZoom(+arg('--zoom', jarShot ? 2 : shotLevelView?.zoom || 1));
 const at = arg('--at');
-if (at || arg('--level')) { const [x, y] = (at || '80,50').split(',').map(Number); S.follow = false; centerOn(x * T + 4, y * T + 4); } else snapToExplorer();
+if (at || arg('--level') || jarShot) { const [x, y] = (at || (jarShot ? '45,43' : shotLevelView ? `${shotLevelView.x},${shotLevelView.y}` : '80,50')).split(',').map(Number); S.follow = false; centerOn(x * T + 4, y * T + 4); } else snapToExplorer();
 render(S.tick / 60);
 render(S.tick / 60 + 1 / 30);   // twice, so the light (worked out every other frame) is current
 

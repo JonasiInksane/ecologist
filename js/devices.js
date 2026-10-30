@@ -23,6 +23,7 @@ import { BATTERY, COOLANT, EMAGNET, LAMP, LIGHT, MOTOR, SOLAR } from './config.j
 import { DEPTH, PIXEL, SOL_O2, THERMO } from './config.js';
 import { shade } from './climate.js';
 import { sunHeight } from './daynight.js';
+import { fantasyHeatCapacity, recordFantasyEnergy, recordFantasyUse } from './fantasy.js';
 
 
 
@@ -321,7 +322,11 @@ function coolantFed(k) {
     const n = nbr(x, y, i);
     if (n < 0 || !liq[n] || typ[n] !== COOLANT) continue;
     touch = true;
-    if (temp[n] > BOILER_TEMP) { hot = true; temp[n] -= COOLANT_DRAW; }
+    if (temp[n] > BOILER_TEMP) {
+      hot = true;
+      const before = temp[n]; temp[n] -= COOLANT_DRAW;
+      recordFantasyEnergy('coolant-draw', (temp[n] - before) * fantasyHeatCapacity(n));
+    }
   }
   return touch ? hot : null;
 }
@@ -337,7 +342,10 @@ function devicesTick() {
     else if (d.kind === TIMER) on = S.tick % d.period < d.period / 2;
     else if (d.kind === TURBINE) on = turbineSpins(x, y);
     else if (d.kind === WHEEL) on = wheelTurns(x, y);
-    else if (d.kind === SOLAR) on = sunlit(k, x, y);
+    else if (d.kind === SOLAR) {
+      on = sunlit(k, x, y);
+      if (on && !(!under[k] && sunHeight() > SOLAR_SUN && shade[x] < SOLAR_CLOUD)) recordFantasyUse('liquid-light-solar');
+    }
     else if (d.kind === BATTERY) on = !d.charging && d.charge > 0;   // last tick's inputs decide whether it charges or gives
     else if (d.kind === WINDMILL) { const w = Math.abs(windAt(x, y)); on = !under[k] && w > WINDMILL_WIND; if (on) d.spin += w; }
     if (on !== d.on && d.kind === PLATE) markDirty(x, y);
@@ -417,7 +425,7 @@ function devicesTick() {
       if (!d.active) continue;
       if (d.kind === SPRING) emit(k, d);
       else if (d.kind === DRAIN) drain(k);
-      else if (d.kind === BOILER) { temp[k] = Math.max(temp[k], BOILER_TEMP); heatLiquid(k); heatWake(k); }
+      else if (d.kind === BOILER) { if (fed === true) recordFantasyUse('coolant-boiler'); temp[k] = Math.max(temp[k], BOILER_TEMP); heatLiquid(k); heatWake(k); }
       else if (!(S.tick & 7)) separate(k, d);
     } else if (d.kind === GEYSER) geyser(k, d);
     else if (d.kind === MEMBRANE) membrane(k, d);
@@ -456,7 +464,7 @@ function deviceState(k) {
   if (d.kind === COUNTER) return `counter · ${d.count}/${d.limit} (click to change) · ${d.on ? 'on' : 'off'}${links}`;
   if (d.kind === VALVE) return `valve · ${d.open ? 'open' : 'shut'}`;
   if (d.kind === FILTER) return `pipe filter · passes ${LIQ[d.liquid].name} (click to change)`;
-  if (d.kind === BOILER) return `boiler · ${d.active ? 'heating' : 'off'} · ${Math.round(temp[k])}°${coolantTouching(k) ? ' · run by coolant' : ''}`;
+  if (d.kind === BOILER) return `boiler · ${d.active ? 'heating' : 'off'} · ${Math.round(temp[k])}°${coolantTouching(k) ? ' · coolant coupling (unmetered game power)' : ''}`;
   if (d.kind === SEPARATOR) return `separator · ${d.active ? 'running' : 'off'}`;
   if (d.kind === GEYSER) return `geyser · ${d.erupting ? 'erupting' : d.rest > 0 ? 'resting' : 'building up'}`;
   if (d.kind === BATTERY) return `battery · ${Math.round(d.charge / BATTERY_CAP * 100)}% · ${d.charging ? 'charging' : d.on ? 'giving power' : 'idle'}${links}`;

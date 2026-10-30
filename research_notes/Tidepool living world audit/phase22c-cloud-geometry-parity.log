@@ -1,0 +1,2 @@
+{"ok":true,"checks":51,"note":"Exact full-frame parity for thresholds, fog, day/night, every world row/column, fractional views and terrain/liquid blockers"}
+{"type":"cloud-loop-benchmark","seed":7,"framesPerSample":20,"referenceMs":[24.361324999999987,30.951840000000015,30.767644999999995,30.005380000000013,25.051424999999973],"optimizedMs":[11.080345000000012,13.263604999999984,12.417949999999996,13.429029999999965,12.11520999999998],"note":"Interleaved static cloud-loop timing, excluding first warmup pair; not full rendering or browser responsiveness"}

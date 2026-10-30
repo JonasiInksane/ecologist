@@ -1,0 +1,13 @@
+{"parity":true,"seed":7,"scenario":"balanced","checkpoints":[0,1,8,32,64],"nextRandom":0.6960846546571702}
+{"parity":true,"seed":7,"scenario":"dark","checkpoints":[0,1,8,32,64],"nextRandom":0.6960846546571702}
+{"parity":true,"seed":7,"scenario":"unfed","checkpoints":[0,1,8,32,64],"nextRandom":0.18251442024484277}
+{"parity":true,"seed":7,"scenario":"overfed","checkpoints":[0,1,8,32,64],"nextRandom":0.35871506622061133}
+{"parity":true,"seed":73,"scenario":"balanced","checkpoints":[0,1,8,32,64],"nextRandom":0.37687016488052905}
+{"parity":true,"seed":73,"scenario":"dark","checkpoints":[0,1,8,32,64],"nextRandom":0.37687016488052905}
+{"parity":true,"seed":73,"scenario":"unfed","checkpoints":[0,1,8,32,64],"nextRandom":0.5302924774587154}
+{"parity":true,"seed":73,"scenario":"overfed","checkpoints":[0,1,8,32,64],"nextRandom":0.4611026202328503}
+{"parity":true,"seed":31337,"scenario":"balanced","checkpoints":[0,1,8,32,64],"nextRandom":0.4670425390359014}
+{"parity":true,"seed":31337,"scenario":"dark","checkpoints":[0,1,8,32,64],"nextRandom":0.4670425390359014}
+{"parity":true,"seed":31337,"scenario":"unfed","checkpoints":[0,1,8,32,64],"nextRandom":0.8589112148620188}
+{"parity":true,"seed":31337,"scenario":"overfed","checkpoints":[0,1,8,32,64],"nextRandom":0.5495935948565602}
+Terrarium checks: 273 passed (including preserved Phase22 parity)

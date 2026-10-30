@@ -16,7 +16,7 @@ import { NSOL, SOL_AMMONIA, SOL_FERT } from './config.js';
 import { sol } from './world.js';
 import { FERT } from './config.js';
 import { vapour } from './air.js';
-import { FLOWER } from './config.js';
+import { COMB, FLOWER } from './config.js';
 import { sunHeight } from './daynight.js';
 import { fixCarbon, skyAir, respire, skyAbove } from './oxygen.js';
 import { held } from './world.js';
@@ -27,7 +27,7 @@ import { ECO_COST, ECO_RATE } from './ecology-data.js';
 
 const plants = [];   // { root, top, h, max, drunk, thirst, sugar, nitrogen, flower }
 const REACH = 3, SIP = 8, GROW_AT = 6, WILT_AT = 700, MAX_HEIGHT = [5, 10];   // WILT_AT: plant ticks of drought or hunger before it wilts, about a day
-const SOIL = new Set([DIRT, MOSS]);
+const SOIL = new Set([DIRT, WETDIRT, MOSS]);
 // Per plant tick (every 16 ticks), per stem tile: CO2 taken in daylight (hundredths of a percent of a tile of air),
 // and sugar burnt to live; sugar a new tile costs; what a seed starts with; sugar a plant needs to flower, and the
 // sugar each plant tick turns into nectar.
@@ -47,7 +47,7 @@ function plantSeed(k, funding) {
 }
 // Takes a sip from the nearest water (or tonic, or wet mud, or damp soil) around the root. Returns how much growth it gives.
 function drink(root, plant = plants.find(p => p.root === root)) {
-  const x = root % W, y = (root / W) | 0;
+  const x = root % W, y = (root / W) | 0, open = skyAir(root);
   for (let r = 1; r <= REACH; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
     if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
     const nx = x + dx, ny = y + dy;
@@ -55,7 +55,7 @@ function drink(root, plant = plants.find(p => p.root === root)) {
     const k = ny * W + nx, t = typ[k];
     if (solid[k] === WETDIRT && held[k] >= SIP) {   // roots drink the water held in damp soil, too
       const fed = takeRootNitrogen(k, held[k], plant);
-      if (skyAir(root)) {
+      if (open) {
         const sip = removePoreCarrier(k, SIP);
         if (!sip) return 0;
         vapour(root, sip);
@@ -64,8 +64,11 @@ function drink(root, plant = plants.find(p => p.root === root)) {
       return fed ? 3 : 1;
     }
     if (!liq[k] || (t !== WATER && t !== TONIC && t !== MUD)) continue;
+    // The retained last carrier unit cannot supply an open plant's transpiration.
+    // Keep looking for usable water instead of letting a nearer film hide a real source.
+    if (open && liq[k] <= 1) continue;
     const fed = t === WATER && takeRootNitrogen(k, liq[k], plant);
-    if (skyAir(root)) {   // breathed out into the open air; under a roof it condenses and runs back where it came from
+    if (open) {   // breathed out into the open air; under a roof it condenses and runs back where it came from
       const sip = removeCarrier(k, SIP);
       if (!sip) return 0;
       vapour(root, sip);
@@ -126,10 +129,24 @@ function plantTick() {
   }
 }
 
-// The air a plant breathes: above its top, or beside it.
+// Preserve the ordinary top-face choice, then find exposed faces of the plant's own
+// connected tissue. Paid leaves/flowers must not seal their stem away from all its air.
 function airBeside(top) {
   const x = top % W;
   for (const o of [top - W, x > 0 ? top - 1 : -1, x < W - 1 ? top + 1 : -1]) if (o >= 0 && o < W * H && !solid[o] && !liq[o]) return o;
+  const tissue = ecoState().tissue, owner = tissue[top]?.owner;
+  const own = k => !liq[k] && tissue[k]?.owner === owner && tissue[k]?.block === solid[k]
+    && (solid[k] === PLANT || solid[k] === LEAF || solid[k] === FLOWER);
+  if (owner === undefined || !own(top)) return -1;
+  const queue = [top], seen = new Set(queue), limit = MAX_HEIGHT[1] * 3 + 1;
+  for (let i = 0; i < queue.length; i++) {
+    const k = queue[i], column = k % W;
+    for (const o of [k - W, column ? k - 1 : -1, column < W - 1 ? k + 1 : -1, k + W]) {
+      if (o < 0 || o >= W * H) continue;
+      if (!solid[o] && !liq[o]) return o;
+      if (queue.length < limit && !seen.has(o) && own(o)) { seen.add(o); queue.push(o); }
+    }
+  }
   return -1;
 }
 // A grown plant with sugar to spare opens a flower on its top, and turns some of its sugar into nectar there.
@@ -155,12 +172,23 @@ function regrowLeaf(p) {
 }
 // A seed falls in a random column within SEED_REACH and takes root on the first open tile over soil near the parent's
 // root level, unless a plant already stands within SPACING.
+function hiveSeedSpace(root) {
+  const x = root % W, y = (root / W) | 0;
+  // Natural offspring respect occupied hive flight space just as they respect plant spacing.
+  // Direct seed placement remains available; existing vegetation is never cleared or suppressed.
+  for (let dy = -MAX_HEIGHT[1]; dy <= 1; dy++) for (let dx = -SPACING; dx <= SPACING; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && nx < W && ny >= 0 && ny < H && solid[ny * W + nx] === COMB) return false;
+  }
+  return true;
+}
+export { hiveSeedSpace };
 function dropSeed(p) {
   const x = p.root % W, y = (p.root / W) | 0, d = 2 + ((Math.random() * (SEED_REACH - 1)) | 0), sx = x + (Math.random() < 0.5 ? -d : d);
   if (sx < SPACING || sx >= W - SPACING) return;
   for (let sy = Math.max(1, y - 4); sy <= Math.min(H - 2, y + 4); sy++) {
     const k = sy * W + sx;
-    if (solid[k] || liq[k] || !SOIL.has(solid[k + W])) continue;
+    if (solid[k] || liq[k] || !SOIL.has(solid[k + W]) || !hiveSeedSpace(k)) continue;
     for (let dy = -SPACING; dy <= SPACING; dy++) for (let dx = -SPACING; dx <= SPACING; dx++) {
       const o = k + dy * W + dx;
       if (o >= 0 && o < W * H && solid[o] === PLANT) return;

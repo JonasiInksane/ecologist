@@ -12,6 +12,7 @@ import { ASH, COPPER, LIMESTONE, POROUS, QUICKLIME, SAND, SODA, SPONGE, STONE, W
 import { FNITRO, MSLAG, ORE, RUST, SLAG, SUGAR, THERMO } from './config.js';
 import { SOL_ETHANOL, SOL_O2, SOL_CO2 } from './config.js';
 import { AIR_CAP, AIR_COND, BCAP, BCOND, HEAT_SPEED, LATENT, LCAP, LCOND, L_BOIL_WATER, L_FUSION_IRON, L_FUSION_ROCK, L_FUSION_WATER, dissolvedHeatCapacity, poreHeatCapacity } from './matter.js';
+import { fantasyHeatCapacity, recordFantasyEnergy, spendFantasyCarrier, withFantasyEffect } from './fantasy.js';
 
 
 
@@ -180,7 +181,9 @@ function phaseChanges(c, m) {
     if (liq[k]) {
       const t = typ[k], a = liq[k];
       if (ALIVE[t]) wake(k);
-      if (t === FROST) temp[k] = Math.min(Tk, -40);
+      if (t === FROST && Tk > -40) {
+        temp[k] = -40; recordFantasyEnergy('frost-cooling', (temp[k] - Tk) * fantasyHeatCapacity(k));
+      }
       else if (t === LAVA) {
         if (balance(k, restsOn(k) ? LAVA_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, BASALT); afterChange(k, LAVA_SETS, spare, occupiedCapacity(BCAP[BASALT], a), false); puff(k, 'steam'); }
       }
@@ -213,7 +216,7 @@ function phaseChanges(c, m) {
       }
       else if (t === HONEY) { if (Tk > HONEY_BURNS) { ecoHoneyCaramel(k); solidify(k, CRISP); puff(k, 'smoke'); } }
       else if (t === ACID) { if (Tk > ACID_BOIL) { liq[k] = 0; typ[k] = 0; wake(k); puff(k, 'smoke'); } }
-      else if (t === STORM) { if (Tk > BOIL_WATER) { typ[k] = STEAM; temp[k] = 110; clearSol(k); wake(k); if (Math.random() < 0.3) puff(k, 'steam'); } }
+      else if (t === STORM) { if (Tk > BOIL_WATER) withFantasyEffect('storm-boiling', [k], () => { typ[k] = STEAM; temp[k] = 110; clearSol(k); wake(k); if (Math.random() < 0.3) puff(k, 'steam'); }); }
       else if (t === NITRO) {   // nitro must go off at once, so its heat never sleeps
         heatAwake[c] = HEAT_AWAKE;
         if (Tk > NITRO_HEAT) explode(k);
@@ -226,7 +229,7 @@ function phaseChanges(c, m) {
         if (balance(k, restsOn(k) ? SLAG_SETS : -Infinity, Infinity, needOf(L_FUSION_ROCK, 2.7, a), 0) < 0) { solidify(k, SLAG); afterChange(k, SLAG_SETS, spare, occupiedCapacity(BCAP[SLAG], a), false); puff(k, 'smoke'); }
       }
       else if (t === MUD) { if (Tk > MUD_DRIES) { solidify(k, DIRT); puff(k, 'steam'); } }   // its water boils off; firing it into brick takes lava
-      else if (t === SLIME) { slime++; if (Tk > 150) { liq[k] = 0; typ[k] = 0; wake(k); puff(k, 'smoke'); } }
+      else if (t === SLIME) { slime++; if (Tk > 150) withFantasyEffect('slime-heat', [k], () => { spendFantasyCarrier(k, 0); wake(k); puff(k, 'smoke'); }); }
     } else if (solid[k] === SNOW) {
       const melt = Math.max(1, Math.round((held[k] || 255) * SNOW_WATER / 255));   // snow melts into a quarter of its amount in water, taking the latent heat of that water
       if (balance(k, -Infinity, SNOW_MELT, 0, needOf(L_FUSION_WATER, 1, melt)) > 0) { held[k] = 0; solid[k] = AIR; liq[k] = melt; typ[k] = WATER; clearSol(k); afterChange(k, SNOW_MELT, spare, LCAP[WATER] * melt / 255 + AIR_CAP * (1 - melt / 255), true); markDirty(x, y); }

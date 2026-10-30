@@ -9,7 +9,11 @@ The research (October 2026) checked values against Wikipedia infoboxes, Engineer
 oxygen), NOAA Coral Reef Watch and chemistry references; the source list is at the end. Values that couldn't be
 checked online are marked ≈.
 
-## 1. How the game models things today, and where it's wrong
+## 1. Pre-Phase 19 model and gaps (historical)
+
+This baseline predates the Phase 19–22 implementation. Current quantity and life-cycle
+contracts are recorded below and in the Phase 22 design documents; the missing features
+listed in this section describe that earlier starting model.
 
 ### What's missing in the model itself
 
@@ -248,8 +252,8 @@ fantasy in the notes and tool palette.
 | 19. Matter (built) | The material table; one density everywhere; conserved heat with latent heat; real thresholds | Tests: ice holds a drink at 0°, hot iron in water warms it by the right amount, boiling holds at 100°; every existing scene passes or is re-tuned with a note |
 | 20. Reactions (built) | The reaction engine; existing reactions moved into it; the inorganic set (acid + metals/carbonates, lime cycle, chlorine and bleach, rust with oxygen, patina, charcoal, glass, smelting with carbon, thermite) and new materials | Every reaction in section 3's inorganic list has a test and conserves mass |
 | 21. Air and water (built) | Oxygen and CO₂ in the air grid; dissolved oxygen and CO₂ in water; combustion that needs oxygen; layering by concentration and temperature; emulsions and soap | A sealed fire goes out; a stratified pond's bottom goes anoxic; brine stays under fresh water |
-| 22. Life cycles (in progress) | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey; 22A quantity repairs and 22B finite inventories below | Controlled survival, cause-of-death and C/N/P transfer checks; the multi-seed ten-day ecosystem gate remains pending |
-| 23. Showcase | The fantasy pass; a sealed-jar "terrarium" mode; puzzles about the new chemistry | |
+| 22. Life cycles (headless gates verified; playtesting/performance open) | Photosynthesis, respiration, dissolved-oxygen stress, rot, nitrogen, fermentation, vinegar, sap, nectar, bees and honey; quantity repairs and finite inventories | Three-seed ten-day closed jars and eight-day generated worlds pass; winter hive survives and forages. Scope and evidence: `docs/design/phase22c-generated-habitats.md` |
+| 23. Showcase (core implemented; player validation open) | Declared fantasy effects and budgets; a saved sealed-jar terrarium mode; oxygen and distillation puzzles | Shared jar construction/parity and save/load without refill; scripted solutions and adverse controls; separate magical budgets pass. Browser playtesting remains unverified. Contract: `docs/design/phase23-showcase.md` |
 
 Each phase is about the size of Phase 17. Phase 19 changes how everything feels, so the puzzles will need re-tuning.
 
@@ -450,7 +454,7 @@ self-sustaining ecosystem.
   to retain its prior actual concentration; undo/reset also reset transient air mixing state.
 
 These are corrections to existing systems. Phase 22B adds biological C/N/P inventories below;
-calibrated chemical yields, further powder processing and the ten-day ecosystem gate remain pending. The scope and
+calibrated chemical yields and further powder processing remain later work; the ten-day gate is covered by 22C below. The scope and
 acceptance checks are in `docs/design/phase22a-accounting.md`; scientific sources and limitations
 are collected in `reports/Tidepool living world audit.md` and its linked research notes.
 
@@ -478,6 +482,35 @@ ABV calibration. Hydrogen/oxygen atoms, reaction water volumes, every industrial
 smoke composition and displaced gas pressure are not fully closed. Sediment transport and soil
 adsorption remain simplified. The approved rules, tunables and verification limits are in
 `docs/design/phase22b-life-cycles.md`; ecosystem balance and the ten-day gate belong to 22C.
+
+### Phase 22C: closed jars and generated habitats (headless gates verified)
+
+Three balanced jars pass ten actual days, with matched dark/unfed/overfed adverse controls.
+Three generated worlds pass eight actual days, retaining fish and producers; the stocked hive
+survives winter and collects nectar through physical routes. Initial habitats and woodland
+moisture are finite, roots reach connected soil and exposed own canopy, cold aquatic activity
+slows both production and maintenance, and clear ice admits daylight. Wet-bank transfers retain
+their modeled water, ingredients and heat. Evidence and limits are in
+`docs/design/phase22c-generated-habitats.md`.
+
+Interactive browser feedback and storm rendering performance remain open. Outdoor recorded
+boundaries do not establish global elemental closure; legacy fantasy biology needed separate
+accounting, implemented in the Showcase work below.
+
+### Phase 23: Showcase (implementation and headless verification)
+
+Mode now offers a saved sealed terrarium sharing the tested jar constructor. Observation,
+pause/speed, light schedules, restart, undo and world-code sharing work without a recurring
+endowment. Editing and resource injection are guarded. Two new puzzles use actual allowed
+tools: keep a finite-air fire chamber sealed while lighting its fuel, and distill a finite
+brine charge into a fresh receiving basin. Fire evidence is sampled at simulation cadence.
+
+Existing fantasy effects now have named separate receipts for material, dissolved ingredients,
+biological C/N/P and modeled heat. Inexhaustible frost cooling is explicit; magical light and
+abstract power remain unmetered. Mimic retains its first transformation, and brewing consumes
+only its advertised ingredients. Tool marks, descriptions and a world panel expose the rules.
+Fantasy creature powers and unaudited industrial yields remain declared modeling limits.
+Contract, tests and remaining player validation: `docs/design/phase23-showcase.md`.
 
 ## Sources
 

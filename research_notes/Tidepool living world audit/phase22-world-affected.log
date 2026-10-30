@@ -1,0 +1,54 @@
+START generated worlds have their biomes and layers
+START a generated river keeps flowing and keeps its pond full
+START snapshots: exact restore, world codes, seeds and undo
+DONE  generated worlds have their biomes and layers (7.2 s)
+START a living world: seasons in the leaves, birds that hunt moths, hail and flash floods
+DONE  snapshots: exact restore, world codes, seeds and undo (9.1 s)
+START life: plants, flowers, bees, rot, nitrogen and fermentation
+DONE  a living world: seasons in the leaves, birds that hunt moths, hail and flash floods (8.1 s)
+DONE  a generated river keeps flowing and keeps its pond full (29.7 s)
+DONE  life: plants, flowers, bees, rot, nitrogen and fermentation (71.8 s)
+
+generated worlds have their biomes and layers  (7.2 s)
+  PASS  every biome turns up across twelve worlds  (grassland, swamp, desert, badlands, coast, glacier, tundra, salt flats, jungle, volcanic, forest)
+  PASS  each biome has its ground and features
+  PASS  every world has aquifers, ore and a magma sea underground
+  PASS  every world starts in grassland with the explorer
+  PASS  rivers run through some worlds, with a pike in their ponds, and moths and birds live in the forests  (5 of 12 worlds have a river)
+
+snapshots: exact restore, world codes, seeds and undo  (9.1 s)
+  PASS  generated state contains no non-finite quantities
+  PASS  restoring a snapshot puts every tile, column and air cell back
+  PASS  a world code unpacks to the same world (temperatures to within 1/8°)
+  PASS  the reference fractional world code stays within 512 KiB  (code is 469 KiB)
+  PASS  an older (version 1) world code still loads
+  PASS  text that is not a world code is refused with a reason  (That isn't a Tidepool world code; it should start with TIDEPOOL2:)
+  PASS  the same seed builds the same world
+  PASS  undo takes back the last edit  (stepped back 0.5 s)
+  PASS  undo with no history does nothing
+
+a generated river keeps flowing and keeps its pond full  (29.7 s)
+  PASS  water runs down the whole channel  (10 of 10 columns wet (seed 39595))
+  PASS  with weather disabled the pond and finite spring retain their hydraulic stores  (pond 47.3 → 41.0 tiles, spring 201 → 208)
+
+a living world: seasons in the leaves, birds that hunt moths, hail and flash floods  (8.1 s)
+  PASS  the leaves turn with the seasons: green in summer, orange-red in autumn, sparse in winter  (steps 2,4,6,0, 24 summer pixels, 7 winter)
+  PASS  a bird chases down a moth and eats it  (bird hunger 522)
+  PASS  at night birds come down and roost  (bird at row 109.4)
+  PASS  a cold-topped storm drops hail that knocks leaves off, and the hail melts into water  (9 hailstones at once, 4 leaves knocked off)
+  PASS  a flash flood gathers the sky’s moisture over a dry region and pours it down  (153 tiles of water gathered, 68 on the ground at most)
+
+life: plants, flowers, bees, rot, nitrogen and fermentation  (71.8 s)
+  PASS  in daylight a plant takes up CO2, grows on the sugar it makes, and gives off oxygen  (CO₂ 0.60% → 0.56%, 7 tall, sugar 431)
+  PASS  at night it burns its sugar and gives CO2 back  (CO₂ 0.56% → 0.56%)
+  PASS  with no CO2 in the air a plant can’t grow  (1 tall)
+  PASS  a grown plant flowers in the sun and makes nectar  (2.133333333333344 nectar at most)
+  PASS  bees carry measured nectar home while consuming finite honey  (1 comb, stock 15.598, collected 5.800, stored 5.800, eaten 0.202)
+  PASS  a finite carcass decays into ammonium, which oxygen-rich water turns into nitrate  (carcass carbon 17.89, nitrate 0.003)
+  PASS  organic donor in airless water turns nitrate into measured nitrogen gas  (nitrate 38.4, nitrogen gas 131.000)
+  PASS  ammonium poisons fish
+  PASS  sugar water left open catches wild yeast
+  PASS  shut away from air, yeast ferments sugar into alcohol  (alcohol 36, sugar 132)
+  PASS  with air, alcohol slowly turns to vinegar  (acid 3.3)
+
+all checks passed · matching generated worlds, snapshots:, a generated river, a living world:, bees run, 5 scenes, 81.7 s

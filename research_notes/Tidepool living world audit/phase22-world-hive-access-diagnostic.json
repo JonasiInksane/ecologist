@@ -1,0 +1,2190 @@
+{
+  "observations": 23,
+  "baselineMatches": 23,
+  "beforeCold": {
+    "tick": 28884,
+    "bytes": 15256114,
+    "sha256": "d2d58248f94602e561477ef2ce9655a153e7eeb4c3f0bcce5c050d19d288cb60"
+  },
+  "coldEvents": [
+    {
+      "tick": 28885,
+      "day": 2.6708333333333334,
+      "deaths": [
+        {
+          "id": 13,
+          "kind": "bee",
+          "cause": "cold",
+          "tick": 28885,
+          "tile": 15831,
+          "night": true,
+          "oxygen": null,
+          "ammonia": 0,
+          "temperature": -11.821887969970703
+        }
+      ]
+    },
+    {
+      "tick": 28997,
+      "day": 2.6812037037037038,
+      "deaths": [
+        {
+          "id": 13,
+          "kind": "bee",
+          "cause": "cold",
+          "tick": 28885,
+          "tile": 15831,
+          "night": true,
+          "oxygen": null,
+          "ammonia": 0,
+          "temperature": -11.821887969970703
+        },
+        {
+          "id": 14,
+          "kind": "bee",
+          "cause": "cold",
+          "tick": 28997,
+          "tile": 15832,
+          "night": true,
+          "oxygen": null,
+          "ammonia": 0,
+          "temperature": -10.998143196105957
+        }
+      ]
+    },
+    {
+      "tick": 29219,
+      "day": 2.7017592592592594,
+      "deaths": [
+        {
+          "id": 13,
+          "kind": "bee",
+          "cause": "cold",
+          "tick": 28885,
+          "tile": 15831,
+          "night": true,
+          "oxygen": null,
+          "ammonia": 0,
+          "temperature": -11.821887969970703
+        },
+        {
+          "id": 14,
+          "kind": "bee",
+          "cause": "cold",
+          "tick": 28997,
+          "tile": 15832,
+          "night": true,
+          "oxygen": null,
+          "ammonia": 0,
+          "temperature": -10.998143196105957
+        },
+        {
+          "id": 15,
+          "kind": "bee",
+          "cause": "cold",
+          "tick": 29219,
+          "tile": 16343,
+          "night": true,
+          "oxygen": null,
+          "ammonia": 0,
+          "temperature": -10.254403114318848
+        }
+      ]
+    }
+  ],
+  "firstFailed": {
+    "day": 2.4,
+    "tick": 25960,
+    "bees": [
+      {
+        "id": 13,
+        "centre": {
+          "k": 15831,
+          "x": 471,
+          "y": 30,
+          "solid": 0,
+          "liquid": 0,
+          "type": 0,
+          "owner": null,
+          "temp": 14.174103736877441,
+          "oxygen": 209.99996666666664,
+          "carbonDioxide": 4.000333333333333,
+          "held": 0
+        },
+        "home": 18905,
+        "target": {
+          "k": 17372,
+          "x": 476,
+          "y": 33,
+          "solid": 79,
+          "liquid": 0,
+          "type": 0,
+          "owner": 2,
+          "temp": 26.77596092224121,
+          "oxygen": 210.275,
+          "carbonDioxide": 1.25,
+          "held": 7.041405555515372
+        },
+        "goal": 18905,
+        "out": false,
+        "search": {
+          "bounded": {
+            "found": false,
+            "queued": 2048,
+            "visited": 2048,
+            "capped": true
+          },
+          "wide": {
+            "found": false,
+            "queued": 3183,
+            "visited": 3183,
+            "capped": false
+          },
+          "global": {
+            "found": false,
+            "queued": 20263,
+            "visited": 20263,
+            "capped": false
+          }
+        }
+      },
+      {
+        "id": 14,
+        "centre": {
+          "k": 15832,
+          "x": 472,
+          "y": 30,
+          "solid": 0,
+          "liquid": 0,
+          "type": 0,
+          "owner": null,
+          "temp": 15.639570236206055,
+          "oxygen": 209.99996666666664,
+          "carbonDioxide": 4.000333333333333,
+          "held": 0
+        },
+        "home": 18905,
+        "target": {
+          "k": 17372,
+          "x": 476,
+          "y": 33,
+          "solid": 79,
+          "liquid": 0,
+          "type": 0,
+          "owner": 2,
+          "temp": 26.77596092224121,
+          "oxygen": 210.275,
+          "carbonDioxide": 1.25,
+          "held": 7.041405555515372
+        },
+        "goal": 18905,
+        "out": false,
+        "search": {
+          "bounded": {
+            "found": false,
+            "queued": 2048,
+            "visited": 2048,
+            "capped": true
+          },
+          "wide": {
+            "found": false,
+            "queued": 3138,
+            "visited": 3138,
+            "capped": false
+          },
+          "global": {
+            "found": false,
+            "queued": 20263,
+            "visited": 20263,
+            "capped": false
+          }
+        }
+      },
+      {
+        "id": 15,
+        "centre": {
+          "k": 16343,
+          "x": 471,
+          "y": 31,
+          "solid": 0,
+          "liquid": 0,
+          "type": 0,
+          "owner": null,
+          "temp": 17.243412017822266,
+          "oxygen": 209.99996666666664,
+          "carbonDioxide": 4.000333333333333,
+          "held": 0
+        },
+        "home": 18905,
+        "target": {
+          "k": 17372,
+          "x": 476,
+          "y": 33,
+          "solid": 79,
+          "liquid": 0,
+          "type": 0,
+          "owner": 2,
+          "temp": 26.77596092224121,
+          "oxygen": 210.275,
+          "carbonDioxide": 1.25,
+          "held": 7.041405555515372
+        },
+        "goal": 18905,
+        "out": false,
+        "search": {
+          "bounded": {
+            "found": false,
+            "queued": 2048,
+            "visited": 2048,
+            "capped": true
+          },
+          "wide": {
+            "found": false,
+            "queued": 3183,
+            "visited": 3183,
+            "capped": false
+          },
+          "global": {
+            "found": false,
+            "queued": 20263,
+            "visited": 20263,
+            "capped": false
+          }
+        }
+      }
+    ]
+  },
+  "firstHomeFailure": {
+    "day": 2.4,
+    "tick": 25960
+  },
+  "comb": [
+    {
+      "k": 18905,
+      "x": 473,
+      "y": 36,
+      "solid": 4,
+      "liquid": 0,
+      "type": 0,
+      "temp": 1.2151683568954468,
+      "owner": null
+    },
+    {
+      "k": 19417,
+      "x": 473,
+      "y": 37,
+      "solid": 4,
+      "liquid": 0,
+      "type": 0,
+      "temp": 3.2330076694488525,
+      "owner": null
+    }
+  ],
+  "faces": [
+    {
+      "k": 18904,
+      "x": 472,
+      "y": 36,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -2.893082618713379,
+      "owner": null
+    },
+    {
+      "k": 19416,
+      "x": 472,
+      "y": 37,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -1.248838186264038,
+      "owner": null
+    },
+    {
+      "k": 19929,
+      "x": 473,
+      "y": 38,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": 6.804800033569336,
+      "owner": null
+    }
+  ],
+  "homeComponent": [
+    {
+      "k": 18904,
+      "x": 472,
+      "y": 36,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -2.893082618713379,
+      "owner": null
+    },
+    {
+      "k": 18392,
+      "x": 472,
+      "y": 35,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -4.218379974365234,
+      "owner": null
+    },
+    {
+      "k": 19416,
+      "x": 472,
+      "y": 37,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -1.248838186264038,
+      "owner": null
+    },
+    {
+      "k": 17880,
+      "x": 472,
+      "y": 34,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -6.029833793640137,
+      "owner": null
+    },
+    {
+      "k": 19415,
+      "x": 471,
+      "y": 37,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -1.1080961227416992,
+      "owner": null
+    },
+    {
+      "k": 19928,
+      "x": 472,
+      "y": 38,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": 2.9970297813415527,
+      "owner": null
+    },
+    {
+      "k": 17879,
+      "x": 471,
+      "y": 34,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -6.051451683044434,
+      "owner": null
+    },
+    {
+      "k": 17881,
+      "x": 473,
+      "y": 34,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": -3.8623156547546387,
+      "owner": null
+    },
+    {
+      "k": 19927,
+      "x": 471,
+      "y": 38,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": 3.1382901668548584,
+      "owner": null
+    },
+    {
+      "k": 19929,
+      "x": 473,
+      "y": 38,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": 6.804800033569336,
+      "owner": null
+    },
+    {
+      "k": 20441,
+      "x": 473,
+      "y": 39,
+      "solid": 0,
+      "liquid": 0,
+      "type": 0,
+      "temp": 12.346091270446777,
+      "owner": null
+    }
+  ],
+  "changes": [
+    {
+      "k": 16341,
+      "x": 469,
+      "y": 31,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 16342,
+      "x": 470,
+      "y": 31,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 16344,
+      "x": 472,
+      "y": 31,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 16348,
+      "x": 476,
+      "y": 31,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 16854,
+      "x": 470,
+      "y": 32,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 17366,
+      "x": 470,
+      "y": 33,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 17367,
+      "x": 471,
+      "y": 33,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 17368,
+      "x": 472,
+      "y": 33,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 17372,
+      "x": 476,
+      "y": 33,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        79,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 17877,
+      "x": 469,
+      "y": 34,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 17878,
+      "x": 470,
+      "y": 34,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 17883,
+      "x": 475,
+      "y": 34,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 17884,
+      "x": 476,
+      "y": 34,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 17885,
+      "x": 477,
+      "y": 34,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 18390,
+      "x": 470,
+      "y": 35,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 18391,
+      "x": 471,
+      "y": 35,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 18393,
+      "x": 473,
+      "y": 35,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        0,
+        5,
+        1,
+        null
+      ]
+    },
+    {
+      "k": 18395,
+      "x": 475,
+      "y": 35,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        0,
+        160,
+        1,
+        null
+      ]
+    },
+    {
+      "k": 18396,
+      "x": 476,
+      "y": 35,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 18397,
+      "x": 477,
+      "y": 35,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 18902,
+      "x": 470,
+      "y": 36,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 18903,
+      "x": 471,
+      "y": 36,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 18907,
+      "x": 475,
+      "y": 36,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 18908,
+      "x": 476,
+      "y": 36,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 18909,
+      "x": 477,
+      "y": 36,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        37,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 19414,
+      "x": 470,
+      "y": 37,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 19420,
+      "x": 476,
+      "y": 37,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        2
+      ]
+    },
+    {
+      "k": 19924,
+      "x": 468,
+      "y": 38,
+      "old": [
+        0,
+        12,
+        1,
+        null
+      ],
+      "now": [
+        0,
+        11,
+        1,
+        null
+      ]
+    },
+    {
+      "k": 19926,
+      "x": 470,
+      "y": 38,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        36,
+        0,
+        0,
+        10
+      ]
+    },
+    {
+      "k": 19928,
+      "x": 472,
+      "y": 38,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        0,
+        5,
+        1,
+        null
+      ]
+    },
+    {
+      "k": 20439,
+      "x": 471,
+      "y": 39,
+      "old": [
+        1,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        48,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20441,
+      "x": 473,
+      "y": 39,
+      "old": [
+        0,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        0,
+        113,
+        1,
+        null
+      ]
+    },
+    {
+      "k": 20443,
+      "x": 475,
+      "y": 39,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20446,
+      "x": 478,
+      "y": 39,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20953,
+      "x": 473,
+      "y": 40,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20954,
+      "x": 474,
+      "y": 40,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20955,
+      "x": 475,
+      "y": 40,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20956,
+      "x": 476,
+      "y": 40,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20957,
+      "x": 477,
+      "y": 40,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 20958,
+      "x": 478,
+      "y": 40,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 21462,
+      "x": 470,
+      "y": 41,
+      "old": [
+        1,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        48,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 21464,
+      "x": 472,
+      "y": 41,
+      "old": [
+        1,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        48,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 21466,
+      "x": 474,
+      "y": 41,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 21467,
+      "x": 475,
+      "y": 41,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 21468,
+      "x": 476,
+      "y": 41,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    },
+    {
+      "k": 21469,
+      "x": 477,
+      "y": 41,
+      "old": [
+        48,
+        0,
+        0,
+        null
+      ],
+      "now": [
+        1,
+        0,
+        0,
+        null
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "k": 17877,
+      "x": 469,
+      "y": 34,
+      "solid": 37,
+      "liquid": 0,
+      "type": 0,
+      "temp": -6.997488975524902,
+      "owner": 10
+    },
+    {
+      "k": 17878,
+      "x": 470,
+      "y": 34,
+      "solid": 36,
+      "liquid": 0,
+      "type": 0,
+      "temp": -5.222662448883057,
+      "owner": 10
+    },
+    {
+      "k": 17882,
+      "x": 474,
+      "y": 34,
+      "solid": 18,
+      "liquid": 0,
+      "type": 0,
+      "temp": -0.69560706615448,
+      "owner": null
+    },
+    {
+      "k": 17883,
+      "x": 475,
+      "y": 34,
+      "solid": 37,
+      "liquid": 0,
+      "type": 0,
+      "temp": 0.01876227743923664,
+      "owner": 2
+    },
+    {
+      "k": 18390,
+      "x": 470,
+      "y": 35,
+      "solid": 36,
+      "liquid": 0,
+      "type": 0,
+      "temp": -3.2031185626983643,
+      "owner": 10
+    },
+    {
+      "k": 18391,
+      "x": 471,
+      "y": 35,
+      "solid": 37,
+      "liquid": 0,
+      "type": 0,
+      "temp": -3.132422685623169,
+      "owner": 10
+    },
+    {
+      "k": 18393,
+      "x": 473,
+      "y": 35,
+      "solid": 6,
+      "liquid": 0,
+      "type": 0,
+      "temp": -0.7354135513305664,
+      "owner": null
+    },
+    {
+      "k": 18394,
+      "x": 474,
+      "y": 35,
+      "solid": 18,
+      "liquid": 0,
+      "type": 0,
+      "temp": 0.7635528445243835,
+      "owner": null
+    },
+    {
+      "k": 18395,
+      "x": 475,
+      "y": 35,
+      "solid": 0,
+      "liquid": 160,
+      "type": 1,
+      "temp": 1.2856611013412476,
+      "owner": null
+    },
+    {
+      "k": 18902,
+      "x": 470,
+      "y": 36,
+      "solid": 36,
+      "liquid": 0,
+      "type": 0,
+      "temp": -0.6739572882652283,
+      "owner": 10
+    },
+    {
+      "k": 18903,
+      "x": 471,
+      "y": 36,
+      "solid": 37,
+      "liquid": 0,
+      "type": 0,
+      "temp": -1.644025206565857,
+      "owner": 10
+    },
+    {
+      "k": 18905,
+      "x": 473,
+      "y": 36,
+      "solid": 4,
+      "liquid": 0,
+      "type": 0,
+      "temp": 1.2151683568954468,
+      "owner": null
+    },
+    {
+      "k": 18906,
+      "x": 474,
+      "y": 36,
+      "solid": 18,
+      "liquid": 0,
+      "type": 0,
+      "temp": 2.258495330810547,
+      "owner": null
+    },
+    {
+      "k": 18907,
+      "x": 475,
+      "y": 36,
+      "solid": 37,
+      "liquid": 0,
+      "type": 0,
+      "temp": 1.8853487968444824,
+      "owner": 2
+    },
+    {
+      "k": 19413,
+      "x": 469,
+      "y": 37,
+      "solid": 40,
+      "liquid": 0,
+      "type": 0,
+      "temp": 3.704845905303955,
+      "owner": null
+    },
+    {
+      "k": 19414,
+      "x": 470,
+      "y": 37,
+      "solid": 36,
+      "liquid": 0,
+      "type": 0,
+      "temp": 2.9336814880371094,
+      "owner": 10
+    },
+    {
+      "k": 19417,
+      "x": 473,
+      "y": 37,
+      "solid": 4,
+      "liquid": 0,
+      "type": 0,
+      "temp": 3.2330076694488525,
+      "owner": null
+    },
+    {
+      "k": 19418,
+      "x": 474,
+      "y": 37,
+      "solid": 18,
+      "liquid": 0,
+      "type": 0,
+      "temp": 3.9602243900299072,
+      "owner": null
+    },
+    {
+      "k": 19925,
+      "x": 469,
+      "y": 38,
+      "solid": 40,
+      "liquid": 0,
+      "type": 0,
+      "temp": 7.158248424530029,
+      "owner": null
+    },
+    {
+      "k": 19926,
+      "x": 470,
+      "y": 38,
+      "solid": 36,
+      "liquid": 0,
+      "type": 0,
+      "temp": 6.677067279815674,
+      "owner": 10
+    },
+    {
+      "k": 19930,
+      "x": 474,
+      "y": 38,
+      "solid": 18,
+      "liquid": 0,
+      "type": 0,
+      "temp": 7.4314284324646,
+      "owner": null
+    },
+    {
+      "k": 20437,
+      "x": 469,
+      "y": 39,
+      "solid": 1,
+      "liquid": 0,
+      "type": 0,
+      "temp": 9.72982120513916,
+      "owner": null
+    },
+    {
+      "k": 20438,
+      "x": 470,
+      "y": 39,
+      "solid": 1,
+      "liquid": 0,
+      "type": 0,
+      "temp": 10.408334732055664,
+      "owner": null
+    },
+    {
+      "k": 20439,
+      "x": 471,
+      "y": 39,
+      "solid": 1,
+      "liquid": 0,
+      "type": 0,
+      "temp": 11.014254570007324,
+      "owner": null
+    },
+    {
+      "k": 20440,
+      "x": 472,
+      "y": 39,
+      "solid": 1,
+      "liquid": 0,
+      "type": 0,
+      "temp": 11.488588333129883,
+      "owner": null
+    },
+    {
+      "k": 20442,
+      "x": 474,
+      "y": 39,
+      "solid": 18,
+      "liquid": 0,
+      "type": 0,
+      "temp": 12.430682182312012,
+      "owner": null
+    },
+    {
+      "k": 20443,
+      "x": 475,
+      "y": 39,
+      "solid": 1,
+      "liquid": 0,
+      "type": 0,
+      "temp": 12.297175407409668,
+      "owner": null
+    }
+  ],
+  "copiedGridConnectivity": {
+    "base": {
+      "canReachHome": false,
+      "componentCells": 20237
+    },
+    "openIce473_35": {
+      "canReachHome": false,
+      "componentCells": 20237
+    },
+    "openOwnedLeaf471_33": {
+      "canReachHome": true,
+      "componentCells": 20249
+    },
+    "openOwner10Tissue": {
+      "canReachHome": true,
+      "componentCells": 20262
+    }
+  },
+  "blockingPlants": [
+    {
+      "root": 19932,
+      "top": 17884,
+      "h": 5,
+      "max": 5,
+      "drunk": 0,
+      "thirst": 128,
+      "flower": 17372,
+      "id": 2,
+      "sugar": 0,
+      "nitrogen": 4.94001740060754,
+      "phosphorus": 0.4940017400607458
+    },
+    {
+      "root": 19926,
+      "top": 16342,
+      "h": 8,
+      "max": 8,
+      "drunk": 0,
+      "thirst": 169,
+      "flower": 15830,
+      "id": 10,
+      "sugar": 0,
+      "nitrogen": 11.921065640547853,
+      "phosphorus": 1.1933715442681168
+    }
+  ],
+  "final": {
+    "seed": 7,
+    "pumpMode": "generated",
+    "weatherMode": "generated",
+    "compact": true,
+    "elapsedTicks": 29700,
+    "day": 2.75,
+    "pools": [
+      {
+        "bounds": {
+          "x0": 49,
+          "x1": 79,
+          "y0": 43,
+          "y1": 52
+        },
+        "tiles": 267,
+        "volume": 245.67058823529416,
+        "litTiles": 240,
+        "algae": 223.56475716737685,
+        "nitrogen": 492.5517290678426,
+        "phosphorus": 49.097749615347524,
+        "temperature": 15.653688738051754,
+        "temperatureMin": 5.42620849609375,
+        "temperatureMax": 19.705686569213867,
+        "coolDeepVolume": 239.97647058823532,
+        "hotVolume": 0,
+        "coolRefuges": [
+          {
+            "x": 50,
+            "y": 44,
+            "temperature": 11.90715503692627
+          },
+          {
+            "x": 50,
+            "y": 45,
+            "temperature": 13.410490989685059
+          },
+          {
+            "x": 49,
+            "y": 44,
+            "temperature": 12.009915351867676
+          },
+          {
+            "x": 51,
+            "y": 44,
+            "temperature": 11.321672439575195
+          },
+          {
+            "x": 50,
+            "y": 46,
+            "temperature": 14.80319881439209
+          },
+          {
+            "x": 49,
+            "y": 45,
+            "temperature": 13.467312812805176
+          },
+          {
+            "x": 51,
+            "y": 45,
+            "temperature": 13.113200187683105
+          },
+          {
+            "x": 52,
+            "y": 44,
+            "temperature": 10.813097953796387
+          }
+        ],
+        "oxygen": 8.54286466262466,
+        "animals": [
+          {
+            "id": 21,
+            "kind": "fish",
+            "original": true,
+            "x": 61.897747237009256,
+            "y": 45.5406508367892,
+            "foodDays": 3.887386373209295,
+            "stress": 0
+          },
+          {
+            "id": 22,
+            "kind": "fish",
+            "original": true,
+            "x": 60.114830724104365,
+            "y": 47.606789418139485,
+            "foodDays": 3.911886422399271,
+            "stress": 0
+          },
+          {
+            "id": 23,
+            "kind": "fish",
+            "original": true,
+            "x": 58.06166270528356,
+            "y": 51.90397017821543,
+            "foodDays": 3.8943388593477932,
+            "stress": 0
+          },
+          {
+            "id": 24,
+            "kind": "fish",
+            "original": true,
+            "x": 53.867615038139654,
+            "y": 48.08153025958575,
+            "foodDays": 1.789546549513269,
+            "stress": 0
+          },
+          {
+            "id": 25,
+            "kind": "fish",
+            "original": true,
+            "x": 54.16824980397076,
+            "y": 50.60511855700232,
+            "foodDays": 3.882578456046654,
+            "stress": 0
+          },
+          {
+            "id": 37,
+            "kind": "fish",
+            "original": false,
+            "x": 69.20181762260208,
+            "y": 47.22912282711433,
+            "foodDays": 3.62877407785521,
+            "stress": 0
+          },
+          {
+            "id": 38,
+            "kind": "fish",
+            "original": false,
+            "x": 53.29324980397075,
+            "y": 50.047680934815126,
+            "foodDays": 1.77785246194212,
+            "stress": 0
+          },
+          {
+            "id": 41,
+            "kind": "fish",
+            "original": false,
+            "x": 59.40804105181014,
+            "y": 44.8774397579323,
+            "foodDays": 2.0623690795546272,
+            "stress": 0
+          },
+          {
+            "id": 42,
+            "kind": "fish",
+            "original": false,
+            "x": 62.17989080861406,
+            "y": 50.63674614406012,
+            "foodDays": 3.889285451313702,
+            "stress": 0
+          },
+          {
+            "id": 45,
+            "kind": "fish",
+            "original": false,
+            "x": 59.69673434923062,
+            "y": 50.35779746572531,
+            "foodDays": 0.8859719210805933,
+            "stress": 0
+          },
+          {
+            "id": 46,
+            "kind": "fish",
+            "original": false,
+            "x": 59.96578978511889,
+            "y": 46.4210337887718,
+            "foodDays": 0.9036661625910583,
+            "stress": 0
+          }
+        ]
+      },
+      {
+        "bounds": {
+          "x0": 423,
+          "x1": 459,
+          "y0": 44,
+          "y1": 48
+        },
+        "tiles": 115,
+        "volume": 90.29411764705885,
+        "litTiles": 113,
+        "algae": 125.93969033197082,
+        "nitrogen": 132.96700657344735,
+        "phosphorus": 13.296082096794352,
+        "temperature": 8.611659804229236,
+        "temperatureMin": 3.926981210708618,
+        "temperatureMax": 11.593419075012207,
+        "coolDeepVolume": 77,
+        "hotVolume": 0,
+        "coolRefuges": [
+          {
+            "x": 436,
+            "y": 46,
+            "temperature": 7.58689022064209
+          },
+          {
+            "x": 439,
+            "y": 45,
+            "temperature": 9.175508499145508
+          },
+          {
+            "x": 435,
+            "y": 46,
+            "temperature": 7.4197845458984375
+          },
+          {
+            "x": 439,
+            "y": 46,
+            "temperature": 10.217452049255371
+          },
+          {
+            "x": 440,
+            "y": 45,
+            "temperature": 9.397045135498047
+          },
+          {
+            "x": 435,
+            "y": 47,
+            "temperature": 9.055856704711914
+          },
+          {
+            "x": 434,
+            "y": 46,
+            "temperature": 7.35567569732666
+          },
+          {
+            "x": 439,
+            "y": 47,
+            "temperature": 11.359539031982422
+          }
+        ],
+        "oxygen": 11.01566782665267,
+        "animals": [
+          {
+            "id": 7,
+            "kind": "pike",
+            "original": true,
+            "x": 426.7206128312678,
+            "y": 45.8073307928206,
+            "foodDays": 0.7498592265813026,
+            "stress": 0
+          },
+          {
+            "id": 40,
+            "kind": "fish",
+            "original": false,
+            "x": 431.8195206819505,
+            "y": 46.543628529493084,
+            "foodDays": 3.994686182742864,
+            "stress": 0
+          }
+        ]
+      },
+      {
+        "bounds": {
+          "x0": 59,
+          "x1": 70,
+          "y0": 65,
+          "y1": 67
+        },
+        "tiles": 29,
+        "volume": 17.49411764705882,
+        "litTiles": 0,
+        "algae": 0,
+        "nitrogen": 52.48235294117647,
+        "phosphorus": 5.248235294117645,
+        "temperature": 26.325288609682357,
+        "temperatureMin": 25.754501342773438,
+        "temperatureMax": 26.42125129699707,
+        "coolDeepVolume": 17,
+        "hotVolume": 0,
+        "coolRefuges": [
+          {
+            "x": 60,
+            "y": 66,
+            "temperature": 26.19696807861328
+          },
+          {
+            "x": 60,
+            "y": 67,
+            "temperature": 26.317787170410156
+          },
+          {
+            "x": 61,
+            "y": 66,
+            "temperature": 26.249963760375977
+          },
+          {
+            "x": 61,
+            "y": 67,
+            "temperature": 26.36100959777832
+          },
+          {
+            "x": 62,
+            "y": 66,
+            "temperature": 26.28526496887207
+          },
+          {
+            "x": 62,
+            "y": 67,
+            "temperature": 26.398639678955078
+          },
+          {
+            "x": 63,
+            "y": 66,
+            "temperature": 26.304412841796875
+          },
+          {
+            "x": 63,
+            "y": 67,
+            "temperature": 26.415199279785156
+          }
+        ],
+        "oxygen": 8.42478579674193,
+        "animals": []
+      },
+      {
+        "bounds": {
+          "x0": 45,
+          "x1": 53,
+          "y0": 74,
+          "y1": 78
+        },
+        "tiles": 28,
+        "volume": 28,
+        "litTiles": 0,
+        "algae": 0,
+        "nitrogen": 84,
+        "phosphorus": 8.399999999999999,
+        "temperature": 31.934589522225515,
+        "temperatureMin": 30.68418312072754,
+        "temperatureMax": 33.24803161621094,
+        "coolDeepVolume": 28,
+        "hotVolume": 0,
+        "coolRefuges": [
+          {
+            "x": 46,
+            "y": 74,
+            "temperature": 31.374773025512695
+          },
+          {
+            "x": 46,
+            "y": 75,
+            "temperature": 31.962661743164062
+          },
+          {
+            "x": 47,
+            "y": 74,
+            "temperature": 31.41219711303711
+          },
+          {
+            "x": 46,
+            "y": 76,
+            "temperature": 32.545841217041016
+          },
+          {
+            "x": 45,
+            "y": 75,
+            "temperature": 32.0208740234375
+          },
+          {
+            "x": 47,
+            "y": 75,
+            "temperature": 31.909507751464844
+          },
+          {
+            "x": 48,
+            "y": 74,
+            "temperature": 31.539663314819336
+          },
+          {
+            "x": 46,
+            "y": 77,
+            "temperature": 33.16371536254883
+          }
+        ],
+        "oxygen": 7.672157800450549,
+        "animals": []
+      },
+      {
+        "bounds": {
+          "x0": 61,
+          "x1": 65,
+          "y0": 74,
+          "y1": 77
+        },
+        "tiles": 17,
+        "volume": 17,
+        "litTiles": 0,
+        "algae": 0,
+        "nitrogen": 51,
+        "phosphorus": 5.099999999999999,
+        "temperature": 28.501434887156766,
+        "temperatureMin": 28.08343505859375,
+        "temperatureMax": 28.93720817565918,
+        "coolDeepVolume": 17,
+        "hotVolume": 0,
+        "coolRefuges": [
+          {
+            "x": 61,
+            "y": 74,
+            "temperature": 28.241361618041992
+          },
+          {
+            "x": 61,
+            "y": 75,
+            "temperature": 28.518775939941406
+          },
+          {
+            "x": 62,
+            "y": 74,
+            "temperature": 28.186506271362305
+          },
+          {
+            "x": 62,
+            "y": 75,
+            "temperature": 28.440263748168945
+          },
+          {
+            "x": 63,
+            "y": 74,
+            "temperature": 28.13578987121582
+          },
+          {
+            "x": 62,
+            "y": 76,
+            "temperature": 28.674253463745117
+          },
+          {
+            "x": 63,
+            "y": 75,
+            "temperature": 28.38225555419922
+          },
+          {
+            "x": 64,
+            "y": 74,
+            "temperature": 28.08343505859375
+          }
+        ],
+        "oxygen": 9.099999999999998,
+        "animals": []
+      }
+    ],
+    "waterVolume": 2459.5725490196023,
+    "waterAlgae": 350.6532526536551,
+    "storage": {
+      "unit": "carrier units",
+      "poreWater": 10366,
+      "ice": 194161,
+      "steam": 74690,
+      "vapor": 43733.02661762315,
+      "river": 13106,
+      "pump": 0,
+      "lakeWindow": {
+        "bounds": {
+          "x0": 16,
+          "x1": 100,
+          "y0": 25,
+          "y1": 80
+        },
+        "water": 79806,
+        "poreWater": 550,
+        "ice": 1020,
+        "steam": 0
+      }
+    },
+    "total": {
+      "c": 1189361.9103322679,
+      "n": 18170.621895830824,
+      "p": 1817.0621895828833
+    },
+    "introduced": {
+      "c": 40650.57114287848,
+      "n": 10424.06887899365,
+      "p": 1042.4068878993248
+    },
+    "removed": {
+      "c": 0,
+      "n": 0,
+      "p": 0
+    },
+    "invalid": 0,
+    "accounting": {
+      "honeyEaten": 0.32258148148133825,
+      "gasAtmosphereOxygenMg": -687.4551790126138,
+      "gasAtmosphereCarbonEqMg": -519.6335177497853,
+      "photosynthesisWaterC": 24929.282690525375,
+      "weatherVapourLatent": -13.800816358680875,
+      "weatherVapourSensibleHeat": 34515.01189438364,
+      "woodlandMoistureIntroduced": 19125,
+      "photosynthesisAirC": 10547.043976816934,
+      "denitrifiedNitrogen": 0.01568627450980392,
+      "nectarCollected": 0.8911809396585455,
+      "honeyStored": 0.2945013100289202,
+      "rainOxygenMg": 578.9741176470559,
+      "rainSensibleHeat": 5395.571717821206,
+      "hiveHoneyBurned": 0.09389390226999585,
+      "hiveMetabolicCarbon": 5.633634136199964,
+      "hiveHeatJ": 1126.7268272400597
+    },
+    "fish": 12,
+    "pike": 1,
+    "pumps": [
+      {
+        "on": false,
+        "buffer": 0,
+        "active": 0
+      }
+    ],
+    "fishOutsideWater": [],
+    "plants": 7,
+    "flowers": 5,
+    "bankPlants": [
+      {
+        "id": 6,
+        "x": 50,
+        "y": 42,
+        "height": 7,
+        "flower": 17970,
+        "sugar": 0,
+        "nitrogen": 121.9259288661778,
+        "phosphorus": 12.26072975143928,
+        "thirst": 219
+      },
+      {
+        "id": 7,
+        "x": 76,
+        "y": 42,
+        "height": 9,
+        "flower": 16972,
+        "sugar": 0,
+        "nitrogen": 379.72191568429207,
+        "phosphorus": 38.06243178940617,
+        "thirst": 231
+      }
+    ],
+    "honey": 509.87802592591424,
+    "honeyCarbon": 30592.681555554853,
+    "bees": 0,
+    "nectarCollected": 0.8911809396585455,
+    "honeyEaten": 0.32258148148133825,
+    "fixedAir": 10547.043976816934,
+    "fixedWater": 24929.282690525375,
+    "inoculum": {
+      "algae": {
+        "c": 2.636779683484747e-16,
+        "n": 0,
+        "p": 3.469446951953614e-18
+      },
+      "yeast": {
+        "c": 5,
+        "n": 0.5,
+        "p": 0.05
+      }
+    },
+    "births": {
+      "moth": 11,
+      "fish": 9
+    },
+    "deaths": {
+      "moth:predation": 1,
+      "fish:stranded": 6,
+      "fish:predation": 1,
+      "bird:drowned": 2,
+      "fish:crushed": 1,
+      "moth:crushed": 1,
+      "moth:starvation": 8,
+      "bee:cold": 3
+    },
+    "deathRecords": [
+      {
+        "id": 5,
+        "kind": "fish",
+        "cause": "stranded",
+        "tick": 583,
+        "tile": 23463,
+        "night": false,
+        "oxygen": 8.881903957293032,
+        "ammonia": 0.012168030738215707,
+        "temperature": 26.325639724731445
+      },
+      {
+        "id": 3,
+        "kind": "fish",
+        "cause": "stranded",
+        "tick": 2516,
+        "tile": 23463,
+        "night": false,
+        "oxygen": 34.102206283271364,
+        "ammonia": 30.01706005874808,
+        "temperature": 28.210403442382812
+      },
+      {
+        "id": 6,
+        "kind": "fish",
+        "cause": "predation",
+        "tick": 3600,
+        "tile": 24499,
+        "night": false,
+        "oxygen": 8.720585016381868,
+        "ammonia": 0.04365261461008027,
+        "temperature": 25.077194213867188
+      },
+      {
+        "id": 2,
+        "kind": "fish",
+        "cause": "crushed",
+        "tick": 5159,
+        "tile": 22951,
+        "night": true,
+        "oxygen": null,
+        "ammonia": 0,
+        "temperature": 0
+      },
+      {
+        "id": 1,
+        "kind": "fish",
+        "cause": "stranded",
+        "tick": 11269,
+        "tile": 23463,
+        "night": false,
+        "oxygen": 8.116807428479754,
+        "ammonia": 0.021331458652748148,
+        "temperature": 29.381940841674805
+      },
+      {
+        "id": 39,
+        "kind": "fish",
+        "cause": "stranded",
+        "tick": 12456,
+        "tile": 23464,
+        "night": false,
+        "oxygen": 4.89086718961151,
+        "ammonia": 6.016421242041464,
+        "temperature": 31.882856369018555
+      },
+      {
+        "id": 36,
+        "kind": "fish",
+        "cause": "stranded",
+        "tick": 12492,
+        "tile": 23463,
+        "night": false,
+        "oxygen": 0.31705516107689924,
+        "ammonia": 20.111772711373398,
+        "temperature": 31.109600067138672
+      },
+      {
+        "id": 4,
+        "kind": "fish",
+        "cause": "stranded",
+        "tick": 12631,
+        "tile": 23464,
+        "night": false,
+        "oxygen": 5.716870896127531,
+        "ammonia": 6.339500902087021,
+        "temperature": 31.872318267822266
+      }
+    ],
+    "baselineMatch": true
+  }
+}

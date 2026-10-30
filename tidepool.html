@@ -11,7 +11,7 @@
   </header>
 
   <div class="toolbar" aria-label="Tools and controls">
-    <div class="bar">
+    <div class="bar" id="toolBar">
       <button id="paletteToggle" class="picker" aria-expanded="false" aria-controls="palette"><span class="label">Tool</span><span class="current"></span><span aria-hidden="true">▾</span></button>
       <input id="toolSearch" type="search" placeholder="Find a tool  /" aria-label="Find a tool" aria-controls="palette" autocomplete="off">
       <div class="recent" id="recentTools" aria-label="Recent tools"></div>
@@ -24,9 +24,9 @@
     <div class="bar">
       <div class="group">
         <label class="label" for="level">Mode</label>
-        <select id="level"><option value="-1">Sandbox</option><option value="edit">Level editor</option><option value="custom" hidden>Custom level</option></select>
+        <select id="level"><option value="-1">Sandbox</option><option value="terrarium">Sealed terrarium</option><option value="edit">Level editor</option><option value="custom" hidden>Custom level</option></select>
       </div>
-      <div class="group">
+      <div class="group" id="brushGroup">
         <label class="label" for="brush">Brush</label>
         <input id="brush" type="range" min="0" max="5" value="1">
       </div>
@@ -53,9 +53,11 @@
             <span class="label">World code and file</span>
             <div class="row"><button id="copyCode">Copy world code</button><button id="exportFile">Export file</button><button id="importBtn">Import file</button><input type="file" id="importFile" accept=".tidepool,.txt,text/plain" hidden></div>
             <div class="row"><input id="codeInput" type="text" placeholder="Paste a world code" aria-label="World code to load" autocomplete="off"><button id="loadCode">Load code</button></div>
+            <div id="seedSharing" class="save-sections">
             <span class="label">Seed</span>
             <div class="row"><span class="note" id="seedText"></span><button id="copySeed">Copy seed</button></div>
             <div class="row"><input id="seedInput" type="text" inputmode="numeric" placeholder="Seed number" aria-label="Seed to build a world from" autocomplete="off"><button id="buildSeed">Build world</button></div>
+            </div>
           </div>
           <p class="note" id="saveMsg" role="status" aria-live="polite"></p>
         </div>
@@ -96,6 +98,18 @@
     <span id="goalText" role="status" aria-live="polite"></span>
     <span class="actions"><button id="levelRestart">Restart</button><button id="levelNext" hidden>Next level</button><button id="levelEdit" hidden>Back to editor</button></span>
   </div>
+
+  <section class="terrarium" id="terrariumPanel" hidden aria-label="Sealed terrarium">
+    <div class="row"><b>Sealed terrarium</b><span class="note">Finite matter · daylight supplies energy</span><button id="terrariumLight">Switch to darkness</button><button id="terrariumRestart">Restart jar</button></div>
+    <p class="note">Watch the fish, plants and algae share oxygen and nutrients. Change the light schedule, pause or speed up time, and save the jar to return later. Lighting in Display only changes the picture.</p>
+    <p id="terrariumReading" class="jar-reading"></p>
+  </section>
+
+  <details class="fantasy-summary" id="fantasyPanel" hidden>
+    <summary>Magical effects in this world</summary>
+    <p id="fantasyReading"></p>
+    <p class="note">These named sources and sinks are separate from ordinary ecosystem transfers. Older saves begin measuring when loaded. Magical illumination and electrical power have no joule model.</p>
+  </details>
 
   <section class="editor" id="editor" hidden aria-label="Level editor">
     <p class="note">Build the level with any tool, then set it up here. Play test starts it from the world as it is now.</p>
@@ -142,9 +156,9 @@
     <div>
       <h2>Materials</h2>
       <ul>
-        <li><b>Sponge</b> soaks up water and gives it back when a weight stands on it, or as steam when heated. <b>Dirt</b> soaks up a little water as wet soil, drips it into caves and sprouts plants. <b>Porous rock</b> lets liquid seep through.</li>
+        <li><b>Sponge</b> soaks up water and gives it back when a weight stands on it, or as steam when heated. <b>Dirt</b> soaks up a little water as wet soil, drips it into caves and supports planted seeds. <b>Porous rock</b> lets liquid seep through.</li>
         <li><b>Wool</b> barely takes up heat (and burns); <b>copper</b> takes it up fast and carries power. A <b>membrane</b> lets only its chosen liquid through. <b>Coral</b> grows in warm salt water and bleaches when it's too hot. <b>Fuse cord</b> burns along its length, round corners, and sets off nitro.</li>
-        <li><b>Void ink</b> deletes liquid; <b>mimic</b> becomes the first liquid it touches; <b>coolant</b> never freezes or boils and quenches lava; a <b>magnet</b> pulls <b>ferrofluid</b> into spikes; <b>liquid light</b> glows; <b>fertiliser</b> speeds plants up, greens stone with moss, and feeds algae.</li>
+        <li><b>Void ink</b> deletes liquid; <b>mimic</b> becomes the first liquid it touches; <b>coolant</b> never freezes or boils and quenches lava; a <b>magnet</b> pulls <b>ferrofluid</b> into spikes; <b>liquid light</b> glows; <b>fertiliser</b> speeds plants up, greens stone with moss, and feeds algae. A ✦ marks fantasy tools; hover for their rules. The Magical effects panel records biological sources, sinks and modeled heat separately. Magical light and electrical power are unmetered.</li>
       </ul>
     </div>
     <div>
@@ -175,7 +189,7 @@
         <li><span class="sw" style="background:#b98cf5"></span><div><b>Aether.</b> Falls upward and pools on ceilings. It is lighter than every other liquid, so it bubbles up through them. It glows violet, sheds drifting motes, and crystallises lava into glowing crystal.</div></li>
         <li><span class="sw" style="background:#c4ccd8"></span><div><b>Quicksilver.</b> Heavy, fast and opaque. It sinks through any other liquid and pushes it up instead of reacting, and it beads up rather than spreading thin. Pour it into a lake to watch the water lift.</div></li>
         <li><span class="sw" style="background:#7dec4a"></span><div><b>Acid.</b> Eats through dirt, wood, ice and honey blocks it touches, fizzes limestone and dissolves most metals, using itself up as it goes (stone, glass, sand, copper and gold resist it). Water dilutes it back to water. It fizzes and gives off a green glow.</div></li>
-        <li><span class="sw" style="background:#a8e4ff"></span><div><b>Frost.</b> A slow, glittering liquid that freezes any water it touches into ice. Thin puddles of it freeze solid on their own. Lava melts ice back into water.</div></li>
+        <li><span class="sw" style="background:#a8e4ff"></span><div><b>Frost.</b> A slow, glittering liquid that freezes fresh water it touches into ice; strong brine resists it. Its inexhaustible magical cooling is a recorded external heat sink. Thin puddles freeze solid on their own. Lava melts ice back into water.</div></li>
       </ul>
       <p>Underground is dark. Sky light seeps in through openings, and lava, aether, acid, frost and crystal light the caves around them. Toggle it with <kbd>L</kbd>.</p>
     </div>
@@ -195,6 +209,7 @@
     <div>
       <h2>Fire and living liquids</h2>
       <ul>
+        <li><b>Sealed terrarium.</b> Choose it in Mode to watch a finite jar with two fish, two plants and a starting algae population. Glass holds matter inside while daylight supplies energy. Darkness and overfeeding can exhaust oxygen; this is an experiment, with no promise of indefinite survival. Save &amp; share keeps the actual jar, including its age and remaining food.</li>
         <li><b>Oil</b> floats on water and shows a rainbow sheen. Above 150° it ignites, as long as it touches open air. Fire heats everything around it, so it spreads to more oil, wood, honeycomb and crates. Water puts out burning wood, but it sinks under burning oil instead of covering it, so an oil fire keeps burning on top of a lake. Smother it with dirt or stone, or let it burn out.</li>
         <li><b>Wood</b> (<kbd>Y</kbd>) burns away after a few seconds. Fire lights up the caves.</li>
         <li><b>Slime</b> creeps slowly and eats the dirt it touches, turning it into more slime, up to a limit. Heat, lava and acid kill it, frost freezes it, and bloomwater calms it into moss.</li>
@@ -239,7 +254,7 @@
         <li>The open air is warm by day and freezing at night, and the year turns through four seasons over eight days. Lakes under the open sky freeze over on cold nights. Caves keep a steadier temperature that rises the deeper you go. Turn Weather off for still, mild skies.</li>
         <li><b>Seasons show.</b> Leaves go from fresh green in spring to deep green in summer, yellow, orange and red in autumn, and fall away to bare branches in winter, when the grass turns frosty. Puzzles stay in summer.</li>
         <li><b>Weather extremes.</b> Storm clouds in freezing air throw <b>hail</b>: stones that knock leaves off trees and hurt the explorer. Deserts and badlands now and then get a <b>cloudburst</b>: a sudden storm that gathers the air's moisture over the region and dumps it at once, sending flash floods down the dry gullies.</li>
-        <li><b>Erosion.</b> Fast water wears away dirt and sand and carries them off as brown silt, most of all where a waterfall lands. Where the water settles, the silt sinks and drops out as mud, and buried mud slowly packs back into dirt, so streams dig their own channels and pools.</li>
+        <li><b>Erosion.</b> Fast water wears away dirt and sand and carries them off as brown silt, most of all where a waterfall lands. Where the water settles, the silt sinks and drops out as mud, and buried mud slowly packs back into damp soil, so streams dig their own channels and pools.</li>
         <li><b>Valleys and deltas.</b> A river wears away the soil over it as well as beside and under it, and a bank it undercuts slumps in as mud and is washed away, so over time its channel opens into a valley. Where it reaches still water the silt sinks and settles, and a delta builds out from its mouth.</li>
         <li><b>Groundwater.</b> Rain and puddles soak into soil, which holds up to about a third of its volume in water. The water sinks and spreads until it gathers over the rock as a water table. Soaked soil seeps water out wherever it meets open space, so hillsides grow springs and a pit dug down into soaked ground fills up like a well.</li>
         <li><b>Lake ice floats.</b> Ice that freezes on water drops as the water under it drains, comes back up through water poured over it, and pieces break off a sheet's edge and drift with the current and the wind.</li>
@@ -266,11 +281,11 @@
         <li><b>Moths</b> flutter low over the ground and eat leaves. They breed while fed and die of hunger, frost, fire or a soaking, so winter thins them out. Fish leap out of the water to snap up moths flying low over it.</li>
         <li><b>Birds</b> live in forests and jungles. By day they wander well above the ground and swoop on the nearest moth; a bird that has eaten a few breeds with another nearby. At night they roost. Water, fire, heat, hunger and a hard frost kill them.</li>
         <li><b>Slimelings</b> hop about and bite the explorer. They soak up slime and split in two. Salt, acid, lava and power kill them.</li>
-        <li><b>Plants</b> grow from a <b>Seed</b> on dirt, drinking water from around their roots (tonic makes them shoot up), and wilt in a drought. A grown plant with water regrows the leaves it loses and now and then drops a seed on open soil nearby, so plants spread along a riverbank.</li>
-        <li><b>Algae</b> grows in water that gets light (daylight under open sky, or liquid light beside it). Plain water feeds only a faint green film; <b>fertiliser</b> feeds it into a thick <b>bloom</b> that turns the water green and suffocates fish. In the dark algae dies back, and in cold water too: it grows slowly below 15° and dies back below 8°, so open lakes bloom in summer and clear in winter. <b>Fish</b> graze algae and breed only while fed, so cave fish don’t multiply. Dead fish, slimelings and wilted plants <b>rot</b> into fertiliser, which feeds the algae again; dead algae rots too.</li>
-        <li><b>Plants live on sunlight.</b> In daylight, with water, a plant takes carbon dioxide from the air round its top and gives back oxygen, storing the sugar it makes (photosynthesis); day and night it burns some of that sugar to live (respiration). Growing costs sugar, so a plant in the dark, or in air with no CO₂ left, stops growing and in time wilts. Roots drink from damp soil as well as water; a plant lasts about a day of drought. Under a roof, the water a plant breathes out runs back down instead of escaping.</li>
-        <li><b>Flowers and bees.</b> A grown plant with sugar to spare flowers, and its flower fills with nectar. <b>Bees</b> fly from their hive (honeycomb) to the nearest flower by day, drink their fill and carry it home, where it fills the comb with honey; full comb gets new cells built on, and a well-stocked hive raises new bees. Forests have a wild bees' nest on a tree. Melt the comb for its honey.</li>
-        <li><b>The nitrogen cycle.</b> Things that die in water rot into <b>ammonium</b>, using the water's oxygen; fish give it off too, and too much poisons them. With oxygen, bacteria turn it into nitrate (fertiliser), which feeds algae and plants; in airless water other bacteria turn nitrate into nitrogen gas, which leaves. Soil under water uses a little oxygen as its organic matter rots.</li>
+        <li><b>Plants</b> grow from a <b>Seed</b> on soil, drinking water from around their roots (tonic makes them shoot up), and wilt in a drought. Roots take finite nutrients from connected soil; light, water, nitrogen and phosphate fund new growth. A grown plant regrows leaves and can drop seeds on nearby open soil.</li>
+        <li><b>Algae</b> grows where water receives light and has carbon, nitrogen and phosphate. A thick <b>bloom</b> can use up oxygen at night and suffocate fish. Cold water slows algae activity and fish food use; algae stops growing below 8° and can die back. Clear ice admits daylight; snow blocks it. <b>Fish</b> graze algae and pay for offspring from their food reserves. Keep deep water available as a refuge from hot shallows and drying banks. Dead organisms and wilted plants <b>rot</b>, returning their stored nutrients.</li>
+        <li><b>Plants live on sunlight.</b> In daylight, with water, a plant takes carbon dioxide from the air round its top and gives back oxygen, storing the sugar it makes (photosynthesis); day and night it burns some of that sugar to live (respiration). Growing costs sugar, so a plant in the dark, or in air with no CO₂ left, stops growing and in time wilts. Roots drink from damp soil as well as water; a plant begins wilting after about a day of drought. Under a roof, the water a plant breathes out runs back down instead of escaping.</li>
+        <li><b>Flowers and bees.</b> A grown plant with sugar to spare flowers, and its flower fills with nectar. <b>Bees</b> carry nectar home as honey and can build more comb. In cold weather they return to their hive and spend stored honey and oxygen to warm the air beside it. Keep a clear flight path and fresh air available. Empty hives cannot supply heat, and unventilated hives can run out of oxygen. Forests have wild nests. Melt the comb for its honey.</li>
+        <li><b>The nitrogen cycle.</b> Things that die in water rot into <b>ammonium</b>, using the water's oxygen; fish give it off too, and too much poisons them. With oxygen, bacteria turn it into nitrate (fertiliser), which feeds algae and plants; in airless water other bacteria turn nitrate into nitrogen gas. Soil under water uses a little oxygen as its organic matter rots.</li>
         <li><b>Carbon dioxide in water.</b> Whatever breathes in water (fish, rot, algae at night) gives off CO₂ into it, and the water trades it with the air above, so a sealed jar's fish feed its plant. Algae need it to make oxygen.</li>
         <li><b>Yeast.</b> Sugar water (or honey dissolved in water) left open catches wild yeast. With oxygen, yeast multiplies on the sugar; shut away from air it ferments the sugar into <b>alcohol</b> and carbon dioxide until the alcohol builds up enough to stop it. Between 10° and 40° only. Left in the air, alcohol slowly turns to vinegar (weak acid).</li>
         <li><b>Alcohol and stills.</b> Strong spirit can burn where oxygen reaches it. Heating fermented water sends alcohol-rich vapor upward; cool it in a separate chamber to collect stronger spirit. Distillation needs heat and space for vapor, and salt and sugar stay behind. If the solid residue has nowhere to go, the last drop waits.</li>
@@ -322,16 +337,16 @@
         <li><b>Pixels</b> light up in their colour while powered (click one to change it), and don't pass power on, so a row of them wired one by one makes a sign or a counter.</li>
         <li><b>Targets</b>: a <b>floodgate</b> is solid when closed and passable when open. A <b>spring</b> pours its liquid without end (click it to switch to the liquid you last picked). A <b>drain</b> swallows liquid on all sides. Pumps can be targets too.</li>
         <li><b>Wiring</b>: with the Wire tool (<kbd>K</kbd>), click a switch, generator or logic gate, then click each target to link or unlink it. A linked target runs while any of its switches is on. Targets with no wire and no live conductor keep their own setting: springs, drains, boilers and separators always run, gates and valves toggle when clicked, and lamps, motors and electromagnets stay off.</li>
-        <li>The lever next to the explorer at the start runs the lake pump.</li>
+        <li>The lever next to the explorer switches the lake pump. The pump starts off, leaving the lake undisturbed until you use it.</li>
       </ul>
     </div>
     <div>
       <h2>Heat</h2>
       <ul>
         <li><b>Air.</b> Every pocket of air has its own oxygen and carbon dioxide. Air open to the sky is always fresh; a cave or a room with a doorway is topped up from outside, hot air rising draws fresh air in, and a sealed room is not. Fires use oxygen and give off CO₂, and below 15% oxygen nothing burns, so a fire in a sealed room goes out. Below 12% oxygen, or above 5% CO₂, the explorer runs out of breath; moths and birds choke too. CO₂ and oxygen gas that thin out join the air around them. Hover over air to read it.</li>
-        <li><b>Oxygen in water.</b> Water holds a little dissolved oxygen: 14.6 mg/L ice-cold, 9 at 20°, less when warm or salty. It takes oxygen in at its surface, faster where it's moving; below, only mixing brings it down. Fish use it and suffocate below 3 mg/L (pike below 1.5). Algae make it in the light and use it in the dark, so a thick bloom kills fish at night, and mud on the bottom uses it too: a still pond goes airless at the bottom, where the mud then bubbles methane. Hover over water to read its oxygen.</li>
+        <li><b>Oxygen in water.</b> Water holds a little dissolved oxygen: 14.6 mg/L ice-cold, 9 at 20°, less when warm or salty. It takes oxygen in at its surface, faster where it's moving; below, only mixing brings it down. Fish use it and can suffocate below 3 mg/L (pike below 1.5). Algae make oxygen in daylight and also use it for respiration, so a thick bloom can cause a nighttime oxygen shortage. Decaying organic matter uses oxygen too; a still pond with that substrate can become oxygen-poor and release methane. Hover over water to read its oxygen.</li>
         <li><b>Layers.</b> Water of different density stacks: brine and syrup sink under fresh water, warm water floats on cold, and water is densest at 4°, so a lake freezes from the top and turns over when its surface cools in autumn.</li>
-        <li><b>Real heat.</b> Every material has its real density, heat capacity and conductivity, and heat is conserved: it flows from tile to tile, so a hot iron block dropped in a lake warms the lake only a little (water holds about as much heat per tile as iron, and there's far more of it). Copper and metal carry heat fast, water and rock slowly, wool and snow hardly at all; flowing liquid carries its heat along.</li>
+        <li><b>Heat.</b> Materials differ in density, heat capacity and conductivity. Heat flows from tile to tile, so a hot iron block dropped in a lake warms the lake only a little (water holds about as much heat per tile as iron, and there's far more of it). Copper and metal carry heat fast, water and rock slowly, wool and snow hardly at all; flowing liquid carries its heat along.</li>
         <li><b>Melting and boiling take heat.</b> Ice sits at 0° until it has taken in enough heat to melt, so ice keeps a drink near 0°; a pot holds at 100° while it boils away; and steam gives that heat back as it condenses, which is why it scalds. Water freezes at 0° (salt water colder), lava sets at 1000°, iron at 1538°, all once they've given up their heat. Falling water, lava or metal doesn't set in mid-air.</li>
         <li><b>Lava</b> comes out at 1150° and pools are kept hot from below, so a lava lake crusts over at its rim and stays molten inside. Thin films can't keep hot and set into basalt. The rock round the magma sea is as hot as the magma and glows.</li>
         <li><b>Real temperatures:</b> clay fires into brick at 900°, iron melts at 1538° (the Heat brush reaches 1800°), honey caramelises at 160° and sugar at 170°, oil smokes at 200° and catches at 250°, wood at 260°, methane at 537°, hydrogen at 500° (or at once from a flame), nitro goes off at 218°, acid boils off at 300°, and mud dries into dirt at 100°. Frost holds itself at −40°.</li>

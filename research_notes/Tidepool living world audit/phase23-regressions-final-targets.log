@@ -1,0 +1,183 @@
+Command: node tools/simtest.mjs snapshots "custom levels" puzzle "living world" life: slime "void ink" power --jobs=2 --progress
+Started: 2026-10-30T00:51:48.855Z
+Worker limit: 2
+Scope: affected scenes on the final Phase23 source, following the broad 81-scene record.
+
+START slime eats dirt; bloomwater grows moss and glowcaps
+START live stormwater shocks slime
+DONE  live stormwater shocks slime (0.9 s)
+START a boiler boils water only while powered
+DONE  a boiler boils water only while powered (3.1 s)
+START nitro explodes from heat, hard landings and power, and sets off more nitro
+DONE  slime eats dirt; bloomwater grows moss and glowcaps (4.7 s)
+START turbines and water wheels make power
+DONE  nitro explodes from heat, hard landings and power, and sets off more nitro (0.9 s)
+START puzzle levels can be solved, and fail when they should
+DONE  turbines and water wheels make power (3.9 s)
+START gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen
+DONE  gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen (4.1 s)
+START salamanders live in lava and die in water; slimelings split and fear salt
+DONE  salamanders live in lava and die in water; slimelings split and fear salt (2.5 s)
+START snapshots: exact restore, world codes, seeds and undo
+DONE  snapshots: exact restore, world codes, seeds and undo (4.3 s)
+START custom levels: goals, ways to lose, and a level code that starts in the level
+DONE  custom levels: goals, ways to lose, and a level code that starts in the level (0.2 s)
+START life: plants, flowers, bees, rot, nitrogen and fermentation
+DONE  puzzle levels can be solved, and fail when they should (16.8 s)
+START void ink, mimic, coolant, ferrofluid, fertiliser
+DONE  void ink, mimic, coolant, ferrofluid, fertiliser (10.4 s)
+START a living world: seasons in the leaves, birds that hunt moths, hail and flash floods
+DONE  a living world: seasons in the leaves, birds that hunt moths, hail and flash floods (4.6 s)
+START temperature and depth sensors, pixels, and power fading along long lines
+DONE  temperature and depth sensors, pixels, and power fading along long lines (1.9 s)
+START life: an overfed jar, bloom and recorded mortality
+DONE  life: plants, flowers, bees, rot, nitrogen and fermentation (43.2 s)
+START life: a sealed jar through two day and night cycles
+DONE  life: an overfed jar, bloom and recorded mortality (38.0 s)
+START life: local fish capacity and causal oxygen stress
+DONE  life: local fish capacity and causal oxygen stress (0.0 s)
+START life: a heated still enriches its condensate
+DONE  life: a heated still enriches its condensate (5.2 s)
+DONE  life: a sealed jar through two day and night cycles (38.0 s)
+START life: moss exchanges gases in daylight
+DONE  life: moss exchanges gases in daylight (4.2 s)
+START life: spirit burns from a flame
+DONE  life: spirit burns from a flame (2.7 s)
+
+slime eats dirt; bloomwater grows moss and glowcaps  (4.7 s)
+  PASS  slime eats dirt  (12 dirt eaten)
+  PASS  bloomwater turns stone to moss  (13 moss)
+  PASS  bloomwater sprouts glowcaps  (2 glowcaps)
+
+live stormwater shocks slime  (0.9 s)
+  PASS  slime survives dead stormwater  (38 slime tiles)
+  PASS  live stormwater kills the slime touching it  (0 left)
+
+turbines and water wheels make power  (3.9 s)
+  PASS  steam spins a turbine, which opens its gate
+  PASS  the turbine condenses the steam back into water  (276 water tiles)
+  PASS  falling water turns a water wheel  (on for 39 of 60 ticks)
+  PASS  the wheel stops once the water settles
+
+a boiler boils water only while powered  (3.1 s)
+  PASS  a powered boiler boils the water on it  (52 steam tiles at peak)
+
+gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen  (4.1 s)
+  PASS  burning oil gives off smoke  (68 smoke tiles at peak)
+  PASS  slime bubbles methane  (20 methane tiles)
+  PASS  acid eating iron gives off hydrogen  (72 hydrogen tiles at peak)
+
+nitro explodes from heat, hard landings and power, and sets off more nitro  (0.9 s)
+  PASS  resting nitro stays put
+  PASS  heat sets nitro off and the blast breaks stone  (128 blocks broken)
+  PASS  nitro dropped from a height explodes on landing
+  PASS  nitro poured from low down lands safely
+  PASS  one blast sets off the nitro next to it in a chain
+  PASS  live power touching nitro sets it off
+
+salamanders live in lava and die in water; slimelings split and fear salt  (2.5 s)
+  PASS  a salamander lives in lava
+  PASS  water poured on a salamander kills it
+  PASS  a slimeling soaks up slime and splits in two  (15 slimelings)
+  PASS  salt kills a slimeling that touches it
+
+puzzle levels can be solved, and fail when they should  (16.8 s)
+  PASS  there are eleven levels
+  PASS  1. Glassworks: opening the hopper over the lava makes enough glass  (glass 15/15)
+  PASS  2. The cauldron: water, heat, honey and bloomwater brew tonic  (tonic in the cauldron 10/10 · levers: water, boiler, honey, bloomwater)
+  PASS  3. The lower chamber: the valve route fills it safely  (water in the chamber 60/60)
+  PASS  3. The lower chamber: the floodgate route fails  (The water touched the lava.)
+  PASS  4. Save the fish: a shaft dug down from the pond drops them into the lake  (fish in the lake 4/4)
+  PASS  5. Steam power: opening the valve opens the vault  (the vault is open)
+  PASS  6. Two shafts: digging out the plug fills the high basin  (water in the basin 20/20)
+  PASS  7. Thunder dome: splitting the brine, then lighting the fuse, blows the vault open  (the vault is open)
+  PASS  7. Thunder dome: the fuse alone, with no gas made, leaves the wall standing  (the vault wall stands)
+  PASS  8. Depth gauge: filling to the mark and shutting the spring  (the gauge reads full and the spring is shut)
+  PASS  8. Depth gauge: leaving the spring running overflows the tank  (The tank overflowed.)
+  PASS  9. Furnace: lighting the wood casts metal in the mould  (metal in the mould 3/3)
+
+snapshots: exact restore, world codes, seeds and undo  (4.3 s)
+  PASS  generated state contains no non-finite quantities
+  PASS  restoring a snapshot puts every tile, column and air cell back
+  PASS  a world code unpacks to the same world (temperatures to within 1/8°)
+  PASS  the reference fractional world code stays within 512 KiB  (code is 469 KiB)
+  PASS  an older (version 1) world code still loads
+  PASS  text that is not a world code is refused with a reason  (That isn't a Tidepool world code; it should start with TIDEPOOL2:)
+  PASS  the same seed builds the same world
+  PASS  undo takes back the last edit  (stepped back 0.5 s)
+  PASS  undo with no history does nothing
+
+void ink, mimic, coolant, ferrofluid, fertiliser  (10.4 s)
+  PASS  void ink deletes the water it touches, using itself up  (19 of 95 water tiles deleted)
+  PASS  mimic turns into the first liquid it touches
+  PASS  coolant doesn’t freeze
+  PASS  coolant quenches lava into a basalt crust  (9 basalt, 9 lava, 18 coolant)
+  PASS  a magnet pulls ferrofluid up towards it  (18 tiles above the pool)
+  PASS  a plant on fertilised water grows faster  (fed 10 tiles tall, plain 2)
+  PASS  a carbon- and nutrient-fed bloom grows and consumes oxygen at night  (algae 89.1, day oxygen 18.0, night 15.0 mg/L)
+  PASS  fertilised water greens the stone around it with moss  (19 moss)
+
+custom levels: goals, ways to lose, and a level code that starts in the level  (0.2 s)
+  PASS  a liquid goal is met when the area holds enough  (water 5/5; goal text: Fill the goal area with 5 tiles of water.)
+  PASS  letting the forbidden liquid in loses  (Some lava got into the goal area.)
+  PASS  getting creatures into the area meets the goal, and losing the ones to keep fails it  (Fewer than 1 fish are left.)
+  PASS  the explorer and lamp goals
+  PASS  a level code starts the level afresh  (water 0/3)
+
+a living world: seasons in the leaves, birds that hunt moths, hail and flash floods  (4.6 s)
+  PASS  the leaves turn with the seasons: green in summer, orange-red in autumn, sparse in winter  (steps 2,4,6,0, 24 summer pixels, 11 winter)
+  PASS  a bird chases down a moth and eats it  (bird hunger 522)
+  PASS  at night birds come down and roost  (bird at row 109.4)
+  PASS  a cold-topped storm drops hail that knocks leaves off, and the hail melts into water  (9 hailstones at once, 4 leaves knocked off)
+  PASS  a flash flood gathers the sky’s moisture over a dry region and pours it down  (153 tiles of water gathered, 68 on the ground at most)
+
+life: plants, flowers, bees, rot, nitrogen and fermentation  (43.2 s)
+  PASS  in daylight a plant takes up CO2, grows on the sugar it makes, and gives off oxygen  (CO₂ 0.60% → 0.56%, 7 tall, sugar 431)
+  PASS  at night it burns its sugar and gives CO2 back  (CO₂ 0.56% → 0.56%)
+  PASS  with no CO2 in the air a plant can’t grow  (1 tall)
+  PASS  a grown plant flowers in the sun and makes nectar  (2.133333333333344 nectar at most)
+  PASS  bees carry measured nectar home while consuming finite honey  (1 comb, stock 15.598, collected 5.800, stored 5.800, eaten 0.202)
+  PASS  a finite carcass decays into ammonium, which oxygen-rich water turns into nitrate  (carcass carbon 17.89, nitrate 0.003)
+  PASS  organic donor in airless water turns nitrate into measured nitrogen gas  (nitrate 38.4, nitrogen gas 131.000)
+  PASS  ammonium poisons fish
+  PASS  sugar water left open catches wild yeast
+  PASS  shut away from air, yeast ferments sugar into alcohol  (alcohol 36, sugar 132)
+  PASS  with air, alcohol slowly turns to vinegar  (acid 3.3)
+
+temperature and depth sensors, pixels, and power fading along long lines  (1.9 s)
+  PASS  a temperature sensor turns on above its setting  (sensor at 192°)
+  PASS  and stays off below it  (sensor at 192°)
+  PASS  a depth sensor under 2 rows of water is off
+  PASS  a depth sensor under 6 rows of water is on
+  PASS  a depth sensor under 6 rows of carbon dioxide is off
+  PASS  a powered pixel lights; the one beside it stays dark
+  PASS  40 tiles of metal carry power to the far end
+  PASS  80 tiles of metal don't carry power to the far end
+  PASS  80 tiles of copper carry power to the far end
+
+life: a sealed jar through two day and night cycles  (38.0 s)
+  PASS  a balanced sealed jar retains its two original fish and plants through two days  (2 of 2 fish, 2 plants, water oxygen 6.3 mg/L, deaths {})
+
+life: an overfed jar, bloom and recorded mortality  (38.0 s)
+  PASS  an overfed glass jar supports an algae bloom  (algae 255 at thickest)
+  PASS  every original fish lost in the overfed jar has a recorded cause  (0 of 2 fish alive; [{"id":25,"kind":"fish","cause":"hypoxia","tick":56350,"tile":27172,"night":false,"oxygen":0.30546590210544977,"ammonia":30.52615259644672,"temperature":20},{"id":24,"kind":"fish","cause":"hypoxia","tick":60760,"tile":25631,"night":true,"oxygen":1.0675825602178843,"ammonia":20.53373379637349,"temperature":20}])
+
+life: moss exchanges gases in daylight  (4.2 s)
+  PASS  moss in daylight takes up CO2 and gives off oxygen  (CO₂ 0.60% → 0.57%)
+
+life: local fish capacity and causal oxygen stress  (0.0 s)
+  PASS  fish reproduce up to the local capacity, including the parents  (4 fish from 3; capacity 4)
+  PASS  nighttime algae deplete healthy water before a tagged hypoxic death  ({"id":26,"kind":"fish","cause":"hypoxia","tick":1000,"tile":22059,"night":true,"oxygen":2.0983178366447106,"ammonia":2.9614682501150553,"temperature":20})
+  PASS  the matched aerated control survives the same nighttime exposure
+
+life: spirit burns from a flame  (2.7 s)
+  PASS  strong spirit catches from a flame and consumes measured alcohol  (0.15 alcohol burnt; 3573.89 of 3600 remains)
+  PASS  spirit burning retains its carrier and accounts for ethanol products  (ethanol difference 0.00e+0; carrier 4590/4590)
+
+life: a heated still enriches its condensate  (5.2 s)
+  PASS  a heated still catches an enriched mixture rather than pure alcohol  (27 tiles caught at 40.7, source wine 0.0 (from36))
+  PASS  the enclosed still preserves its carrier and accounts for all alcohol  (carrier 9180/9180; alcohol difference 1.36e-12)
+
+all checks passed · matching snapshots, custom levels, puzzle, living world, life:, slime, void ink, power run, 20 scenes, 108.1 s
+
+Actual process status: {"command":"node tools/simtest.mjs snapshots \"custom levels\" puzzle \"living world\" life: slime \"void ink\" power --jobs=2 --progress","started":"2026-10-30T00:51:48.855Z","finished":"2026-10-30T00:53:37.200Z","exitCode":0,"signal":null,"scenes":20,"checks":94,"passed":94,"failed":0,"elapsedSeconds":108.32201579999999,"changedRuntimeFiles":[]}

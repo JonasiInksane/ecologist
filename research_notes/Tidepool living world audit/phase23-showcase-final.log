@@ -1,0 +1,112 @@
+Final frozen-source Showcase verification 2026-10-30T00:57:10.558Z
+
+$ node tools/check-terrarium.mjs
+Terrarium checks: 189 passed
+
+$ node tools/check-fantasy.mjs
+PASS description, ledger, inventory and snapshot reads do not initialize state
+PASS new worlds have a stable zero ledger before reads or saves
+PASS pure local receipts match existing ecology and heat definitions across material states
+PASS void sink retains quantitative meaning (7/127)
+PASS void sink retains quantitative meaning (255/1)
+PASS void sink retains quantitative meaning (255/255)
+PASS void/aether destroys both parcels and their pending heat once
+PASS void priority annihilates mimic instead of copying the void identity
+PASS void light loss records material/thermal loss without inventing a radiative reserve
+PASS mimic copies only the first contacted liquid and stops this step
+PASS mimic identity 3 records its material/biological/heat delta
+PASS mimic identity 28 records its material/biological/heat delta
+PASS mimic identity 22 records its material/biological/heat delta
+PASS mimic identity 2 records its material/biological/heat delta
+PASS ordinary swaps, same-material contacts and blocked brine do not register magic
+PASS repeated frost cooling has measured heat sink (1)
+PASS repeated frost cooling has measured heat sink (127)
+PASS repeated frost cooling has measured heat sink (255)
+PASS aether-crystal records an actual representation change
+PASS frost-water records an actual representation change
+PASS coolant-quench records an actual representation change
+PASS slime-moss records an actual representation change
+PASS non-phase crystal retains injected pending heat through subsequent heat passes
+PASS storm boiling records transmutation and retains pending heat for ordinary steam balance
+PASS storm-metal-quench records both phase products and all passenger losses
+PASS storm-slag-quench records both phase products and all passenger losses
+PASS bloom-moss registers magical tissue exactly once
+PASS tonic-moss registers magical tissue exactly once
+PASS moss conjured before ordinary initialization is not introduced a second time
+PASS slime methane is distinct from ordinary finite detrital methanogenesis
+PASS heat-destroyed slime records all passengers and pending heat immediately
+PASS slime shock receipt requires actual powered contact (unpowered)
+PASS slime shock receipt requires actual powered contact (live)
+PASS tonic recipe preserves excess and unrelated stocks (17)
+PASS tonic recipe preserves excess and unrelated stocks (127)
+PASS tonic recipe preserves excess and unrelated stocks (255)
+PASS frost recipe and missing-reagent control retain unrelated nutrients
+PASS liquid light use is explicit and query helpers remain pure
+PASS liquid light supporting ordinarily paid moss records energy use without conjuring biomass
+PASS recorded unmetered power is named, finite, and zero uses are inert
+PASS solar query is pure; actual liquid-light power is separated from ordinary sunlight
+PASS hot coolant has measured cooling and separately unmetered boiler output (1)
+PASS hot coolant has measured cooling and separately unmetered boiler output (127)
+PASS hot coolant has measured cooling and separately unmetered boiler output (255)
+PASS cold coolant stops boiler without spending heat or recording abstract output
+PASS snapshots, binary/world codes, actual undo and missing-ledger baseline
+{"generatedSeed":7,"ticks":256,"bloomMossEvents":5,"magicalBiologicalSource":{"c":24,"n":2.4000000000000004,"p":0.24}}
+{"generatedSeed":73,"ticks":256,"bloomMossEvents":4,"magicalBiologicalSource":{"c":3779.7058823529414,"n":1.5000000000000002,"p":0.15}}
+{"generatedSeed":31337,"ticks":256,"bloomMossEvents":7,"magicalBiologicalSource":{"c":27,"n":2.7,"p":0.27}}
+1240 fantasy boundary checks passed
+
+$ node tools/check-showcase-puzzles.mjs
+{"level":9,"seed":7,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":9,"seed":73,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":9,"seed":31337,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":10,"seed":7,"ticks":121,"carrier":3029,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+{"level":10,"seed":73,"ticks":121,"carrier":2691,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+{"level":10,"seed":31337,"ticks":121,"carrier":2871,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+Showcase puzzle checks: 166 passed
+
+$ node tools/check-showcase-ui.mjs
+PASS 43 Showcase UI checks (in-memory DOM events; browser interaction remains unverified)
+
+$ node tools/build.mjs
+dist/tidepool.html: 63 modules, 634.8 KB
+
+$ node tools/check-bundle.mjs
+PASS bundled initialization and first animation frame under DOM/canvas stubs
+
+$ node tools/check-accounting.mjs
+PASS 51 focused accounting checks
+
+$ node tools/check-oxygen.mjs
+PASS temperature and salinity change equilibrium, not dissolved inventory
+PASS fractional respiration and photosynthesis preserve gas molecule counts
+PASS respiration cannot spend absent oxygen or overflow product storage
+PASS water respiration accounts for fractional products and oxygen shortfalls
+PASS sealed air and a partial water tile conserve both gases during exchange
+PASS exchange cannot draw gas from an empty headspace
+PASS a sealed pair of air cells mixes without gas creation
+PASS direct atmosphere exchange has a named boundary total
+PASS pore water carries every dissolved component through soil and back into a pool
+PASS sponge soaking and cold wringing preserve salt and dissolved oxygen
+PASS pore transfers conserve water, dissolved and dry-matrix sensible heat
+PASS mud respiration credits only the oxygen actually present
+PASS roots store taken nitrogen and transpiration retains the remaining contents
+PASS roots withdraw pure water and store nitrogen from damp soil too
+PASS a plant without oxygen retains unmetabolized sugar and accumulates stress
+PASS moss cannot respire without a reserve and removed moss loses its saved reserve explicitly
+PASS surface evaporation retains both salt and sugar in a mixed residue
+PASS plain water can dry after releasing its gases into finite headspace
+PASS a drying living puddle preserves its algae in a one-unit film
+PASS the last drop waits when its gas products have no storage room
+PASS wind drift carries dissolved ingredients and pending energy with gas
+PASS steam entering open weather records the components it carries out
+PASS rain dilutes existing solutes and records its atmospheric oxygen
+PASS rain and evaporation retain dissolved sensible heat and record carrier boundary heat
+PASS electrolysis retains salt, sugar and actual dissolved oxygen in its remaining water
+PASS electrolysis reserves product space and leaves the final carrier unit
+All 26 focused oxygen checks passed.
+
+$ node tools/check-thermal.mjs
+Thermal accounting checks passed (144 assertions).
+
+$ node tools/check-devices.mjs
+Device accounting checks passed (160 assertions).

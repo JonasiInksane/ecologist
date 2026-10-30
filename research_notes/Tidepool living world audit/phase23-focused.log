@@ -1,0 +1,204 @@
+Phase23 focused verification, 2026-10-30T00:34:36.580Z
+One worker; full regression scenes run separately.
+
+$ node tools/check-terrarium.mjs
+Terrarium checks: 187 passed
+
+$ node tools/check-fantasy.mjs
+PASS description, ledger, inventory and snapshot reads do not initialize state
+PASS new worlds have a stable zero ledger before reads or saves
+PASS pure local receipts match existing ecology and heat definitions across material states
+PASS void sink retains quantitative meaning (7/127)
+PASS void sink retains quantitative meaning (255/1)
+PASS void sink retains quantitative meaning (255/255)
+PASS void/aether destroys both parcels and their pending heat once
+PASS void light loss records material/thermal loss without inventing a radiative reserve
+PASS mimic copies only the first contacted liquid and stops this step
+PASS mimic identity 3 records its material/biological/heat delta
+PASS mimic identity 28 records its material/biological/heat delta
+PASS mimic identity 22 records its material/biological/heat delta
+PASS mimic identity 2 records its material/biological/heat delta
+PASS ordinary swaps, same-material contacts and blocked brine do not register magic
+PASS repeated frost cooling has measured heat sink (1)
+PASS repeated frost cooling has measured heat sink (127)
+PASS repeated frost cooling has measured heat sink (255)
+PASS aether-crystal records an actual representation change
+PASS frost-water records an actual representation change
+PASS coolant-quench records an actual representation change
+PASS slime-moss records an actual representation change
+PASS non-phase crystal retains injected pending heat through subsequent heat passes
+PASS storm boiling records transmutation and retains pending heat for ordinary steam balance
+PASS bloom-moss registers magical tissue exactly once
+PASS tonic-moss registers magical tissue exactly once
+PASS moss conjured before ordinary initialization is not introduced a second time
+PASS slime methane is distinct from ordinary finite detrital methanogenesis
+PASS tonic recipe preserves excess and unrelated stocks (17)
+PASS tonic recipe preserves excess and unrelated stocks (127)
+PASS tonic recipe preserves excess and unrelated stocks (255)
+PASS frost recipe and missing-reagent control retain unrelated nutrients
+PASS liquid light use is explicit and query helpers remain pure
+PASS recorded unmetered power is named, finite, and zero uses are inert
+PASS solar query is pure; actual liquid-light power is separated from ordinary sunlight
+PASS hot coolant has measured cooling and separately unmetered boiler output (1)
+PASS hot coolant has measured cooling and separately unmetered boiler output (127)
+PASS hot coolant has measured cooling and separately unmetered boiler output (255)
+PASS cold coolant stops boiler without spending heat or recording abstract output
+PASS snapshots, binary/world codes, actual undo and missing-ledger baseline
+{"generatedSeed":7,"ticks":256,"bloomMossEvents":5,"magicalBiologicalSource":{"c":24,"n":2.4000000000000004,"p":0.24}}
+{"generatedSeed":73,"ticks":256,"bloomMossEvents":4,"magicalBiologicalSource":{"c":3779.7058823529414,"n":1.5000000000000002,"p":0.15}}
+{"generatedSeed":31337,"ticks":256,"bloomMossEvents":7,"magicalBiologicalSource":{"c":27,"n":2.7,"p":0.27}}
+1172 fantasy boundary checks passed
+
+$ node tools/check-showcase-puzzles.mjs
+{"level":9,"seed":7,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":9,"seed":73,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":9,"seed":31337,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":10,"seed":7,"ticks":121,"carrier":3029,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+{"level":10,"seed":73,"ticks":121,"carrier":2691,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+{"level":10,"seed":31337,"ticks":121,"carrier":2871,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+Showcase puzzle checks: 166 passed
+
+$ node tools/check-showcase-ui.mjs
+PASS 40 Showcase UI checks (in-memory DOM events; browser interaction remains unverified)
+
+$ node tools/check-ecology.mjs
+PASS 217 finite ecology and C/N/P accounting checks
+
+$ node tools/check-cold-ecology.mjs
+{"producer":[{"temperature":20,"made":0.1,"respired":0.019999999999996618,"change":0.08000000000000185},{"temperature":10,"made":0.05,"respired":0.009999999999998309,"change":0.03999999999999915},{"temperature":0,"made":0,"respired":0.005000000000005219,"change":-0.015000000000000568}],"darkLoss":[0.05999999999999872,0.030000000000001137,0.015000000000000568],"starvation":[{"temperature":20,"ticks":11100,"foodAdded":0},{"temperature":10,"ticks":22201,"foodAdded":0},{"temperature":0,"ticks":44401,"foodAdded":0}]}
+Cold ecology checks: 159 passed
+
+$ node tools/check-ice-light.mjs
+53 clear-ice light and finite photosynthesis checks pass
+
+$ node tools/check-erosion-accounting.mjs
+PASS wet-bank erosion preserves mixed parcels (48 river, 106 pore)
+PASS wet-bank erosion preserves mixed parcels (250 river, 255 pore)
+PASS wet-bank erosion preserves mixed parcels (255 river, 73 pore)
+PASS wet-bank erosion preserves mixed parcels (17 river, 0 pore)
+PASS wet-bank erosion preserves mixed parcels (1 river, 255 pore)
+PASS fractional wet bank retains its unrepresentable porewater and soil
+PASS sand erosion retains the actual partial-powder thermal charge (0)
+PASS sand erosion retains the actual partial-powder thermal charge (63.5)
+PASS sand erosion retains the actual partial-powder thermal charge (255)
+PASS slump uses actual finite water (200 river, 0 pore)
+PASS slump uses actual finite water (100 river, 80 pore)
+PASS slump uses actual finite water (1 river, 255 pore)
+PASS slump uses actual finite water (160 river, 0 pore)
+PASS slump uses actual finite water (25 river, 160 pore)
+PASS slump defers absent or fractional carrier (159 river, 0 pore)
+PASS slump defers absent or fractional carrier (79 river, 80 pore)
+PASS slump defers absent or fractional carrier (255 river, 37.5 pore)
+PASS washing whole mud retains water and every component (1)
+PASS washing whole mud retains water and every component (48)
+PASS washing whole mud retains water and every component (255)
+PASS repeated settling/washing retains its first sediment load (12.5)
+PASS repeated settling/washing retains its first sediment load (255)
+PASS repeated settling/washing retains its first sediment load (413.75)
+PASS silt sinking conserves amount across unequal/full carriers (255/17, 250)
+PASS silt sinking conserves amount across unequal/full carriers (17/255, 23)
+PASS silt sinking conserves amount across unequal/full carriers (47/93, 255)
+PASS silt sinking conserves amount across unequal/full carriers (47/93, 320)
+PASS bed deposition transfers real whole carrier with all contents (48/254)
+PASS bed deposition transfers real whole carrier with all contents (3/240)
+PASS bed deposition transfers real whole carrier with all contents (255/255)
+PASS bed deposition transfers real whole carrier with all contents (53/177)
+PASS settling keeps the entire water parcel (1)
+PASS settling keeps the entire water parcel (32)
+PASS settling keeps the entire water parcel (255)
+PASS packing retains porewater, solutes and existing soil (1)
+PASS packing retains porewater, solutes and existing soil (73)
+PASS packing retains porewater, solutes and existing soil (255)
+PASS empty/incorrect/out-of-world parcels do not trigger transformations
+PASS live erosion tick reproduces the wet-bank carrier-mixing case conservatively
+PASS whole-parcel wash retains the legacy expected-volume probability
+{"exposedBank":true,"sterile":false,"ticks":3000,"maximumAbsoluteDrift":{"c":4.656612873077393e-10,"n":4.973799150320701e-14,"p":3.1086244689504383e-15}}
+PASS original exposed woodland bank closes C/N/P at every actual step (ordinary finite microbes)
+{"exposedBank":true,"sterile":true,"ticks":3000,"maximumAbsoluteDrift":{"c":4.0745362639427185e-10,"n":3.552713678800501e-14,"p":2.6645352591003757e-15}}
+PASS original exposed woodland bank closes C/N/P at every actual step (microbial banks removed)
+42 erosion accounting checks passed
+
+$ node tools/check-feeding.mjs
+Feeding checks: 62 passed
+
+$ node tools/check-roots.mjs
+57 connected-root checks pass
+
+$ node tools/check-plant-air.mjs
+Plant air checks: 111 passed
+
+$ node tools/check-habitats.mjs
+157 generated habitat checks pass
+
+$ node tools/check-woodland-moisture.mjs
+{"watered":{"height":5,"flower":true,"nectarCollected":2.8000000000000003,"honeyStored":2.8000000000000003},"dry":{"height":1,"flower":false,"nectarCollected":0,"honeyStored":0}}
+150 woodland moisture checks pass
+
+$ node tools/check-fish-recovery.mjs
+23 fish recovery checks pass
+
+$ node tools/check-hive-sites.mjs
+85 generated hive placement checks pass
+
+$ node tools/check-hives.mjs
+{"fed":{"bees":3,"honey":0.6252179955080884,"heat":1617.3840538980553,"deaths":{},"lowest":-4},"unfed":{"bees":0,"honey":0,"heat":0,"deaths":{"bee:cold":3},"lowest":-10},"winter":{"bees":3,"honey":0.6138345406449018,"heat":1753.9855122568329,"deaths":{},"outdoorMin":-12.499277669344666,"outdoorMax":4.084942070791646}}
+Hive checks: 129 passed
+
+$ node tools/check-bee-routing.mjs
+Bee routing checks: 121 passed
+
+$ node tools/check-sky.mjs
+{"ok":true,"checks":51,"note":"Exact full-frame parity for thresholds, fog, day/night, every world row/column, fractional views and terrain/liquid blockers"}
+
+$ node tools/check-ecosystem-metrics.mjs
+PASS ecosystem acceptance rejects lost matter, replenishment, leaks, invalid stores, missing fixed seeds and unrecorded fish changes
+
+$ node tools/check-generated-ecosystem-metrics.mjs
+68 generated ecosystem acceptance checks pass
+
+$ node tools/check-accounting.mjs
+PASS 51 focused accounting checks
+
+$ node tools/check-oxygen.mjs
+PASS temperature and salinity change equilibrium, not dissolved inventory
+PASS fractional respiration and photosynthesis preserve gas molecule counts
+PASS respiration cannot spend absent oxygen or overflow product storage
+PASS water respiration accounts for fractional products and oxygen shortfalls
+PASS sealed air and a partial water tile conserve both gases during exchange
+PASS exchange cannot draw gas from an empty headspace
+PASS a sealed pair of air cells mixes without gas creation
+PASS direct atmosphere exchange has a named boundary total
+PASS pore water carries every dissolved component through soil and back into a pool
+PASS sponge soaking and cold wringing preserve salt and dissolved oxygen
+PASS pore transfers conserve water, dissolved and dry-matrix sensible heat
+PASS mud respiration credits only the oxygen actually present
+PASS roots store taken nitrogen and transpiration retains the remaining contents
+PASS roots withdraw pure water and store nitrogen from damp soil too
+PASS a plant without oxygen retains unmetabolized sugar and accumulates stress
+PASS moss cannot respire without a reserve and removed moss loses its saved reserve explicitly
+PASS surface evaporation retains both salt and sugar in a mixed residue
+PASS plain water can dry after releasing its gases into finite headspace
+PASS a drying living puddle preserves its algae in a one-unit film
+PASS the last drop waits when its gas products have no storage room
+PASS wind drift carries dissolved ingredients and pending energy with gas
+PASS steam entering open weather records the components it carries out
+PASS rain dilutes existing solutes and records its atmospheric oxygen
+PASS rain and evaporation retain dissolved sensible heat and record carrier boundary heat
+PASS electrolysis retains salt, sugar and actual dissolved oxygen in its remaining water
+PASS electrolysis reserves product space and leaves the final carrier unit
+All 26 focused oxygen checks passed.
+
+$ node tools/check-thermal.mjs
+Thermal accounting checks passed (144 assertions).
+
+$ node tools/check-devices.mjs
+Device accounting checks passed (157 assertions).
+
+$ node tools/check-life.mjs
+PASS life diagnostics, local crowding, hypoxia, aerated control and bounded history
+
+$ node tools/build.mjs
+dist/tidepool.html: 62 modules, 633.8 KB
+
+$ node tools/check-bundle.mjs
+PASS bundled initialization and first animation frame under DOM/canvas stubs

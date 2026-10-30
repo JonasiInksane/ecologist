@@ -1,0 +1,22 @@
+{
+  "seed": 73,
+  "snapshotTick": 86440,
+  "control": "one plant pass at held noon, no material added",
+  "plant": 4,
+  "air": 18994,
+  "fixedCarbon": 4.004334683645993,
+  "priorStress": 622,
+  "finalStress": 0,
+  "dryPlant": 5,
+  "dryStress": [
+    443,
+    444
+  ],
+  "inventoryDelta": {
+    "c": 0,
+    "n": 1.8189894035458565e-12,
+    "p": 0
+  },
+  "introductionsUnchanged": true,
+  "ok": true
+}

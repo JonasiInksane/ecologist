@@ -10,6 +10,7 @@ import { parts } from './particles.js';
 import { pipeShow, pipeTick } from './pipes.js';
 import { plants } from './plants.js';
 import { ecoEnsureBody, ecoInitializeWorld, ecoIntroduce, ecoMigrateBag, ecoOwnLegacyPlant, ecoPlantPool } from './ecology.js';
+import { initializeFantasyAccounting } from './fantasy.js';
 import { resetPressure } from './pressure.js';
 import { S, afloat, bodies, deco, devices, drop, fire, flux, held, latent, AIR_OX, AIR_CARB, airOx, airCarb, liq, pumps, sol, solid, stamp, temp, typ, under, vel, wakeAll } from './world.js';
 
@@ -66,9 +67,13 @@ function restore(snap) {
   for (const [k, d] of structuredClone(snap.devices)) devices.set(k, d);
   setTideState(structuredClone(snap.tide));
   S.ecology = null;
+  S.terrarium = null;
+  S.editing = false;
+  S.draft = null;
   S.nextPlantId = 0;
   S.mossSugar = {}; S.accounting = {}; S.diagnostics = { deaths: [], deathCounts: {}, births: {} };
   Object.assign(S, structuredClone(snap.state));
+  initializeFantasyAccounting({ legacy: !snap.state?.accounting?.fantasy });
   S.nextPlantId = Math.max(S.nextPlantId || 0, ...plants.map(p => p.id || 0));
   const oldPlantIds = plants.filter(p => !p.id);
   for (const p of oldPlantIds) p.id = ++S.nextPlantId;
@@ -92,6 +97,7 @@ function migrateStoredOxygen(contents, temperature) {
 
 // The world as the modules first set it up, before any generation: a new world starts from here, so nothing from the
 // previous world (stray air, climate or stamps) can change how a seed builds.
+initializeFantasyAccounting();
 const PRISTINE = capture();
 function restorePristine() { restore(PRISTINE); }
 

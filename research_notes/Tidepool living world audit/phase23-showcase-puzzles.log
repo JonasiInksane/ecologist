@@ -1,0 +1,7 @@
+{"level":9,"seed":7,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":9,"seed":73,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":9,"seed":31337,"ticks":121,"fuel":11,"text":"fuel 11/11 · vent shut · fire out"}
+{"level":10,"seed":7,"ticks":121,"carrier":3029,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+{"level":10,"seed":73,"ticks":121,"carrier":2691,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+{"level":10,"seed":31337,"ticks":121,"carrier":2871,"salt":0,"text":"fresh water 10/10 · receiver salt 0.00"}
+Showcase puzzle checks: 166 passed

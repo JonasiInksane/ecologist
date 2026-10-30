@@ -3,6 +3,20 @@ import { ECOSYSTEM_GATE } from './ecosystem-data.mjs';
 function invalidEcosystemPools(pools) {
   return pools.filter(pool => ['c', 'n', 'p'].some(key => !Number.isFinite(pool[key]) || pool[key] < -1e-8)).length;
 }
+function invalidEcosystemStores({ ecology: e, bodies = [], plants = [], mossSugar = {} }) {
+  const pools = [...Object.values(e.tissue), ...Object.values(e.dead), ...Object.values(e.soil),
+    ...Object.values(e.inoculum), ...bodies.map(b => b.bio).filter(Boolean), e.introduced, e.removed, e.riverInventory,
+    ...plants.map(p => ({ c: p.sugar, n: p.nitrogen, p: p.phosphorus }))];
+  const amounts = [...Object.values(e.comb), ...Object.values(e.nectar), ...Object.values(e.methane),
+    ...Object.values(e.oxygenCredit), ...Object.values(mossSugar), e.nitrogenGas,
+    ...bodies.filter(b => b.load !== undefined).map(b => b.load)];
+  return invalidEcosystemPools(pools) + amounts.filter(n => !Number.isFinite(n) || n < -1e-8).length;
+}
+function ecosystemSuiteComplete({ suite, days, seeds, failed }, gate = ECOSYSTEM_GATE) {
+  return suite === true && Number.isFinite(days) && days >= gate.days && failed === 0 &&
+    Array.isArray(seeds) && seeds.every(Number.isInteger) && new Set(seeds).size === seeds.length &&
+    gate.seeds.every(seed => seeds.includes(seed));
+}
 function assessEcosystem(samples, { scenario, days, gate = ECOSYSTEM_GATE }) {
   if (!samples.length) throw new Error('At least an initial sample is required');
   const initial = samples[0], last = samples.at(-1), checks = [];
@@ -18,9 +32,10 @@ function assessEcosystem(samples, { scenario, days, gate = ECOSYSTEM_GATE }) {
   check('closed water inventory', Math.max(...samples.map(s => Math.abs(s.water - initial.water))) < gate.waterTolerance, last.water - initial.water);
   check('no atmosphere intervention', samples.every(s => s.atmosphereCarbon === initial.atmosphereCarbon && s.atmosphereOxygen === initial.atmosphereOxygen));
   check('finite nonnegative biological stores', samples.every(s => !s.invalid));
-  const sum = values => Object.values(values).reduce((a, b) => a + b, 0);
-  const deaths = sum(last.deaths) - sum(initial.deaths), births = sum(last.births) - sum(initial.births);
-  check('population changes have recorded births and deaths', samples.every(s => s.fish === initial.fish + sum(s.births) - sum(initial.births) - sum(s.deaths) + sum(initial.deaths)), { fish: last.fish, births, deaths });
+  const fishBirths = s => s.births.fish ?? 0;
+  const fishDeaths = s => Object.entries(s.deaths).filter(([key]) => key.startsWith('fish:')).reduce((sum, [, n]) => sum + n, 0);
+  const deaths = fishDeaths(last) - fishDeaths(initial), births = fishBirths(last) - fishBirths(initial);
+  check('population changes have recorded births and deaths', samples.every(s => s.fish === initial.fish + fishBirths(s) - fishBirths(initial) - fishDeaths(s) + fishDeaths(initial)), { fish: last.fish, births, deaths });
   if (scenario === 'balanced') {
     check('viable fish population throughout', samples.every(s => s.fish >= gate.fishMin && s.fish <= gate.fishMax), samples.map(s => s.fish));
     check('living plants at horizon', last.plants >= 1, last.plants);
@@ -39,4 +54,4 @@ function assessEcosystem(samples, { scenario, days, gate = ECOSYSTEM_GATE }) {
   if (scenario === 'overfed') check('overfed losses have a specific recorded cause', deaths > 0 && !last.deaths['fish:other'], last.deaths);
   return checks;
 }
-export { assessEcosystem, invalidEcosystemPools };
+export { assessEcosystem, invalidEcosystemPools, invalidEcosystemStores, ecosystemSuiteComplete };

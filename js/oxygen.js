@@ -10,7 +10,7 @@
 // gas accounting. Surface exchange debits both finite reservoirs; only the open atmosphere is an external source.
 // This is a fixed-volume, room-temperature air reference, not a pressure simulation. Dissolved CO2 uses oxygen-
 // equivalent mass (equal molecule counts), so its actual mass is the reported equivalent times 44/32.
-import { SOL_CO2, CHUNK, FLOWER, GLASS, H, LEAF, NBLOCK, NSOL, PLANT, SOL_O2, SOL_SALT, W, WATER } from './config.js';
+import { SOL_CO2, CHUNK, FLOWER, GLASS, H, ICE, LEAF, NBLOCK, NSOL, PLANT, SOL_O2, SOL_SALT, W, WATER } from './config.js';
 import { LIQ } from './liquids.js';
 import { AIR_CARB, AIR_OX, CHH, CW, S, airCarb, airOx, liq, sol, solid, temp, typ, vel } from './world.js';
 
@@ -105,14 +105,15 @@ function skyAir(k) {
   for (let o = k - W; o >= 0; o -= W) if (solid[o] || (liq[o] && !LIQ[typ[o]].gas)) return false;
   return true;
 }
-// Whether daylight reaches tile k: nothing opaque above it in its column. Glass, water, gas and a plant's own leaves
-// and flower let it through.
+// Whether daylight reaches tile k: nothing opaque above it in its column. Clear ice, glass,
+// water, gas and a plant's own leaves/flower transmit this binary game light. Snow stays opaque;
+// ice thickness, bubbles and spectral attenuation are outside this visibility model.
 function skyAbove(k) {
   for (let o = k - W; o >= 0; o -= W) if (solid[o] && !SEE_THROUGH[solid[o]]) return false;
   return true;
 }
 const SEE_THROUGH = new Uint8Array(NBLOCK);
-[GLASS, LEAF, PLANT, FLOWER].forEach(b => { SEE_THROUGH[b] = 1; });
+[GLASS, ICE, LEAF, PLANT, FLOWER].forEach(b => { SEE_THROUGH[b] = 1; });
 // Whether a fire can draw on the air at tile k.
 const burnable = k => isAir(k) && airOx[k] >= FIRE_OX;
 const stifling = k => isAir(k) && (airOx[k] < CHOKE_OX || airCarb[k] > CHOKE_CARB);

@@ -1,0 +1,17 @@
+
+puzzle levels can be solved, and fail when they should  (17.0 s)
+  PASS  there are eleven levels
+  PASS  1. Glassworks: opening the hopper over the lava makes enough glass  (glass 15/15)
+  PASS  2. The cauldron: water, heat, honey and bloomwater brew tonic  (tonic in the cauldron 10/10 · levers: water, boiler, honey, bloomwater)
+  PASS  3. The lower chamber: the valve route fills it safely  (water in the chamber 60/60)
+  PASS  3. The lower chamber: the floodgate route fails  (The water touched the lava.)
+  PASS  4. Save the fish: a shaft dug down from the pond drops them into the lake  (fish in the lake 4/4)
+  PASS  5. Steam power: opening the valve opens the vault  (the vault is open)
+  PASS  6. Two shafts: digging out the plug fills the high basin  (water in the basin 20/20)
+  PASS  7. Thunder dome: splitting the brine, then lighting the fuse, blows the vault open  (the vault is open)
+  PASS  7. Thunder dome: the fuse alone, with no gas made, leaves the wall standing  (the vault wall stands)
+  PASS  8. Depth gauge: filling to the mark and shutting the spring  (the gauge reads full and the spring is shut)
+  PASS  8. Depth gauge: leaving the spring running overflows the tank  (The tank overflowed.)
+  PASS  9. Furnace: lighting the wood casts metal in the mould  (metal in the mould 3/3)
+
+all checks passed · matching puzzle levels run, 1 scenes, 17.3 s

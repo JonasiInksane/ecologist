@@ -1,0 +1,2 @@
+{"producer":[{"temperature":20,"made":0.1,"respired":0.019999999999996618,"change":0.08000000000000185},{"temperature":10,"made":0.05,"respired":0.009999999999998309,"change":0.03999999999999915},{"temperature":0,"made":0,"respired":0.005000000000005219,"change":-0.015000000000000568}],"darkLoss":[0.05999999999999872,0.030000000000001137,0.015000000000000568],"starvation":[{"temperature":20,"ticks":11100,"foodAdded":0},{"temperature":10,"ticks":22201,"foodAdded":0},{"temperature":0,"ticks":44401,"foodAdded":0}]}
+Cold ecology checks: 159 passed

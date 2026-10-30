@@ -1,0 +1,133 @@
+{
+  "recordedAt": "2026-10-30T01:01:45.177Z",
+  "runtimeDigest": "15d6cdcf8132496d39a0de16f602d48dd10380c2bf05bca927378ac0b79ee0b9",
+  "scope": {
+    "broad": "81 scenes / 393 checks passed while approved final fixes were landing; no single final-source full-suite claim.",
+    "finalAffected": "20 scenes / 94 checks passed with unchanged final runtime source.",
+    "model": "273 checks including exact step0/1/8/32/64 snapshots and next RNG draw for 12 preserved-source jar cases; only asserted new empty/default metadata omitted.",
+    "finalShowcase": "189 terrarium,1240 fantasy,166 new-puzzle,43 UI-event checks; build and first frame; final accounting51/oxygen26/thermal144/devices160.",
+    "otherFocused": "27 commands passed before final small fixes; later affected coverage is explicit above.",
+    "ordinaryFrame": "One seed7 generated frame after64 seeded steps matches the Phase22 source exactly; this is not all-frame or long-run generated parity.",
+    "longGates": "Prior eight-day outdoor and ten-day balanced-jar evidence remains tied to the preserved Phase22 digest; not rerun after Showcase.",
+    "browser": "Interactive browser validation unavailable after Windows URL policy guard stopped computer use; no alternate browser path used.",
+    "performance": "Quiet final profiles retained. Storm mean render18.30ms exceeds16.7ms; no60fps claim. Terrarium has a smaller2x viewport.",
+    "limitations": "Magical creature powers, all industrial elemental yields and calibrated full-energy closure remain outside this material-boundary slice."
+  },
+  "artifacts": [
+    {
+      "name": "phase23-existing-puzzles.log",
+      "bytes": 1393,
+      "sha256": "3e5b1eb5e5af5bc3de6687cda8f86b4ffa810775eda8e9bb1538240ad960e031"
+    },
+    {
+      "name": "phase23-fantasy-before.jsonl",
+      "bytes": 1623,
+      "sha256": "b047efa7bca9bf1b8e57825ec5cc63668f5c67014c7a7d773d5e9d1705e840ad"
+    },
+    {
+      "name": "phase23-fantasy.log",
+      "bytes": 3629,
+      "sha256": "e4b2ee6e04c0a14d03588fde6938980ad39eb0bb943f4f76cd353a635d70962e"
+    },
+    {
+      "name": "phase23-fire-local-view.png",
+      "bytes": 18909,
+      "sha256": "b5c622b3bd03c6a57c5d9243ac4a78ab33be1f2de165f610fa1bcf9152efbb08"
+    },
+    {
+      "name": "phase23-fire-puzzle.png",
+      "bytes": 19146,
+      "sha256": "1a984876bb6cb5aaf4273897fc9aa9d2e19e140f300831237dff68c32bb38eae"
+    },
+    {
+      "name": "phase23-focused-results.json",
+      "bytes": 6647,
+      "sha256": "881f923389c626979519235754da0a3375f83b2f6cd5900a75d8feb378a1c8b8"
+    },
+    {
+      "name": "phase23-focused.log",
+      "bytes": 12165,
+      "sha256": "b40f31b797cc8145b9a046a6f2df4066c39492340a1393032909a4e7d89ed2b3"
+    },
+    {
+      "name": "phase23-ordinary-frame-parity.json",
+      "bytes": 303,
+      "sha256": "d4883bd4ec7a1367412b7a7e4b110c21a255f246bf32f92bbd127b7953ac0b00"
+    },
+    {
+      "name": "phase23-ordinary-parity.png",
+      "bytes": 120386,
+      "sha256": "ce93c3d3ec8e48730fe40a281ecd6909770437705726202bd022bd38a9fb611a"
+    },
+    {
+      "name": "phase23-performance.log",
+      "bytes": 4567,
+      "sha256": "a28d120262cc1e402e8b326950e8356eb82835ce58531f9cb0e2cd01cbb7f553"
+    },
+    {
+      "name": "phase23-regressions-final-source.json",
+      "bytes": 11736,
+      "sha256": "e42abe175a1a262c3bae54039c99bce25defe4f91861a9fe8107ee79292508f8"
+    },
+    {
+      "name": "phase23-regressions-final-targets.log",
+      "bytes": 12561,
+      "sha256": "970e02018453e716633b8c5b5d3ef13e14f8da991e1db1c6b0df0d3dd0823601"
+    },
+    {
+      "name": "phase23-regressions-source.json",
+      "bytes": 11788,
+      "sha256": "79685bd1f4a5d8132a2eee8ae228b149e582966d41bd41c7066619c02bf2ee73"
+    },
+    {
+      "name": "phase23-regressions.log",
+      "bytes": 46965,
+      "sha256": "c58b081fdb421e463f7e5ea6c872c114a34e4dd6d3cd58b1349c75d61f6cc378"
+    },
+    {
+      "name": "phase23-showcase-final-results.json",
+      "bytes": 1808,
+      "sha256": "acf89667bea6e350f3113825368dcd5925b97270171447be1be52c1edf3a91d3"
+    },
+    {
+      "name": "phase23-showcase-final.log",
+      "bytes": 6979,
+      "sha256": "263ef7cb83e532979c75469e29833332199ecea67952e0ee18344391d26a458e"
+    },
+    {
+      "name": "phase23-showcase-puzzles.log",
+      "bytes": 637,
+      "sha256": "f9f880985524b91cf4fd4bd2cc01a32bcaeb2fc963e14988815c607bd50d1561"
+    },
+    {
+      "name": "phase23-source.json",
+      "bytes": 5804,
+      "sha256": "e667060fd4bbe15c52af4d0962aba4a5918c2b512fc670f8910be40efa59f77a"
+    },
+    {
+      "name": "phase23-still-local-view.png",
+      "bytes": 16363,
+      "sha256": "f7508ddc7f8dd86f47f98a6ddbdff1595bb8c383768bde8b10f9246f313c20cb"
+    },
+    {
+      "name": "phase23-still-puzzle.png",
+      "bytes": 16360,
+      "sha256": "1fa0371cf53882ee637e02986a0dd4a750321ad4f34cfec53b2f226ece697ee3"
+    },
+    {
+      "name": "phase23-terrarium-model.log",
+      "bytes": 1363,
+      "sha256": "fc22985fa3dc5f87bf0dc152cda4149ee8ff1f04929c7c87b9ea77cb68b6be9a"
+    },
+    {
+      "name": "phase23-terrarium.png",
+      "bytes": 73393,
+      "sha256": "f36cb07a5b048a95a65c4b48c9985c1656278ed16f554165ef09ca22a8523e2d"
+    },
+    {
+      "name": "phase23-ui-independent.log",
+      "bytes": 650,
+      "sha256": "5a34dcbb19a0d710ff9e4e000f38814f092d48e005903a13f047fd2dc3be2182"
+    }
+  ]
+}

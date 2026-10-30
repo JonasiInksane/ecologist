@@ -3,13 +3,14 @@
 import { spawn } from 'node:child_process';
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { ECOSYSTEM_GATE } from './ecosystem-data.mjs';
-import { assessEcosystem, invalidEcosystemPools } from './ecosystem-metrics.mjs';
+import { assessEcosystem, invalidEcosystemStores, ecosystemSuiteComplete } from './ecosystem-metrics.mjs';
 // The coordinator owns no world arrays. Only workers load the simulation and browser stubs.
-let C, Wd, at, clearWorld, box, fill, step, Eco, Bd, Pl, Oxy, Air, Sol, DAY_TICKS, dayPhase;
+let C, Wd, step, reseed, Eco, Pl, Oxy, Air, Sol, DAY_TICKS, dayPhase, buildEcosystemJar;
 if (process.env.ECOSYSTEM_SEED) {
-  ({ C, Wd, at, clearWorld, box, fill, step } = await import('./test-support.mjs'));
-  [Eco, Bd, Pl, Oxy, Air, Sol] = await Promise.all(['ecology.js', 'bodies.js', 'plants.js', 'oxygen.js', 'air.js', 'solutes.js'].map(name => import('../js/' + name)));
+  ({ C, Wd, step, reseed } = await import('./test-support.mjs'));
+  [Eco, Pl, Oxy, Air, Sol] = await Promise.all(['ecology.js', 'plants.js', 'oxygen.js', 'air.js', 'solutes.js'].map(name => import('../js/' + name)));
   ({ DAY_TICKS, dayPhase } = await import('../js/daynight.js'));
+  ({ buildEcosystemJar } = await import('../js/terrarium.js'));
 }
 const option = (name, fallback) => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const days = Number(option('days', String(ECOSYSTEM_GATE.days))), scenario = option('case', 'balanced');
@@ -17,27 +18,8 @@ const out = option('out', '');
 if (!Number.isFinite(days) || !(days > 0) || !['balanced', 'dark', 'overfed', 'unfed'].includes(scenario)) throw new Error('Use finite positive --days and --case=balanced|dark|overfed|unfed');
 
 function ecosystemJar(seed, mode) {
-  clearWorld(seed); Wd.S.timeMode = mode === 'dark' ? 'night' : 'cycle'; Wd.S.timeShift = 0;
-  box(30, 30, 60, 30, C.GLASS); box(30, 56, 60, 56, C.GLASS);
-  box(30, 30, 30, 56, C.GLASS); box(60, 30, 60, 56, C.GLASS);
-  box(31, 54, 59, 55, C.STONE); box(41, 50, 59, 53, C.STONE);
-  fill(31, 46, 40, 53, C.WATER, 20);
-  box(41, 49, 59, 49, C.DIRT); box(41, 46, 41, 48, C.STONE);
-  for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) {
-    const k = at(x, y);
-    Wd.sol[k * C.NSOL + C.SOL_ALGAE] = mode === 'unfed' ? 0 : 20;
-    Wd.sol[k * C.NSOL + C.SOL_FERT] = mode === 'overfed' ? 200 : 10;
-  }
-  Pl.plantSeed(at(42, 48)); Pl.plantSeed(at(44, 48)); Eco.ecoInitializeWorld();
-  if (mode === 'overfed') for (let y = 46; y <= 53; y++) for (let x = 31; x <= 40; x++) Eco.ecoDeposit(at(x, y), { c: 1000, n: 100, p: 10 });
-  // This control is intentionally sterile: no producer, airborne starter or hidden food is available.
-  if (mode === 'unfed') {
-    for (const pool of Object.values(Eco.ecoState().inoculum)) { Eco.ecoState().removed.c += pool.c; Eco.ecoState().removed.n += pool.n; Eco.ecoState().removed.p += pool.p; pool.c = pool.n = pool.p = 0; }
-  }
-  const fish = [Bd.addBody('fish', 33 * C.T, 50 * C.T), Bd.addBody('fish', 37 * C.T, 51 * C.T)];
-  Wd.S.tick = Math.round(0.95 * DAY_TICKS); // same 07:12 start as the existing jar scene
-  Wd.wakeAll();
-  return fish.map(b => b.id);
+  reseed(seed);
+  return buildEcosystemJar(mode);
 }
 function ecosystemSample(start, original) {
   const e = Eco.ecoState(), total = Eco.ecoInventory(Pl.plants), minerals = { n: 0, p: 0 };
@@ -61,10 +43,7 @@ function ecosystemSample(start, original) {
   for (const pool of [...Object.values(e.tissue), ...Wd.bodies.map(b => b.bio).filter(Boolean)]) {
     biomass += pool.c;
   }
-  invalid += invalidEcosystemPools([...Object.values(e.tissue), ...Object.values(e.dead), ...Object.values(e.soil),
-    ...Object.values(e.inoculum), ...Wd.bodies.map(b => b.bio).filter(Boolean), e.introduced, e.removed, e.riverInventory,
-    ...Pl.plants.map(p => ({ c: p.sugar ?? 0, n: p.nitrogen ?? 0, p: p.phosphorus ?? 0 }))]);
-  for (const n of [...Object.values(e.methane), ...Object.values(e.oxygenCredit), ...Object.values(Wd.S.mossSugar), e.nitrogenGas]) if (!Number.isFinite(n) || n < -1e-8) invalid++;
+  invalid += invalidEcosystemStores({ ecology: e, bodies: Wd.bodies, plants: Pl.plants, mossSugar: Wd.S.mossSugar });
   for (const p of Pl.plants) plantReserve += p.sugar;
   const dead = Object.values(e.dead).reduce((s, p) => s + p.c, 0);
   return { day: (Wd.S.tick - start) / DAY_TICKS, phase: dayPhase(), fish: Wd.bodies.filter(b => b.kind === 'fish').length,
@@ -112,7 +91,7 @@ if (process.env.ECOSYSTEM_SEED) {
     }
   }));
   console.log(JSON.stringify({ type: 'summary', scenario: suite ? 'suite' : scenario, days, seeds, runs: tasks.length, failed,
-    completionGate: suite && days >= ECOSYSTEM_GATE.days && seeds.length >= 3 && !failed })); process.exitCode = failed ? 1 : 0;
+    completionGate: ecosystemSuiteComplete({ suite, days, seeds, failed }) })); process.exitCode = failed ? 1 : 0;
 }
 // Imported modules install UI timers; the runner has completed all of its owned work.
 process.exit(process.exitCode || 0);

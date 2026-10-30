@@ -25,6 +25,7 @@ import { weatherTick } from './weather.js';
 import { CW, S, awake, drop, flux, latent, liq, sol, solid, stamp, temp, typ, vel, wake } from './world.js';
 import { materialsTick } from './materials.js';
 import { ecoTick } from './ecology.js';
+import { observeLevel } from './level-observer.js';
 
 
 
@@ -154,6 +155,7 @@ function step() {
   updateBodies();
   if (!(S.tick & 1)) heatTick();
   fireTick();
+  observeLevel();
   if (S.pressure) { if (!(S.tick & 3)) pressureTick(); } else pressureOff();
   if (!(S.tick & 3)) soluteTick();
   if ((S.tick & 3) === 2) gasTick();

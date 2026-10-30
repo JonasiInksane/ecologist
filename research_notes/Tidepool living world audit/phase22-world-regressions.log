@@ -1,0 +1,719 @@
+START water on hot rock boils into steam
+START steam rises and condenses back into water
+START deep lava stays liquid, a thin film hardens into basalt
+DONE  water on hot rock boils into steam (2.9 s)
+START ice melts beside heat and frost freezes water
+DONE  deep lava stays liquid, a thin film hardens into basalt (4.1 s)
+START a sensor opens a floodgate when the water reaches it
+DONE  a sensor opens a floodgate when the water reaches it (1.3 s)
+START slime eats dirt; bloomwater grows moss and glowcaps
+DONE  ice melts beside heat and frost freezes water (3.0 s)
+START a crate on a pressure plate holds a gate open; a drain empties a pool
+DONE  steam rises and condenses back into water (6.1 s)
+START a timer switches a spring on and off
+DONE  a timer switches a spring on and off (0.4 s)
+START fire: oil ignites, spreads to wood, burns on water, water puts it out
+DONE  a crate on a pressure plate holds a gate open; a drain empties a pool (2.1 s)
+START pressure levels a U-bend
+DONE  fire: oil ignites, spreads to wood, burns on water, water puts it out (4.5 s)
+START settled chunks sleep and wake when disturbed
+DONE  settled chunks sleep and wake when disturbed (2.2 s)
+START inks swirl together
+DONE  slime eats dirt; bloomwater grows moss and glowcaps (8.6 s)
+START salt dissolves into brine, which sinks under fresh water
+DONE  inks swirl together (1.2 s)
+START sand piles up, sinks, turns to mud, glass and brick
+DONE  salt dissolves into brine, which sinks under fresh water (3.3 s)
+START warm water dissolves honey; brewing tonic and frost
+DONE  pressure levels a U-bend (9.6 s)
+START brine freezes colder, and boiling it away leaves salt
+DONE  brine freezes colder, and boiling it away leaves salt (1.3 s)
+START churned oil and water make foam, which separates again
+DONE  warm water dissolves honey; brewing tonic and frost (3.6 s)
+START stormwater, brine and metal carry a lever to a floodgate
+DONE  stormwater, brine and metal carry a lever to a floodgate (0.2 s)
+START a sensor set to one liquid ignores the others
+DONE  a sensor set to one liquid ignores the others (0.1 s)
+START pipes carry liquid downhill; valves and filters stop it
+DONE  sand piles up, sinks, turns to mud, glass and brick (7.5 s)
+START logic gates and counters
+DONE  logic gates and counters (1.0 s)
+START a boiler boils water only while powered
+DONE  a boiler boils water only while powered (6.2 s)
+START molten metal sets into metal
+DONE  molten metal sets into metal (4.8 s)
+START methane burns in a flash
+DONE  methane burns in a flash (0.3 s)
+START running water carves dirt and drops it as mud where it stills
+DONE  pipes carry liquid downhill; valves and filters stop it (14.1 s)
+START gases rise, layer, pool and escape
+DONE  churned oil and water make foam, which separates again (18.6 s)
+START live stormwater shocks slime
+DONE  live stormwater shocks slime (1.5 s)
+START turbines and water wheels make power
+DONE  gases rise, layer, pool and escape (8.7 s)
+START nitro explodes from heat, hard landings and power, and sets off more nitro
+DONE  nitro explodes from heat, hard landings and power, and sets off more nitro (1.6 s)
+START weather: rain, drying puddles and freezing nights
+DONE  turbines and water wheels make power (7.3 s)
+START a separator splits foam and takes the salt out of brine
+DONE  a separator splits foam and takes the salt out of brine (8.9 s)
+START gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen
+DONE  running water carves dirt and drops it as mud where it stills (27.3 s)
+START momentum: pump jets, waterfalls and whirlpools push things
+DONE  gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen (7.9 s)
+START blasts throw crates, spare obsidian and metal, and nitro rests safely under water
+DONE  momentum: pump jets, waterfalls and whirlpools push things (1.8 s)
+START mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds
+DONE  blasts throw crates, spare obsidian and metal, and nitro rests safely under water (1.4 s)
+START momentum: waves slosh, then settle and sleep
+DONE  momentum: waves slosh, then settle and sleep (9.6 s)
+START water: washes smoke away, warms with acid, dissolves caramel; salt melts ice
+DONE  water: washes smoke away, warms with acid, dissolves caramel; salt melts ice (5.0 s)
+START salamanders live in lava and die in water; slimelings split and fear salt
+DONE  salamanders live in lava and die in water; slimelings split and fear salt (4.8 s)
+START the air: clouds drift on the wind, smoke too, and mountains cast rain shadows
+DONE  weather: rain, drying puddles and freezing nights (39.9 s)
+START heat: quicksilver boils, foam breaks, wax and metal melt
+DONE  heat: quicksilver boils, foam breaks, wax and metal melt (0.8 s)
+START fish swim, breed, and die out of water or in acid
+DONE  fish swim, breed, and die out of water or in acid (4.2 s)
+START puzzle levels can be solved, and fail when they should
+DONE  mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds (29.6 s)
+START plants drink, grow, wilt and burn
+DONE  the air: clouds drift on the wind, smoke too, and mountains cast rain shadows (20.6 s)
+START generated worlds have their biomes and layers
+DONE  generated worlds have their biomes and layers (5.7 s)
+START geysers, gas vents, clay and permafrost
+DONE  geysers, gas vents, clay and permafrost (3.5 s)
+START the explorer scoops, pours, digs and places
+DONE  the explorer scoops, pours, digs and places (0.8 s)
+START sponges, soil, porous rock, wool and copper, membranes, coral, fuses
+DONE  puzzle levels can be solved, and fail when they should (30.8 s)
+START climate: height, depth and seasons
+DONE  climate: height, depth and seasons (0.6 s)
+START nature keeps its water: humid biomes, wet spells, drying ground, plants
+DONE  sponges, soil, porous rock, wool and copper, membranes, coral, fuses (19.0 s)
+START ecology: algae, grazing fish, rot
+DONE  nature keeps its water: humid biomes, wet spells, drying ground, plants (12.7 s)
+START snapshots: exact restore, world codes, seeds and undo
+DONE  plants drink, grow, wilt and burn (49.4 s)
+START fog, snow, lightning and windmills
+DONE  snapshots: exact restore, world codes, seeds and undo (7.8 s)
+START acid and alkali, fizz and carbon dioxide, growing crystals
+DONE  fog, snow, lightning and windmills (5.1 s)
+START biome weather: frozen tundra, drying desert, droughts, tides
+DONE  ecology: algae, grazing fish, rot (14.9 s)
+START a generated river keeps flowing and keeps its pond full
+DONE  acid and alkali, fizz and carbon dioxide, growing crystals (19.4 s)
+START solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers
+DONE  solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers (13.2 s)
+START water landscapes: groundwater, valleys and deltas, floating ice
+DONE  a generated river keeps flowing and keeps its pond full (28.4 s)
+START fine powders, gases that don’t shove, warm honey, planks, and pressure on by default
+DONE  fine powders, gases that don’t shove, warm honey, planks, and pressure on by default (23.4 s)
+START life: plants, flowers, bees, rot, nitrogen and fermentation
+DONE  biome weather: frozen tundra, drying desert, droughts, tides (54.9 s)
+START freezing, melting and dissolving keep mass
+DONE  freezing, melting and dissolving keep mass (6.0 s)
+START rafts, boats and balloons; air and health
+DONE  water landscapes: groundwater, valleys and deltas, floating ice (35.0 s)
+START custom levels: goals, ways to lose, and a level code that starts in the level
+DONE  custom levels: goals, ways to lose, and a level code that starts in the level (0.3 s)
+START matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density
+DONE  rafts, boats and balloons; air and health (4.3 s)
+START void ink, mimic, coolant, ferrofluid, fertiliser
+DONE  void ink, mimic, coolant, ferrofluid, fertiliser (18.6 s)
+START ecology: seasonal algae, spreading plants, pike and moths
+DONE  matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density (21.7 s)
+START chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach
+DONE  ecology: seasonal algae, spreading plants, pike and moths (30.3 s)
+START the time of day can be held at day or night, or stopped, and carries on from there
+DONE  life: plants, flowers, bees, rot, nitrogen and fermentation (73.7 s)
+START the deep caverns, rust, and frozen nitro
+DONE  the time of day can be held at day or night, or stopped, and carries on from there (15.3 s)
+START a living world: seasons in the leaves, birds that hunt moths, hail and flash floods
+DONE  a living world: seasons in the leaves, birds that hunt moths, hail and flash floods (7.9 s)
+START air and water: oxygen, fire that needs it, stratified water, soap and emulsions
+DONE  the deep caverns, rust, and frozen nitro (18.2 s)
+START smelting: ore and charcoal give molten iron and slag
+DONE  smelting: ore and charcoal give molten iron and slag (6.3 s)
+START life: a sealed jar through two day and night cycles
+DONE  chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach (69.8 s)
+START hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode
+DONE  hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode (1.8 s)
+START every kind of block draws without errors
+DONE  every kind of block draws without errors (0.0 s)
+START life: moss exchanges gases in daylight
+DONE  life: moss exchanges gases in daylight (7.8 s)
+START life: a heated still enriches its condensate
+DONE  life: a heated still enriches its condensate (10.1 s)
+DONE  life: a sealed jar through two day and night cycles (63.8 s)
+START life: local fish capacity and causal oxygen stress
+DONE  life: local fish capacity and causal oxygen stress (0.0 s)
+DONE  air and water: oxygen, fire that needs it, stratified water, soap and emulsions (84.2 s)
+START electrolysis splits water into hydrogen and oxygen
+DONE  electrolysis splits water into hydrogen and oxygen (5.7 s)
+START temperature and depth sensors, pixels, and power fading along long lines
+DONE  temperature and depth sensors, pixels, and power fading along long lines (3.0 s)
+START life: an overfed jar, bloom and recorded mortality
+DONE  life: an overfed jar, bloom and recorded mortality (60.5 s)
+START life: spirit burns from a flame
+DONE  life: spirit burns from a flame (4.2 s)
+
+water on hot rock boils into steam  (2.9 s)
+  PASS  water on hot rock boils into steam  (44 steam tiles at peak)
+
+steam rises and condenses back into water  (6.1 s)
+  PASS  steam rises  (average row 11.7)
+  PASS  steam condenses into water  (321 water tiles, 35 steam left)
+
+deep lava stays liquid, a thin film hardens into basalt  (4.1 s)
+  PASS  deep lava pool stays liquid  (102 lava tiles in pool)
+  PASS  thin lava film hardens  (22 basalt tiles)
+
+ice melts beside heat and frost freezes water  (3.0 s)
+  PASS  ice next to hot rock melts
+  PASS  frost freezes nearby water  (23 ice tiles)
+
+a timer switches a spring on and off  (0.4 s)
+  PASS  spring pours while the timer is on  (7.8 tiles)
+  PASS  spring stops while the timer is off
+
+a sensor opens a floodgate when the water reaches it  (1.3 s)
+  PASS  gate stays shut below the sensor
+  PASS  gate opens once the water touches the sensor  (78.0 tiles drained below)
+
+a crate on a pressure plate holds a gate open; a drain empties a pool  (2.1 s)
+  PASS  gate shut with nothing on the plate
+  PASS  crate presses the plate and opens the gate
+  PASS  drain empties the pool  (0.2 tiles left)
+
+fire: oil ignites, spreads to wood, burns on water, water puts it out  (4.5 s)
+  PASS  hot oil ignites  (7 tiles burning)
+  PASS  fire spreads to the wood and burns it away  (0 of 15 wood left)
+  PASS  the oil burns up
+  PASS  oil burns on top of water
+  PASS  covering burning oil with dirt smothers it  (0 still burning)
+  PASS  wood catches fire
+  PASS  water poured over burning wood puts it out  (24 wood left)
+
+slime eats dirt; bloomwater grows moss and glowcaps  (8.6 s)
+  PASS  slime eats dirt  (12 dirt eaten)
+  PASS  bloomwater turns stone to moss  (13 moss)
+  PASS  bloomwater sprouts glowcaps  (2 glowcaps)
+
+pressure levels a U-bend  (9.6 s)
+  PASS  without pressure the arms stay uneven  (gap 21 rows)
+  PASS  with pressure the arms level out  (gap 1 rows)
+
+settled chunks sleep and wake when disturbed  (2.2 s)
+  PASS  a settled world falls asleep  (256 of 256 chunks asleep)
+  PASS  digging under the pool wakes it and it drains  (43.1 of 195.0 tiles left)
+
+salt dissolves into brine, which sinks under fresh water  (3.3 s)
+  PASS  water dissolves salt blocks  (19 of 19 dissolved)
+  PASS  the water turns salty  (average salt 20.4)
+  PASS  brine sinks under fresh water  (bottom 163, top 37)
+
+brine freezes colder, and boiling it away leaves salt  (1.3 s)
+  PASS  fresh water freezes at -12°
+  PASS  brine stays liquid at -12°
+  PASS  boiling brine leaves salt behind  (7 salt blocks)
+
+inks swirl together  (1.2 s)
+  PASS  red and blue ink mix where they meet  (117 purple tiles)
+  PASS  they have not evened out completely
+
+warm water dissolves honey; brewing tonic and frost  (3.6 s)
+  PASS  water dissolves honey into sugar  (average sugar 54)
+  PASS  icy water sets honey into honeycomb
+  PASS  sugar and essence brewed past 80° become tonic  (45 tonic tiles)
+  PASS  salt and essence chilled below 0° become frost  (45 of 45 tiles became frost)
+  PASS  bloomwater dissolves into water as essence
+
+churned oil and water make foam, which separates again  (18.6 s)
+  PASS  a pump forcing oil into water churns foam  (44 foam tiles)
+  PASS  foam separates back out  (3 foam left)
+  PASS  the oil ends up on top of the water  (oil row 39.8, water row 43.3)
+
+sand piles up, sinks, turns to mud, glass and brick  (7.5 s)
+  PASS  a column of sand slumps into a sloped pile  (9 wide, 4 tall)
+  PASS  sand sinks through water  (2 grains below the surface)
+  PASS  sand in water turns to mud  (6 mud tiles)
+  PASS  heat dries mud into dirt (firing it into brick takes lava)  (9 dirt)
+  PASS  sand touching lava melts into glass  (5 glass)
+
+stormwater, brine and metal carry a lever to a floodgate  (0.2 s)
+  PASS  stormwater conducts: the gate opens only with the lever on
+  PASS  brine conducts: the gate opens only with the lever on
+  PASS  fresh water does not conduct
+  PASS  a metal line carries power along its length
+
+live stormwater shocks slime  (1.5 s)
+  PASS  slime survives dead stormwater  (38 slime tiles)
+  PASS  live stormwater kills the slime touching it  (0 left)
+
+logic gates and counters  (1.0 s)
+  PASS  AND opens only with both levers on
+  PASS  OR opens with either lever on
+  PASS  NOT opens while its lever is off
+  PASS  a counter turns on at every third pulse  (false,false,true,false)
+
+a sensor set to one liquid ignores the others  (0.1 s)
+  PASS  an oil-only sensor ignores water and senses oil
+
+turbines and water wheels make power  (7.3 s)
+  PASS  steam spins a turbine, which opens its gate
+  PASS  the turbine condenses the steam back into water  (276 water tiles)
+  PASS  falling water turns a water wheel  (on for 39 of 60 ticks)
+  PASS  the wheel stops once the water settles
+
+a boiler boils water only while powered  (6.2 s)
+  PASS  a powered boiler boils the water on it  (52 steam tiles at peak)
+
+pipes carry liquid downhill; valves and filters stop it  (14.1 s)
+  PASS  a pipe drains a tank to a lower outlet  (1% left)
+  PASS  a shut valve stops the flow
+  PASS  a filter for oil holds back water
+  PASS  a filter for water lets it through
+  PASS  a pipe between two tanks levels them like communicating vessels  (46.3 and 43.7 tiles)
+
+a separator splits foam and takes the salt out of brine  (8.9 s)
+  PASS  a separator splits foam into oil and water
+  PASS  a separator desalinates brine at finite throughput and retains every grain  (0.000000 dissolved, 16195.0702 powder, 4.9298 stored; 16200.0000/16200)
+  PASS  a blocked separator retains the salt in its buffer and brine  (15945.0000 dissolved + 255 stored)
+  PASS  opening its outlet resumes separation without losing buffered salt  (0.000000 dissolved, 16200.0000 recovered)
+
+molten metal sets into metal  (4.8 s)
+  PASS  molten metal cools into metal blocks  (39 metal)
+  PASS  water quenches molten metal at once
+
+gases rise, layer, pool and escape  (8.7 s)
+  PASS  methane rises above smoke  (methane row 22.1, smoke row 25.5)
+  PASS  sealed smoke and methane spread without losing any gas  (14535/14535 smoke, 14535/14535 methane)
+  PASS  methane escapes into open sky with its quantity recorded  (3825/3825 escaped)
+  PASS  open smoke disperses into the atmosphere with every removed unit recorded  (0 remain + 3825 dispersed = 3825)
+  PASS  poison gas sinks onto the water  (poison row 54.0)
+  PASS  and the water soaks it up  (0 poison tiles left)
+
+gas sources: fire smokes, slime makes methane, acid on metal makes hydrogen  (7.9 s)
+  PASS  burning oil gives off smoke  (68 smoke tiles at peak)
+  PASS  slime bubbles methane  (20 methane tiles)
+  PASS  acid eating iron gives off hydrogen  (72 hydrogen tiles at peak)
+
+methane burns in a flash  (0.3 s)
+  PASS  a spark spreads through methane while conserving the unburned fuel  (29 burning at once, 2864 burned + 26716 remaining = 29580)
+  PASS  methane burning consumes oxygen and produces measured water and carbon dioxide  (5728 water, 22462.7451 oxygen units, 112313.7255 carbon dioxide units)
+
+nitro explodes from heat, hard landings and power, and sets off more nitro  (1.6 s)
+  PASS  resting nitro stays put
+  PASS  heat sets nitro off and the blast breaks stone  (128 blocks broken)
+  PASS  nitro dropped from a height explodes on landing
+  PASS  nitro poured from low down lands safely
+  PASS  one blast sets off the nitro next to it in a chain
+  PASS  live power touching nitro sets it off
+
+blasts throw crates, spare obsidian and metal, and nitro rests safely under water  (1.4 s)
+  PASS  a blast throws a nearby crate  (crate destroyed)
+  PASS  obsidian and metal survive the blast
+  PASS  nitro dropped into water sinks to the bottom unharmed  (nitro row 59.6, water row 53.4)
+
+running water carves dirt and drops it as mud where it stills  (27.3 s)
+  PASS  a waterfall wears away the dirt it lands on  (367 dirt washed away)
+  PASS  the water carries the dirt as silt  (30 silty tiles at peak)
+  PASS  silt settles out of still water as mud on the bottom  (25 mud tiles)
+  PASS  mud under still water packs down into dirt  (22 new dirt)
+
+weather: rain, drying puddles and freezing nights  (39.9 s)
+  PASS  rain falls from the clouds and collects on the ground  (134.6 tiles of water at most)
+  PASS  the water cycle neither makes nor loses water  (963.8 → 963.8 tiles)
+  PASS  the daytime sun evaporates a shallow puddle while retaining its nonvolatile residue  (45 of 1240 carrier units remain as one-unit residue films; water difference 9.71e-5)
+  PASS  a cold night freezes the surface of an open lake  (19 ice, 152 water under it)
+  PASS  the day sun melts it again  (0 ice left)
+  PASS  with weather off, nights stay mild
+
+momentum: waves slosh, then settle and sleep  (9.6 s)
+  PASS  a released dam sloshes higher up the far wall with momentum  (8 rows with momentum, 7 without)
+  PASS  the waves die down and the tank falls asleep  (fastest 0.000, 256 of 256 asleep)
+
+momentum: pump jets, waterfalls and whirlpools push things  (1.8 s)
+  PASS  a pump outlet shoots its water further with momentum  (25 tiles with momentum, 19 without)
+  PASS  a waterfall shoves a floating crate down  (crate at 391 px with momentum, 365 without)
+  PASS  a drain's whirlpool drags a crate round  (moved 53 px with momentum, 2 without)
+  PASS  a weight dropped into water throws up a wave  (fastest water 1.00)
+
+heat: quicksilver boils, foam breaks, wax and metal melt  (0.8 s)
+  PASS  quicksilver boils into toxic vapour above 357°  (18 vapour tiles)
+  PASS  heated foam breaks: its water boils off and the oil is left  (0 foam, 18 oil, 0 burning, 0 smoke)
+  PASS  honeycomb wax melts above 70° and the honey runs
+  PASS  iron melts above 1538°, once it has taken in its latent heat
+
+water: washes smoke away, warms with acid, dissolves caramel; salt melts ice  (5.0 s)
+  PASS  smoke bubbling up through water is washed out  (18.0 → 0.0 tiles)
+  PASS  diluting acid warms the water  (40° at warmest)
+  PASS  water dissolves crisp honey into sugar  (8 dissolved)
+  PASS  salt melts ice into brine  (4 ice melted)
+  PASS  acid leaves sand alone
+
+mud: washed away, dries in the sun, gives off swamp gas; hot oil smokes; steam scalds  (29.6 s)
+  PASS  running water washes mud away as silt  (235 silty tiles at peak)
+  PASS  the sun dries mud into dirt  (49 dirt)
+  PASS  organic mud under anoxic water bubbles up finite swamp gas  (7 methane tiles)
+  PASS  oil hot enough to smoke but not burn gives off smoke  (10 smoke tiles)
+  PASS  steam scalds the explorer
+
+fish swim, breed, and die out of water or in acid  (4.2 s)
+  PASS  fish live and swim about in water  (swam up to 83 px away)
+  PASS  fish die in acid
+  PASS  stranded fish flop for a while, then die
+
+salamanders live in lava and die in water; slimelings split and fear salt  (4.8 s)
+  PASS  a salamander lives in lava
+  PASS  water poured on a salamander kills it
+  PASS  a slimeling soaks up slime and splits in two  (15 slimelings)
+  PASS  salt kills a slimeling that touches it
+
+plants drink, grow, wilt and burn  (49.4 s)
+  PASS  a plant beside water grows tall  (height 7)
+  PASS  without water the original plant wilts  (height 6)
+  PASS  plants burn
+
+puzzle levels can be solved, and fail when they should  (30.8 s)
+  PASS  there are nine levels
+  PASS  1. Glassworks: opening the hopper over the lava makes enough glass  (glass 15/15)
+  PASS  2. The cauldron: water, heat, honey and bloomwater brew tonic  (tonic in the cauldron 10/10 · levers: water, boiler, honey, bloomwater)
+  PASS  3. The lower chamber: the valve route fills it safely  (water in the chamber 60/60)
+  PASS  3. The lower chamber: the floodgate route fails  (The water touched the lava.)
+  PASS  4. Save the fish: a shaft dug down from the pond drops them into the lake  (fish in the lake 4/4)
+  PASS  5. Steam power: opening the valve opens the vault  (the vault is open)
+  PASS  6. Two shafts: digging out the plug fills the high basin  (water in the basin 20/20)
+  PASS  7. Thunder dome: splitting the brine, then lighting the fuse, blows the vault open  (the vault is open)
+  PASS  7. Thunder dome: the fuse alone, with no gas made, leaves the wall standing  (the vault wall stands)
+  PASS  8. Depth gauge: filling to the mark and shutting the spring  (the gauge reads full and the spring is shut)
+  PASS  8. Depth gauge: leaving the spring running overflows the tank  (The tank overflowed.)
+  PASS  9. Furnace: lighting the wood casts metal in the mould  (metal in the mould 3/3)
+
+the air: clouds drift on the wind, smoke too, and mountains cast rain shadows  (20.6 s)
+  PASS  clouds drift downwind  (cloud centre from cell 21.5 to 26.6)
+  PASS  smoke in the open drifts downwind  (smoke centre from x 101.5 to 122.2)
+  PASS  a mountain gets its rain on the windward side and leaves a dry shadow behind  (291.1 tiles windward, 0.9 behind)
+
+fog, snow, lightning and windmills  (5.1 s)
+  PASS  a calm, cold night condenses humid air at the ground into fog  (1843 cloud in the ground cells)
+  PASS  below 0° the clouds snow instead of raining  (1095 snow)
+  PASS  snow melts into water above 2°
+  PASS  lightning sets a wooden post alight
+  PASS  lightning powers the metal it strikes
+  PASS  a windmill turns in the wind and stops when it drops
+
+climate: height, depth and seasons  (0.6 s)
+  PASS  the air is colder higher up
+  PASS  the ground gets warmer with depth
+  PASS  summer is warmer than winter  (42° against 18°)
+
+generated worlds have their biomes and layers  (5.7 s)
+  PASS  every biome turns up across twelve worlds  (grassland, swamp, desert, badlands, coast, glacier, tundra, salt flats, jungle, volcanic, forest)
+  PASS  each biome has its ground and features
+  PASS  every world has aquifers, ore and a magma sea underground
+  PASS  every world starts in grassland with the explorer
+  PASS  rivers run through some worlds, with a pike in their ponds, and moths and birds live in the forests  (5 of 12 worlds have a river)
+
+biome weather: frozen tundra, drying desert, droughts, tides  (54.9 s)
+  PASS  a tundra lake stays frozen through a sunny day
+  PASS  desert heat evaporates a puddle within the day without deleting its residues  (43 of 1240 carrier units remain as one-unit residue films; water difference -1.06e-4)
+  PASS  in a drought the warm air dissolves passing clouds, so less rain falls  (82 tiles of rain in a drought, 116 without)
+  PASS  the sea at the coast rises and falls with the tide  (high tide at row 53, low at row 59)
+
+nature keeps its water: humid biomes, wet spells, drying ground, plants  (12.7 s)
+  PASS  humid biomes gather the air’s moisture and dry ones lose it, and no water is made or lost  (902.3 → 902.3 tiles; humid half 415.2, dry half 91.7)
+  PASS  exposed mud loses water during the changing weather  (51 of 2400 mud left)
+  PASS  sun dries mud faster than full shade and transfers its water into the air  (sun 0, shade 2400; water difference 0.00e+0)
+
+geysers, gas vents, clay and permafrost  (3.5 s)
+  PASS  a geyser over hot water erupts  (30 tiles of water thrown up)
+  PASS  a gas vent puffs poison gas
+  PASS  clay bakes into brick
+  PASS  permafrost thaws into mud above 2°
+
+freezing, melting and dissolving keep mass  (6.0 s)
+  PASS  a thin film freezes and thaws back to the same water  (28 ice tiles; water 1000 before, 1000 after)
+  PASS  quenched molten metal stays metal  (19 metal after the quench, 21 a second later)
+  PASS  water stops dissolving honey once it holds all the sugar it can  (honey lost 253, sugar gained 4806.000280859291)
+  PASS  salt melts ice while preserving all dissolved and solid salt  (32.2385 grains remain, 222.7615 dissolved; initially255)
+  PASS  a capped geyser keeps its water  (7140 before, 7140 after)
+
+snapshots: exact restore, world codes, seeds and undo  (7.8 s)
+  PASS  generated state contains no non-finite quantities
+  PASS  restoring a snapshot puts every tile, column and air cell back
+  PASS  a world code unpacks to the same world (temperatures to within 1/8°)
+  PASS  the reference fractional world code stays within 512 KiB  (code is 473 KiB)
+  PASS  an older (version 1) world code still loads
+  PASS  text that is not a world code is refused with a reason  (That isn't a Tidepool world code; it should start with TIDEPOOL2:)
+  PASS  the same seed builds the same world
+  PASS  undo takes back the last edit  (stepped back 0.5 s)
+  PASS  undo with no history does nothing
+
+the explorer scoops, pours, digs and places  (0.8 s)
+  PASS  Enter scoops a tile of water into the bucket  (bucket 255)
+  PASS  Enter again pours it back without losing any  (water 14025 before, 14025 after)
+  PASS  holding D digs a dirt block into the bag
+  PASS  pressing D with nothing to dig places the chosen block
+  PASS  the pickaxe can’t break machines
+  PASS  in a puzzle that doesn’t allow them, the tools do nothing
+
+rafts, boats and balloons; air and health  (4.3 s)
+  PASS  a boat floats  (top at row 93.1)
+  PASS  the explorer can stand in the boat  (explorer bottom 747.3, boat top 747.3)
+  PASS  the arrows paddle the boat, carrying the explorer  (boat moved 171 px)
+  PASS  a raft floats
+  PASS  a balloon ties itself to the body below it
+  PASS  a balloon lifts a crate  (crate rose 150 px)
+  PASS  a balloon can’t lift a weight, which holds it down  (weight moved 0.0 px)
+  PASS  heat pops a balloon
+  PASS  under water the explorer runs out of air  (air 44)
+  PASS  out of air, health drains until the explorer faints and wakes at the spawn point  (hp 100, x 70.0)
+  PASS  in open air the explorer breathes again
+
+acid and alkali, fizz and carbon dioxide, growing crystals  (19.4 s)
+  PASS  acid and lye neutralise into warm, salty water  (acid 43, alkali 31 left of 220 each; salt 13)
+  PASS  acid poured into water dilutes into it  (pH 7.0 across the tank)
+  PASS  strong acid in water eats the dirt under it; weak acid leaves it  (strong ate 19, weak ate 0)
+  PASS  acid on baking soda fizzes into carbon dioxide that sinks and pools  (51 CO2 tiles, 51 on the floor)
+  PASS  carbon dioxide smothers fire  (4 tiles were burning, 0 still are)
+  PASS  the explorer can’t breathe in carbon dioxide  (air 44)
+  PASS  salt crystals grow from still, saturated brine  (2 crystals)
+  PASS  fresh water dissolves them again  (0 of 2 left)
+  PASS  worlds saved before the acid and alkali channels still load
+
+sponges, soil, porous rock, wool and copper, membranes, coral, fuses  (19.0 s)
+  PASS  a sponge soaks up water  (holds 255)
+  PASS  the water it holds isn’t lost
+  PASS  heat releases sponge water as steam, which can condense without losing water  (steam peaked at 199; 0 held + 0 steam + 200 water; conserved every tick)
+  PASS  dirt soaks up water as wet soil  (21 wet soil tiles)
+  PASS  wet soil drips into the cave below  (167 dripped)
+  PASS  water seeps down through porous rock  (5400 seeped through)
+  PASS  copper carries heat fast; wool barely lets it through  (water behind copper 91°, behind wool 29°)
+  PASS  a membrane lets its liquid through and stops the rest  (4744 water through, 27 tiles below)
+  PASS  coral grows in warm salt water  (7 coral)
+  PASS  too hot, it bleaches
+  PASS  a fuse burns along its length, turning corners and climbing  (0 fuse tiles left)
+  PASS  and sets off nitro at its end
+
+void ink, mimic, coolant, ferrofluid, fertiliser  (18.6 s)
+  PASS  void ink deletes the water it touches, using itself up  (19 of 95 water tiles deleted)
+  PASS  mimic turns into the first liquid it touches
+  PASS  coolant doesn’t freeze
+  PASS  coolant quenches lava into a basalt crust  (9 basalt, 9 lava, 18 coolant)
+  PASS  a magnet pulls ferrofluid up towards it  (17 tiles above the pool)
+  PASS  a plant on fertilised water grows faster  (fed 10 tiles tall, plain 2)
+  PASS  a carbon- and nutrient-fed bloom grows and consumes oxygen at night  (algae 89.1, day oxygen 18.0, night 15.0 mg/L)
+  PASS  fertilised water greens the stone around it with moss  (17 moss)
+
+solar panels, batteries, lamps, motors, electromagnets, coolant-fed boilers  (13.2 s)
+  PASS  a solar panel lights its lamp at noon, not at midnight
+  PASS  underground, a solar panel runs on liquid light beside it
+  PASS  a battery stores power from a line and keeps its lamp lit after the lever goes off  (charged to 300, lamp lit on the battery, then dark)
+  PASS  a running motor opens the gate it touches and pushes water past itself  (13 water tiles moved)
+  PASS  an electromagnet pulls ferrofluid only while powered  (0 tiles raised off, 9 on)
+  PASS  a boiler runs on hot coolant and stays off on cold  (102 steam tiles at peak, boiler on for 1200 of 1200 ticks, water over it up to 186°)
+
+ecology: algae, grazing fish, rot  (14.9 s)
+  PASS  algae needs light, and grows thick on fertiliser but stays thin without  (fertilised 89, dark 0, plain 3.0)
+  PASS  algae dies in the dark and rots into fertiliser  (algae 55 of 100, fertiliser 1.5)
+  PASS  fish graze algae and stay fed  (hunger 61)
+  PASS  fish with nothing to eat go hungry and don’t breed  (hunger 1400, 2 fish)
+  PASS  a dead fish leaves finite organic matter and recycled nutrients
+  PASS  a wilted plant retains its material as organic residue  (1 organic deposits)
+
+ecology: seasonal algae, spreading plants, pike and moths  (30.3 s)
+  PASS  algae blooms in warm water and dies back in cold  (warm 176, cold 28 (both started at 40))
+  PASS  grown plants drop seeds that take root nearby, spaced apart  (4 plants at 34, 37, 40, 44)
+  PASS  a grown plant regrows leaves
+  PASS  a hungry pike hunts down the small fish  (5 of 6 fish left, 1 eaten since it last bred)
+  PASS  a pike with exhausted food reserves starves and leaves finite remains
+  PASS  moths eat leaves  (18 of 18 leaves eaten)
+  PASS  a fish snaps up a moth just over the water
+  PASS  moths die in a hard frost
+
+water landscapes: groundwater, valleys and deltas, floating ice  (35.0 s)
+  PASS  water on soil soaks down into a water table over the rock  (88.0 tiles soaked in, 117 wet tiles in the bottom rows)
+  PASS  groundwater neither makes nor loses water  (117.0 → 117.0 tiles)
+  PASS  a well dug into soaked soil fills with groundwater  (2.3 tiles in the well)
+  PASS  a river wears away the soil over it too, opening its channel into a valley  (49 tiles of the roof gone)
+  PASS  still water lays even light silt on a mud bed: a delta grows  (mud and dirt bed 9.0 → 16.0 tiles)
+  PASS  a lake freezes over as floating ice  (19 tiles of lake ice)
+  PASS  the ice drops as the water under it drains  (23 of 19 at the new level)
+  PASS  water poured over lake ice goes under it
+  PASS  a current breaks pieces off the sheet and carries them away  (ice moved 19.8 tiles on average, spread over 22 columns)
+
+a generated river keeps flowing and keeps its pond full  (28.4 s)
+  PASS  water runs down the whole channel  (10 of 10 columns wet (seed 39595))
+  PASS  with weather disabled the pond and finite spring retain their hydraulic stores  (pond 47.3 → 41.0 tiles, spring 201 → 208)
+
+the time of day can be held at day or night, or stopped, and carries on from there  (15.3 s)
+  PASS  always day holds noon and always night holds midnight  (0.5, 0)
+  PASS  stopped, the clock stands still
+  PASS  back on day and night, it carries on from where it was held  (held 0.000, a quarter day later 0.250)
+
+custom levels: goals, ways to lose, and a level code that starts in the level  (0.3 s)
+  PASS  a liquid goal is met when the area holds enough  (water 5/5; goal text: Fill the goal area with 5 tiles of water.)
+  PASS  letting the forbidden liquid in loses  (Some lava got into the goal area.)
+  PASS  getting creatures into the area meets the goal, and losing the ones to keep fails it  (Fewer than 1 fish are left.)
+  PASS  the explorer and lamp goals
+  PASS  a level code starts the level afresh  (water 0/3)
+
+fine powders, gases that don’t shove, warm honey, planks, and pressure on by default  (23.4 s)
+  PASS  boiling brine with 20 salt leaves exactly that much as grains or crystals  (20.000000 grains/crystals, 0.000000 dissolved)
+  PASS  a crystallized salt crust blocks the narrow vapor outlet without losing salt
+  PASS  boiling brine with 200 salt leaves exactly that much as grains or crystals  (200.000000 grains/crystals, 0.000000 dissolved)
+  PASS  boiling syrup preserves its sugar as grains, which caramelise when hot  (120.000000 dry sugar, 120.000000 caramel grains)
+  PASS  thin layers fall and settle into a pile  (2 tiles holding 320 grains)
+  PASS  a body comes to rest on the floor, not on top of a thin layer  (crate bottom at 488.0, floor at 488)
+  PASS  water dissolves salt a little at a time
+  PASS  a gas doesn’t carry or lift the explorer  (moved 0.00 px)
+  PASS  warm honey spreads faster than cold honey  (114 tiles warm, 57 cold)
+  PASS  blasted wood flies out as planks  (29 planks)
+  PASS  pressure is on by default: shafts joined by a long tunnel level out  (left arm at row 67, right at 69)
+
+a living world: seasons in the leaves, birds that hunt moths, hail and flash floods  (7.9 s)
+  PASS  the leaves turn with the seasons: green in summer, orange-red in autumn, sparse in winter  (steps 2,4,6,0, 24 summer pixels, 9 winter)
+  PASS  a bird chases down a moth and eats it  (bird hunger 522)
+  PASS  at night birds come down and roost  (bird at row 109.4)
+  PASS  a cold-topped storm drops hail that knocks leaves off, and the hail melts into water  (9 hailstones at once, 4 leaves knocked off)
+  PASS  a flash flood gathers the sky’s moisture over a dry region and pours it down  (153 tiles of water gathered, 68 on the ground at most)
+
+matter: heat is conserved, melting and boiling take latent heat, liquids layer by real density  (21.7 s)
+  PASS  hot iron in water warms it by the heat it brings: the water ends near the mixed temperature  (water 31.0°, iron 31.5°, expected 32.9°; heat in the box and its walls -1.6% changed)
+  PASS  ice holds the water round it near 0° while it melts  (the water at 0.78° on average, 7 of 8 ice tiles left)
+  PASS  boiling water stays at 100° while it turns to steam  (the pot at 100.0° at most, 102 steam tiles at most)
+  PASS  ferrofluid sinks through water  (6 ferrofluid tiles at the bottom)
+  PASS  ferrofluid sinks through oil  (6 ferrofluid tiles at the bottom)
+  PASS  ferrofluid floats on honey  (0 ferrofluid tiles at the bottom)
+  PASS  ferrofluid floats on lye  (0 ferrofluid tiles at the bottom)
+  PASS  ferrofluid floats on acid  (0 ferrofluid tiles at the bottom)
+
+life: plants, flowers, bees, rot, nitrogen and fermentation  (73.7 s)
+  PASS  in daylight a plant takes up CO2, grows on the sugar it makes, and gives off oxygen  (CO₂ 0.60% → 0.56%, 7 tall, sugar 431)
+  PASS  at night it burns its sugar and gives CO2 back  (CO₂ 0.56% → 0.56%)
+  PASS  with no CO2 in the air a plant can’t grow  (1 tall)
+  PASS  a grown plant flowers in the sun and makes nectar  (2.133333333333344 nectar at most)
+  PASS  bees carry measured nectar home while consuming finite honey  (1 comb, stock 15.598, collected 5.800, stored 5.800, eaten 0.202)
+  PASS  a finite carcass decays into ammonium, which oxygen-rich water turns into nitrate  (carcass carbon 17.89, nitrate 0.003)
+  PASS  organic donor in airless water turns nitrate into measured nitrogen gas  (nitrate 38.4, nitrogen gas 131.000)
+  PASS  ammonium poisons fish
+  PASS  sugar water left open catches wild yeast
+  PASS  shut away from air, yeast ferments sugar into alcohol  (alcohol 36, sugar 132)
+  PASS  with air, alcohol slowly turns to vinegar  (acid 3.3)
+
+air and water: oxygen, fire that needs it, stratified water, soap and emulsions  (84.2 s)
+  PASS  a fire in an oxygen-limited sealed room goes out with fuel remaining  (10 of 11 wood left, oxygen 15.0%, CO₂ 0.1%)
+  PASS  a fire with a doorway burns all its wood  (0 of 11 wood left, oxygen 21.0%, CO₂ 0.0%)
+  PASS  the explorer runs out of breath in stale air  (air 44)
+  PASS  carbon dioxide gas that thins out stays in the air as CO₂  (CO₂ 3.59%)
+  PASS  warm or salty water holds less oxygen
+  PASS  finite organic sediment depletes the pond bottom while the surface and sterile control stay oxygenated  (mud minimum 0.25, final top/bottom 9.10/2.14; stone minimum 9.10 mg/L)
+  PASS  fish suffocate at 2 mg/L of oxygen  (2.0 mg/L)
+  PASS  pike still breathe at 2 mg/L  (2.0 mg/L)
+  PASS  airless water open to the air takes oxygen back in  (8.7 mg/L at the surface)
+  PASS  brine poured on fresh water sinks under it  (salt 11 at the top, 116 at the bottom)
+  PASS  warm water rises over cold  (top 31°, bottom 17°)
+  PASS  water is densest at 4°, so ice-cold water floats on it
+  PASS  lye turns oil into soap  (soap 100)
+  PASS  oil and water shaken together separate again, oil on top  (0 emulsion, 15 oil tiles)
+  PASS  with soap, oil and water stay mixed  (30 emulsion, 0 oil tiles)
+  PASS  soapy water takes oil in  (10 emulsion tiles)
+
+chemistry: acids, bases, lime, charcoal, glass, thermite, chlorine and bleach  (69.8 s)
+  PASS  acid fizzes carbon dioxide off limestone and leaves salt; stone resists it  (0 of 5 limestone left, CO2 723)
+  PASS  acid dissolves zinc and iron, giving hydrogen and metal salts; copper and gold resist  (0 zinc, 0 iron left; 640 hydrogen at most)
+  PASS  lye eats aluminium, giving hydrogen  (0 of 5 aluminium left)
+  PASS  limestone burns into quicklime above 825°, giving off CO2  (5 quicklime)
+  PASS  water slakes quicklime into lime, hot enough to boil  (5 lime, hottest 335°)
+  PASS  lime mortar takes up CO2 and hardens back into limestone  (5 limestone)
+  PASS  heated baking soda breaks down into carbon dioxide
+  PASS  wood heated without air chars into charcoal  (14 of 15 charcoal)
+  PASS  wood burnt in the open leaves ash  (11 ash, 0 wood left)
+  PASS  sand with soda melts into glass at 1200°; sand alone doesn’t  (blocks 22, 0, 21; 1200°)
+  PASS  thermite: lit aluminium and rust burn into white-hot iron  (1 molten iron tiles, 2500°)
+  PASS  strong acid chars sugar into black carbon  (3 carbon)
+  PASS  electrolysis of weak brine gives oxygen  (0 chlorine, 4130 oxygen, 8376 hydrogen)
+  PASS  electrolysis of strong brine gives chlorine and leaves lye  (3838 chlorine, 0 oxygen, 8272 hydrogen)
+  PASS  chlorine bubbled through lye makes bleach
+  PASS  bleach and acid give off chlorine
+  PASS  chlorine dissolves into water as acid
+  PASS  hydrogen and chlorine explode when lit  (80 blocks broken)
+  PASS  copper goes green in wet air  (1 green copper)
+
+the deep caverns, rust, and frozen nitro  (18.2 s)
+  PASS  iron rusts where water and air meet, several times faster in brine  (2 of 10 studs rusted in fresh water, 6 in brine)
+  PASS  iron deep under water, out of the air, rusts much more slowly  (3 of 10 rusted deep under brine)
+  PASS  heated rust dries into red iron oxide (ore)  (20 ore)
+  PASS  acid eats rust  (0 of 21 rust tiles left)
+  PASS  nitro freezes into a block below 10°  (18 frozen tiles)
+  PASS  frozen nitro thaws back into as much nitro as froze  (4435 of 4435)
+  PASS  heat sets frozen nitro off  (11 stone blocks broken)
+  PASS  every fifth of the world has a deep cavern lit by crystals  (open tiles 1365, 1144, 1050, 913, 1103; crystals 21, 38, 35, 16, 23)
+  PASS  the caverns hold quicksilver, oil and aether  (30 tiles of aether)
+  PASS  the aether stays under the caverns’ roofs  (35 of 30)
+
+electrolysis splits water into hydrogen and oxygen  (5.7 s)
+  PASS  live brine splits into hydrogen and oxygen, two parts to one  (11.0 tiles of hydrogen, 5.4 of oxygen)
+  PASS  the gas is the water it was split from  (16.9 tiles of water gone, 16.4 of gas made)
+  PASS  hydrogen rises and oxygen pools just over the water
+  PASS  without power the electrode does nothing  (0.0 tiles of gas)
+  PASS  a live metal electrode splits fresh water  (5.6 tiles of gas)
+
+hydrogen burns into steam; mixed with oxygen, hydrogen and methane explode  (1.8 s)
+  PASS  sealed pure hydrogen cannot burn without an exposed oxidizer  (66555 hydrogen remains, no reaction water or blast)
+  PASS  the same hydrogen cloud remains unburned in oxygen-free air  (0 burned, 1275 remaining, 0 water, 0.0000 oxygen units)
+  PASS  hydrogen in air burns into measured water, using oxygen without a blast  (832 burned, 443 remaining, 832 water, 1631.3725 oxygen units)
+  PASS  hydrogen mixed with oxygen explodes when lit  (80 blocks broken)
+  PASS  methane mixed with oxygen explodes when lit  (80 blocks broken)
+  PASS  wood burns in oxygen and uses it up  (5 tiles burning, 5 gas units used (fractional credit retained))
+
+smelting: ore and charcoal give molten iron and slag  (6.3 s)
+  PASS  ore in lava alone stays ore  (18 ore left)
+  PASS  ore with charcoal in lava smelts into iron and slag, using the charcoal  (3 of 9 ore left, 6 metal, 0 slag)
+  PASS  ore packed in burning charcoal smelts  (ore at 1450°, 1 metal)
+  PASS  a boiler is too cool to smelt ore  (ore at 181°)
+  PASS  molten slag floats on molten metal
+
+temperature and depth sensors, pixels, and power fading along long lines  (3.0 s)
+  PASS  a temperature sensor turns on above its setting  (sensor at 192°)
+  PASS  and stays off below it  (sensor at 192°)
+  PASS  a depth sensor under 2 rows of water is off
+  PASS  a depth sensor under 6 rows of water is on
+  PASS  a depth sensor under 6 rows of carbon dioxide is off
+  PASS  a powered pixel lights; the one beside it stays dark
+  PASS  40 tiles of metal carry power to the far end
+  PASS  80 tiles of metal don't carry power to the far end
+  PASS  80 tiles of copper carry power to the far end
+
+every kind of block draws without errors  (0.0 s)
+  PASS  every kind of block draws without errors
+
+life: a sealed jar through two day and night cycles  (63.8 s)
+  PASS  a balanced sealed jar retains its two original fish and plants through two days  (2 of 2 fish, 2 plants, water oxygen 6.3 mg/L, deaths {})
+
+life: an overfed jar, bloom and recorded mortality  (60.5 s)
+  PASS  an overfed glass jar supports an algae bloom  (algae 255 at thickest)
+  PASS  every original fish lost in the overfed jar has a recorded cause  (0 of 2 fish alive; [{"id":58,"kind":"fish","cause":"hypoxia","tick":56350,"tile":27172,"night":false,"oxygen":0.30546590210544977,"ammonia":30.52615259644672,"temperature":20},{"id":57,"kind":"fish","cause":"hypoxia","tick":60760,"tile":25631,"night":true,"oxygen":1.0675825602178843,"ammonia":20.53373379637349,"temperature":20}])
+
+life: moss exchanges gases in daylight  (7.8 s)
+  PASS  moss in daylight takes up CO2 and gives off oxygen  (CO₂ 0.60% → 0.57%)
+
+life: local fish capacity and causal oxygen stress  (0.0 s)
+  PASS  fish reproduce up to the local capacity, including the parents  (4 fish from 3; capacity 4)
+  PASS  nighttime algae deplete healthy water before a tagged hypoxic death  ({"id":395,"kind":"fish","cause":"hypoxia","tick":1000,"tile":22059,"night":true,"oxygen":2.0983178366447106,"ammonia":2.9614682501150553,"temperature":20})
+  PASS  the matched aerated control survives the same nighttime exposure
+
+life: spirit burns from a flame  (4.2 s)
+  PASS  strong spirit catches from a flame and consumes measured alcohol  (0.15 alcohol burnt; 3573.89 of 3600 remains)
+  PASS  spirit burning retains its carrier and accounts for ethanol products  (ethanol difference 0.00e+0; carrier 4590/4590)
+
+life: a heated still enriches its condensate  (10.1 s)
+  PASS  a heated still catches an enriched mixture rather than pure alcohol  (28 tiles caught at 40.4, source wine 0.0 (from36))
+  PASS  the enclosed still preserves its carrier and accounts for all alcohol  (carrier 9180/9180; alcohol difference 6.82e-13)
+
+all checks passed · full run, 81 scenes, 443.4 s

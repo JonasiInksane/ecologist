@@ -2,7 +2,7 @@
 // salamanders swim in lava and walk out of it, setting what they stand on alight, and die if they cool or touch water;
 // slimelings hop about, hurt the explorer, grow by absorbing slime and split in two, and die to acid, lava, salt,
 // live power and heat. Fish graze the algae in their water, breed in a big enough pool only while well fed, and
-// suffocate in an algae bloom. Dead creatures rot into fertiliser, unless they burnt.
+// suffocate when dissolved oxygen runs out. Dead creatures retain their matter for recycling.
 // Pike are bigger fish that hunt the small ones (which flee them): they breed only while well fed and starve without
 // prey, then rot and feed the algae the small fish eat, so a lake cycles instead of filling up. Moths fly low over land
 // and eat leaves, breed while fed, and die in water, fire, hard frost or hunger; on cold nights they settle and wait.
@@ -23,18 +23,50 @@ import { held } from './world.js';
 import { ROT_OX } from './solutes.js';
 import { S, markDirty } from './world.js';
 import { ecoAppetite, ecoBirth, ecoComb, ecoDeposit, ecoEatLeaf, ecoEatPrey, ecoFeed, ecoFood, ecoGraze, ecoMaintain, ecoSetComb, ecoSettleBody, ecoTissue, ecoInstallTissue } from './ecology.js';
-import { ECO_C, ECO_COST, ECO_RATE } from './ecology-data.js';
+import { ECO_ANIMALS, ECO_C, ECO_COST, ECO_RATE } from './ecology-data.js';
 import { bioPool } from './ecology-core.js';
 import { ecoTakeNectar } from './ecology.js';
+import { beeApproach, beeFlightCell, feedHiveBee, hiveCells, hiveContext, hiveNeighbors, hiveReturnCell, warmHiveBee } from './hives.js';
 
 const MAX_OF_KIND = 30, STRANDED = 400, COLD = 900, SPLIT_MASS = 255;
 const WELL_FED = 1200, BITE = 2, ROT = 60;
-const SHOAL = 24, SHOAL_Y = 16, CROWDED = 4, CROWD_X = 64, CROWD_Y = 32;   // pixels: a fish breeds with another this close by, unless this many fish already swim within CROWD_X by CROWD_Y of it
+const SHOAL = 24, SHOAL_Y = 16, CROWDED = 4, CROWD_X = 64, CROWD_Y = 64;   // pixels: local breeding space has the same reach in either axis; mate-seeking remains a horizontal shoal
 const FISH_BREATH = 0.001, SUFFOCATE = 300, AIR_GONE = 300, AMMONIA_KILLS = 80;   // mg/L of oxygen a fish uses a tick; ticks it lasts without enough
 const PIKE_MAX = 6, PIKE_STARVE = 7200, PIKE_DIGEST = 1200, HUNT_RANGE = 48, FLEE_RANGE = 32;   // ticks; pixels
 const BIRD_MAX = 8, BIRD_STARVE = 14400, BIRD_SEEK = 120, BIRD_COLD = -25, BIRD_FROZEN = 1800;   // BIRD_SEEK in pixels
 const MOTH_MAX = 20, MOTH_STARVE = 10800, MOTH_REST = 5, MOTH_COLD = -20, MOTH_FROZEN = 1200, MOTH_HOT = 60, MOTH_SEEK = 16, MOTH_EAT = 0.03, MOTH_GIVE_UP = 300;   // MOTH_SEEK in tiles
 const DEATH_HISTORY = 128;   // recent events retained with the world; counts do not grow an unbounded event list
+
+// A dilute producer population takes more searching: a bounded Type III response replaces
+// fixed bites that could clear an arbitrarily small local population in one encounter.
+// Concentration determines encounter efficiency; carrier fullness scales the actual meal.
+function grazingRequest(k) {
+  if (!liq[k] || typ[k] !== WATER) return 0;
+  const concentration = Math.max(0, sol[k * NSOL + SOL_ALGAE]), squared = concentration * concentration;
+  return BITE * squared / (ECO_RATE.grazeHalf * ECO_RATE.grazeHalf + squared) * liq[k] / 255;
+}
+
+// Seek an adjacent, physically usable thermal refuge before reaching the lethal heat limit.
+// This is a game comfort band, not immunity: absent reachable better water, exposure still kills.
+function seekFishTemperature(b, k) {
+  const stress = temperature => Math.max(0, ECO_RATE.fishThermalMin - temperature, temperature - ECO_RATE.fishThermalMax);
+  let score = stress(temp[k]);
+  if (!score) return false;
+  const x = k % W, y = (k / W) | 0, depth = Math.min(T, b.h) * 255 / T;
+  let target = -1;
+  for (const n of [y ? k - W : -1, y < H - 1 ? k + W : -1, x ? k - 1 : -1, x < W - 1 ? k + 1 : -1]) {
+    if (n < 0 || solid[n] || typ[n] !== WATER || liq[n] < depth) continue;
+    const next = stress(temp[n]);
+    if (next < score) { score = next; target = n; }
+  }
+  if (target < 0) return false;
+  const dx = target % W - x, dy = ((target / W) | 0) - y;
+  b.vx += (dx * 0.7 - b.vx) * 0.25;
+  b.vy += (dy * 0.5 - b.vy) * 0.25;
+  if (dx) b.dir = b.face = dx;
+  return true;
+}
+export { seekFishTemperature };
 
 function recordDeath(b, k, cause) {
   if (b.deathCause) return;
@@ -90,19 +122,24 @@ function driveCreature(b, s, sub, grounded, A, addBody) {
       if (sol[k * NSOL + SOL_AMMONIA] > AMMONIA_KILLS) return die(b, k, 'fizz', 'ammonia');
       if (b.gasp > SUFFOCATE) return die(b, k, 'fizz', 'hypoxia');
     }
-    if (!pike && algae > 0 && Math.random() < 0.02 && ecoGraze(b, k, BITE * liq[k] / 255)) b.grazed = true;
+    if (!pike && algae > 0 && Math.random() < 0.02 && ecoGraze(b, k, grazingRequest(k))) b.grazed = true;
     const chasing = !pike && snapMoth(b, k, s.water / A > 0.6);   // small fish eat moths; pike eat fish
     if (s.water / A > 0.6) {
       b.air = 0;
       if (Math.random() < 0.003) bubbleAt(b.x + (b.face > 0 ? b.w : 0), b.y + 1);   // a fish breathes out now and then
-      if (pike) { hunt(b, sub, addBody); return true; }
+      if (pike) { hunt(b, sub, addBody); seekFishTemperature(b, k); return true; }
       if (!chasing) swim(b, sub);
       flee(b);
+      seekFishTemperature(b, k);
       if (b.grazed && b.hunger < WELL_FED && Math.random() < 0.0004 && howMany('fish') < MAX_OF_KIND && shoal(b)) ecoBirth(b, addBody);
     } else {
       b.air = (b.air || 0) + 1;
       if (b.air > STRANDED) return die(b, k, 'fizz', 'stranded');
-      if (grounded && Math.random() < 0.05) { b.vy = -1.6; b.vx = 0.8 * towardWater(k); }   // flops, towards water if it can see some
+      if (grounded && Math.random() < 0.05) {
+        const direction = towardWater(k, b.h);
+        b.vx = 0.8 * direction;
+        if (direction) b.vy = -1.6;   // flop toward a usable refuge; water directly below needs a fall
+      }
     }
   } else if (b.kind === 'salamander') {
     if (s.water / A > 0.3) return die(b, k, 'steam', 'quenched');
@@ -153,6 +190,10 @@ function nearest(b, kind, range) {
 // keep up with it); after two fish, with another pike near, it breeds.
 function hunt(b, sub, addBody) {
   if (b.full > 0) { b.full--; swim(b, sub); return; }
+  // Digestion finishing does not itself create a need for another fish. Hunt only when
+  // the ordinary reserve target has been spent; surplus prey would otherwise become waste.
+  const archetype = ECO_ANIMALS.pike;
+  if (b.bio.c >= archetype.body + archetype.reserve * ECO_RATE.pikeHuntReserve) { swim(b, sub); return; }
   const prey = nearest(b, 'fish', HUNT_RANGE);
   if (!prey) { swim(b, sub); return; }
   const dx = prey.x + prey.w / 2 - b.x - b.w / 2, dy = prey.y + prey.h / 2 - b.y - b.h / 2;
@@ -252,19 +293,27 @@ function driveBee(b, s, k, Tk, addBody) {
   const drowned = liq[k] >= 128 && LIQ_SINKS(typ[k]);
   if (drowned || s.lava || s.acid || Tk > 50 || solid[k] || !airless(b, k)) return vanishCreature(b, k, 'fizz', drowned ? 'drowned' : solid[k] ? 'crushed' : s.acid ? 'acid' : s.lava || Tk > 50 ? 'heat' : 'stale-air');
   b.load = b.load || 0; b.hunger = (b.hunger || 0) + 1;
-  b.chill = Tk < 0 ? (b.chill || 0) + 1 : 0;
-  if (b.chill > BEE_FROZEN) return vanishCreature(b, k, 'fizz', 'cold');
   if (b.home == null || solid[b.home] !== COMB || S.tick - (b.homeAt || 0) > 600) { b.home = findBlock(k, COMB, BEE_HOME); b.homeAt = S.tick; }
-  const out = sunHeight() > 0 && Tk >= BEE_COLD && b.load < BEE_LOAD;
-  if (out && (b.target == null || solid[b.target] !== FLOWER || held[b.target] < ECO_RATE.beeMinNectar || S.tick - (b.since || 0) > 600)) { b.target = findBlock(k, FLOWER, BEE_SEEK, f => held[f] >= ECO_RATE.beeMinNectar); b.since = S.tick; }
+  const hive = hiveContext(b.home, k);
+  warmHiveBee(b, k, hive);
+  const localTemperature = temp[k];
+  b.chill = localTemperature < 0 ? (b.chill || 0) + 1 : 0;
+  if (b.chill > BEE_FROZEN) return vanishCreature(b, k, 'fizz', 'cold');
+  const out = sunHeight() > 0 && localTemperature >= BEE_COLD && (!hive || hive.outside >= BEE_COLD) && b.load < BEE_LOAD - ECO_RATE.epsilon;
+  if (out && (b.target == null || solid[b.target] !== FLOWER || held[b.target] < ECO_RATE.beeMinNectar || beeApproach([b.target], k).rest < 0 || S.tick - (b.since || 0) > 600)) {
+    b.target = findBlock(k, FLOWER, BEE_SEEK, f => held[f] >= ECO_RATE.beeMinNectar && beeApproach([f], k).rest >= 0); b.since = S.tick;
+  }
   const goal = out && b.target >= 0 ? b.target : b.home;
   if (goal >= 0) {
-    const tx = (goal % W) * T + 4, ty = ((goal / W) | 0) * T + 4, near = Math.abs(tx - b.x - 1.5) < 10 && Math.abs(ty - b.y - 1) < 10;
+    const flower = goal === b.target && out && solid[goal] === FLOWER ? beeApproach([goal], k) : null;
+    const waypoint = goal === b.home && hive?.rest >= 0 ? hiveReturnCell(b, k, hive)
+      : flower?.rest >= 0 ? beeFlightCell(b, k, flower, goal) : -1;
+    const destination = waypoint >= 0 ? waypoint : k;   // no route: hover here and retry; no imagined access through an obstacle
+    const tx = (destination % W) * T + 4, ty = ((destination / W) | 0) * T + 4, near = Math.abs(tx - b.x - 1.5) < 10 && Math.abs(ty - b.y - 1) < 10;
     b.vx += (Math.sign(tx - b.x - 1.5) * 0.7 - b.vx) * 0.25; b.vy += (Math.sign(ty - b.y - 1) * 0.5 - b.vy) * 0.35 + (Math.random() - 0.5) * 0.3;
-    if (near && goal === b.target) { const taken = ecoTakeNectar(goal, BEE_LOAD - b.load); b.load += taken; S.accounting.nectarCollected = (S.accounting.nectarCollected || 0) + taken; b.target = -1; }
-    else if (near && goal === b.home) {
-      const food = Math.min(ecoComb(b.home), ecoAppetite(b) / ECO_C.honey);
-      if (food > 0) { ecoSetComb(b.home, ecoComb(b.home) - food); ecoFeed(b, ecoFood(food), k); S.accounting.honeyEaten = (S.accounting.honeyEaten || 0) + food; }
+    if (near && flower?.adjacent.has(k)) { const taken = ecoTakeNectar(goal, BEE_LOAD - b.load); b.load += taken; S.accounting.nectarCollected = (S.accounting.nectarCollected || 0) + taken; b.target = -1; }
+    else if (goal === b.home && hive?.adjacent.has(k)) {
+      feedHiveBee(b, k, hive);
       if (b.load > 0) { b.load -= storeHoney(b.home, b.load); if (Math.random() < 0.1 && howMany('bee') < BEE_MAX) ecoBirth(b, addBody); }
       b.vx *= 0.5; b.vy *= 0.5;
     }
@@ -277,14 +326,13 @@ function driveBee(b, s, k, Tk, addBody) {
 }
 // Honey goes into the hive's comb: into a cell that isn't full yet, or a new cell built onto the comb.
 function storeHoney(home, offered = HONEY_PER_LOAD) {
-  const cells = [home], seen = new Set(cells);
-  for (let i = 0; i < cells.length && cells.length < 64; i++) for (const o of [cells[i] - W, cells[i] - 1, cells[i] + 1, cells[i] + W]) if (o >= 0 && o < W * H && solid[o] === COMB && !seen.has(o)) { seen.add(o); cells.push(o); }
+  const cells = hiveCells(home);
   const part = cells.find(c => ecoComb(c) < 255);
   if (part !== undefined) { const put = Math.min(offered, 255 - ecoComb(part)); ecoSetComb(part, ecoComb(part) + put); S.accounting.honeyStored = (S.accounting.honeyStored || 0) + put; return put; }
   // New wax is paid for from the offered food, including its own nutrient quota.
   const waxFood = ECO_COST.wax / ECO_C.honey;
   if (offered <= waxFood) return 0;
-  for (const c of cells) for (const o of [c - 1, c + 1, c + W, c - W]) if (o >= 0 && o < W * H && !solid[o] && !liq[o]) {
+  for (const c of cells) for (const o of hiveNeighbors(c)) if (!solid[o] && !liq[o]) {
     const put = Math.min(255, offered - waxFood), remainder = ecoFood(waxFood), tissue = bioPool(ECO_COST.wax);
     remainder.c -= tissue.c; remainder.n -= tissue.n; remainder.p -= tissue.p;
     ecoDeposit(o, remainder); solid[o] = COMB; ecoInstallTissue(o, COMB, tissue); ecoSetComb(o, put);
@@ -323,13 +371,20 @@ function die(b, k, fx, cause = 'other') {
   ecoSettleBody(b, k);
   return false;
 }
-// Which way (-1 or 1) the nearest water lies within 16 tiles on this row or the one below; random if none.
-function towardWater(k) {
-  const x = k % W;
-  for (let d = 1; d <= 16; d++) for (const s of [-1, 1]) {
+// Find water deep enough for this fish, rather than a trace film on a drying bank. A refuge
+// may be up to two rows below, but a solid floor above it prevents re-entry from this bank.
+// No horizontal refuge is needed when usable water lies directly below. Without a refuge,
+// retain ordinary searching: this does not prevent stranding in a drained or isolated pool.
+function towardWater(k, height = 4) {
+  const x = k % W, y = (k / W) | 0, minimum = Math.min(T, height) * 255 / T;
+  for (let d = 0; d <= 16; d++) for (const s of d ? [-1, 1] : [0]) {
     const nx = x + s * d;
     if (nx < 0 || nx >= W) continue;
-    for (const o of [k + s * d, k + s * d + W]) if (o < W * H && liq[o] && typ[o] === WATER) return s;
+    for (let dy = 0; dy <= 2 && y + dy < H; dy++) {
+      const o = k + s * d + dy * W;
+      if (solid[o]) break;
+      if (typ[o] === WATER && liq[o] >= minimum) return s;
+    }
   }
   return Math.random() < 0.5 ? -1 : 1;
 }
@@ -350,4 +405,4 @@ function absorb(b) {
   }
 }
 
-export { CROWDED, CROWD_X, CROWD_Y, shoal, BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
+export { grazingRequest, CROWDED, CROWD_X, CROWD_Y, shoal, BEE_MAX, BEE_LOAD, BEE_SEEK, BEE_HOME, HONEY_PER_LOAD, driveBee, storeHoney, findBlock, BIRD_MAX, BIRD_STARVE, BIRD_SEEK, driveBird, PIKE_DIGEST, MOTH_GIVE_UP, PIKE_MAX, PIKE_STARVE, HUNT_RANGE, FLEE_RANGE, MOTH_MAX, MOTH_STARVE, MOTH_REST, MOTH_FROZEN, MOTH_COLD, MOTH_HOT, MOTH_SEEK, MOTH_EAT, nearest, hunt, flee, snapMoth, driveMoth, findLeaf, WELL_FED, BITE, FISH_BREATH, SUFFOCATE, AIR_GONE, ROT, MAX_OF_KIND, STRANDED, COLD, SPLIT_MASS, centre, howMany, swim, walk, driveCreature, die, towardWater, touchesSalt, absorb };
