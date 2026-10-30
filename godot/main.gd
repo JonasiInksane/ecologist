@@ -40,6 +40,9 @@ var kit_mode := false
 var kitchen: PanelContainer
 var shop: PanelContainer
 var hud: Control
+var lighting: Node2D
+var room_data := PackedByteArray()
+var sun_level := -1.0
 var top_panel: PanelContainer
 var footer: PanelContainer
 var equipment_view: Array = []
@@ -107,6 +110,8 @@ func _ready() -> void:
     liquid_material.shader = preload("res://liquid.gdshader")
     surface.material = liquid_material
     add_child(surface)
+    lighting = preload("res://lighting.gd").new()
+    add_child(lighting)
     camera.position = Vector2(104, 74) * CELL
     add_child(camera)
     _build_ui()
@@ -432,6 +437,10 @@ func _set_mode(on: bool) -> void:
     world = campaign_world if on else sandbox_world
     world.environment(1.0 if day else 0.0, 0.4 if breezy else 0.0)
     world.flow(pressure, momentum)
+    sun_level = -1.0
+    lighting.visible = false
+    liquid_material.set_shader_parameter("stars", 0.0)
+    liquid_material.set_shader_parameter("sunlight", 1.0 if day or on else 0.0)
     palette.visible = not on
     build_bar.visible = on
     top_panel.visible = not on
@@ -691,7 +700,18 @@ func _toggle_workshop() -> void:
     drawing = false
     panning = false
 
+# The campaign's light follows the clock: the lighting node, the stars, the water's sun glints and solar machines.
+func _follow_sun() -> void:
+    lighting.update_light(shop.model.minute)
+    if absf(lighting.level - sun_level) > 0.01:
+        sun_level = lighting.level
+        world.environment(sun_level, 0.4 if breezy else 0.0)
+        liquid_material.set_shader_parameter("sunlight", sun_level)
+        liquid_material.set_shader_parameter("stars", clampf(1.0 - sun_level * 1.6, 0.0, 1.0))
+
 func _toggle_day() -> void:
+    if campaign:
+        return
     day = not day
     world.environment(1.0 if day else 0.0, 0.4 if breezy else 0.0)
     liquid_material.set_shader_parameter("sunlight", 1.0 if day else 0.0)
@@ -872,6 +892,8 @@ func _process(delta: float) -> void:
             if player.event == "respawn":
                 _notice("You blacked out and woke up back at home.")
     liquid_material.set_shader_parameter("animation_time", animation_time)
+    if campaign:
+        _follow_sun()
     liquid_material.set_shader_parameter("view_origin", (camera.get_screen_center_position() - get_viewport_rect().size / camera.zoom / 2).floor())
     if dirty:
         _refresh_texture()
@@ -927,7 +949,11 @@ func _refresh_texture() -> void:
         liquid_material.set_shader_parameter("has_fire", true)
     else:
         fire_texture.update(fire_image)
-    var back_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, world.back_data())
+    var back := world.back_data()
+    var back_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, back)
+    if campaign and back != room_data:
+        room_data = back
+        lighting.set_rooms(back, WIDTH, HEIGHT)
     if back_texture == null:
         back_texture = ImageTexture.create_from_image(back_image)
         liquid_material.set_shader_parameter("back_data", back_texture)

@@ -229,7 +229,6 @@ func _build_menu() -> void:
     column.add_child(_menu_button("Save · F5", func(): main._save_world()))
     column.add_child(_menu_button("Load · F9", func(): main._load_world(); close_menu()))
     column.add_child(_menu_button("Stock and sales", func(): close_menu(); main._toggle_workshop()))
-    column.add_child(_menu_button("Day / night", func(): main._toggle_day()))
     column.add_child(_menu_button("Sandbox · Tab", func(): close_menu(); main._set_mode(false)))
     var help := UiStyle.label("Walk A D · jump Space · climb W S\nUse E or click · build left click\nRemove right click · kit K · pause P", "Muted")
     help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

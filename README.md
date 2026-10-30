@@ -50,6 +50,9 @@ Lay **pipes**, **valves** and **pumps** from the hotbar: pipe ends couple to the
 and a sea water tanker pumps through a coupling by the road. With a kettle, lime and a centrifuge, beets become
 white sugar, molasses and pulp. See [M2 logistics](docs/design/m2-logistics.md).
 
+Days pass: the light follows the game clock through dusk, a starry night with the shack lamp-lit, and dawn. See
+[M3 living world](docs/design/m3-living-world.md).
+
 In the sandbox:
 
 Paint with left drag; select a material with **1–8** or the toolbar. **Ignite** brings fuel under the brush

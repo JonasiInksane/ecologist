@@ -1,7 +1,7 @@
 extends SceneTree
 # Renders the campaign interface for the report: the HUD and hotbar in the yard with a toast and a tooltip
-# (ui-hud.png), the kitchen kit with the kettle's window open (ui-kitchen.png), the laptop shop (ui-shop.png) and the
-# pause menu (ui-menu.png).
+# (ui-hud.png), the kitchen kit with the kettle's window open (ui-kitchen.png), the laptop shop (ui-shop.png), the
+# plot at night (ui-night.png) and the pause menu (ui-menu.png).
 
 func _initialize() -> void:
     call_deferred("run")
@@ -74,6 +74,11 @@ func run() -> void:
     game.shop.refresh()
     shot = shot | await _shot(game, "ui-shop", Vector2(266, 93), 3.0)
     game.shop.close()
+    # The same plot at night, with the shack lamp-lit and stars over the hills.
+    game._set_kit_mode(false)
+    game.shop.model.minute = 22.5 * 60.0
+    game._follow_sun()
+    shot = shot | await _shot(game, "ui-night", Vector2(282, 90), 2.0, Vector2i(266, 97))
     # The pause menu.
     game.hud.toggle_menu()
     shot = shot | await _shot(game, "ui-menu", Vector2(266, 93), 2.0)

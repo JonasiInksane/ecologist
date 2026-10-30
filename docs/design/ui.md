@@ -17,7 +17,8 @@ world. The sandbox keeps its tool bars, since it is a lab for the simulation.
 - **The tooltip** at the pointer names what is under it: a piece of equipment with its contents and readings, the
   truck at the curb, a valve (open or shut) or a pump end.
 - **Esc** closes an open window or the carried piece; with nothing open it opens the **menu** and pauses: back to
-  work, save (F5), load (F9), stock and sales, day and night, the sandbox (Tab) and the controls.
+  work, save (F5), load (F9), stock and sales, the sandbox (Tab) and the controls. (Day and night follow the clock;
+see [M3 living world](m3-living-world.md).)
 - **Windows** are riveted steel frames: the kitchen window (with the piece's picture and the flame as a row of
   switches), and stock and sales (the campaign shows only the stock tab; the sandbox keeps the prototype lab,
   machines and underground tabs).

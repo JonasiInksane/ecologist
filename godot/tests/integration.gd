@@ -234,6 +234,22 @@ func run() -> void:
         check(game.hud.menu.visible and game.paused, "Esc opens the menu and pauses")
         game.hud.toggle_menu()
         check(not game.hud.menu.visible and game.paused == was_paused, "Closing the menu resumes")
+        # Day and night follow the game clock; rooms stay lit by a lamp after dark.
+        check(game.lighting.daylight(480.0) == 1.0 and game.lighting.daylight(0.0) == 0.0 and absf(game.lighting.daylight(360.0) - 0.5) < 0.01 and absf(game.lighting.daylight(1200.0) - 0.5) < 0.01, "Daylight: full from 07:00, dark from 21:00, half at 06:00 and 20:00")
+        var morning: float = game.shop.model.minute
+        game._follow_sun()
+        check(not game.lighting.visible and game.liquid_material.get_shader_parameter("stars") == 0.0, "No night overlay or stars by day")
+        game.shop.model.minute = 23.0 * 60.0
+        game._refresh_texture()
+        game._follow_sun()
+        var rooms := 0
+        for runs in game.lighting.rooms:
+            rooms += runs.size() / 2
+        check(game.lighting.visible and game.lighting.level == 0.0 and rooms > 0 and game.liquid_material.get_shader_parameter("stars") == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, with stars, and the shack's rooms are lamp-lit")
+        check(game.lighting.indoor(0.0).v > game.lighting.ambient(0.0).v * 1.5, "A room at night is much brighter than outdoors")
+        game.shop.model.minute = morning
+        game._follow_sun()
+        check(not game.lighting.visible, "Morning again")
         game.workshop.hide()
         game._toggle_workshop()
         check(game.workshop.visible and game.workshop.tabs.is_tab_hidden(1) and not game.workshop.saves.visible, "The stock window shows only the stock in the campaign")

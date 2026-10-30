@@ -18,6 +18,8 @@ uniform float animation_time = 0.0;
 uniform uint world_seed = 7u;
 uniform vec2 view_origin = vec2(0.0);
 uniform float sunlight : hint_range(0.0, 1.0) = 1.0;
+// Stars in the open sky at night (campaign day and night; the lighting node darkens the sky itself).
+uniform float stars : hint_range(0.0, 1.0) = 0.0;
 // Controlled backdrop for comparisons with the HTML drawBody/drawStream functions.
 uniform bool reference_mode = false;
 uniform vec3 reference_color = vec3(0.12, 0.18, 0.25);
@@ -61,13 +63,23 @@ vec3 backdrop(ivec2 pixel, ivec4 cell) {
     int i = min(2, int(t));
     vec3 color = floor(mix(SKY_COLORS[i], SKY_COLORS[i+1], t-float(i)) * 255.0 + 0.5) / 255.0;
     // The browser deliberately omits hills behind liquid cells.
+    bool open_sky = true;
     if (cell.g == 0) {
         for (int layer = 0; layer < 2; layer++) {
             vec4 hill = HILL_SHAPE[layer];
             float lx = float(pixel.x) - view_origin.x * (1.0-hill.x);
             float n = world_noise(vec2(lx/hill.w, 0.0), HILL_SALT[layer])*0.7 + world_noise(vec2(lx/(hill.w/3.0), 3.0), HILL_SALT[layer]+1)*0.3;
             int top = int(floor(hill.y-hill.z*n+0.5)) + int(floor(view_origin.y*(1.0-hill.x)+0.5));
-            if (pixel.y >= top) { color = pixel.y == top ? HILL_RIM[layer] : HILL_BODY[layer]; }
+            if (pixel.y >= top) { color = pixel.y == top ? HILL_RIM[layer] : HILL_BODY[layer]; open_sky = false; }
+        }
+    }
+    if (stars > 0.0 && open_sky && cell.g == 0) {
+        // Two-pixel stars fixed to the sky, drifting slowly with the view; a few twinkle.
+        ivec2 p = (pixel - ivec2(floor(view_origin * 0.9 + 0.5))) >> 1;
+        float r = world_hash(p + ivec2(0, 12000));
+        if (r > 0.9965) {
+            float twinkle = r > 0.9993 ? 0.6 + 0.4 * sin(animation_time * 2.3 + r * 900.0) : 1.0;
+            color = mix(color, vec3(1.0, 0.98, 0.9), stars * twinkle);
         }
     }
     return color;
