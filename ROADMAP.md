@@ -50,6 +50,8 @@ no survival needs, staff, Steam on Windows and macOS, solo at about 2 hours a da
   coupling; beet sugar from cossettes through liming, seeded boiling and spinning to white sugar, with pulp, lime mud
   and molasses; pH meter and shredder; gas and electricity bills; world saves v3 and delivery saves.
   See [M2 logistics](docs/design/m2-logistics.md). Next: gate G1 (twenty minutes in the shack without help).
+- [x] G1 playtest fix: a pixel-art game interface (HUD, hotbar, toasts, tooltip, Esc menu, steel windows, the laptop
+  shop as a web page) in place of the tool bars. See [the game interface](docs/design/ui.md).
 - [ ] M3 Property · M4 Farming · M5 Police and risk (gate G2) · M6 Hazards · M7 Scale up · M8 Polish and launch (gate G3).
 
 ## Game direction: chemistry, manufacturing and trade

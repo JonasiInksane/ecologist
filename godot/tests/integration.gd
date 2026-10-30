@@ -225,6 +225,19 @@ func run() -> void:
         check(game.kit_items.size() == 12 and game.kitchen != null and not game.kitchen.visible, "The kitchen kit loads")
         game._set_kit_mode(true)
         check(game.kit_buttons[0].visible and not game.build_buttons[0].visible, "K swaps the build bar to the kitchen kit")
+        check(game.kit_buttons[0].theme_type_variation == "SlotSelected" and game.hud.counts.kit[0].text == str(int(game.kit_items[0].cost)), "The hotbar frames the selected slot and shows its price")
+        game.status_clock = 0.25
+        game._process(0.0)
+        check(game.hud.visible and not game.top_panel.visible and not game.footer.visible and game.hud.cash.text == "%.2f" % game.workshop.model.cash, "The campaign shows the HUD, not the sandbox bars")
+        var was_paused: bool = game.paused
+        game.hud.toggle_menu()
+        check(game.hud.menu.visible and game.paused, "Esc opens the menu and pauses")
+        game.hud.toggle_menu()
+        check(not game.hud.menu.visible and game.paused == was_paused, "Closing the menu resumes")
+        game.workshop.hide()
+        game._toggle_workshop()
+        check(game.workshop.visible and game.workshop.tabs.is_tab_hidden(1) and not game.workshop.saves.visible, "The stock window shows only the stock in the campaign")
+        game._toggle_workshop()
         var game_ids := {}
         for info in game.world.equipment_list():
             game_ids[info.kind] = info.id
@@ -272,9 +285,8 @@ func run() -> void:
         var laptop_cell := Vector2i(int(game.world.equipment_info(laptop).x), int(game.world.equipment_info(laptop).y))
         game._set_kit_mode(false)
         check(game._equipment_click(laptop_cell, false) and game.shop.visible and not game.kitchen.visible, "Clicking the laptop opens the shop")
-        game.shop.supplier_pick.select(4)
-        game.shop._fill_items()
-        game.shop.item_pick.select(3)
+        game.shop.select_supplier(4)
+        game.shop.select_item(3)
         game.shop.count.value = 1
         game.shop._order()
         check(is_equal_approx(game.workshop.model.cash, 2850.0) and game.shop.model.orders.size() == 1 and game.shop.model.orders[0].item == "kettle", "A kettle is ordered on the laptop")
@@ -283,10 +295,10 @@ func run() -> void:
         game.shop.model.step(3 * 60)
         check(game.shop.truck_at(Vector2i(390, 96)) and not game.shop.truck_at(Vector2i(370, 96)), "The van parks at the curb")
         game.shop.click_truck()
-        check(not game.shop.model.truck.is_empty() and game.inspector_label.text.begins_with("Walk over"), "The van is out of reach from the shack")
+        check(not game.shop.model.truck.is_empty() and game.inspector_label.text.begins_with("Walk over") and game.hud.toast_label.text.begins_with("Walk over") and game.hud.toast_panel.visible, "The van is out of reach from the shack, said in a toast")
         game.shop.model.unload()
         game._refresh_kit()
-        check(game.shop.model.crates.get("kettle", 0) == 1 and game.kit_buttons[10].text == "Kettle ×1", "The kettle's crate waits in the kit")
+        check(game.shop.model.crates.get("kettle", 0) == 1 and game.hud.counts.kit[10].text == "×1", "The kettle's crate waits in the kit")
         game._set_kit_mode(true)
         game._select_kit(10)
         var cash_now: float = game.workshop.model.cash

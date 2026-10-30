@@ -37,11 +37,13 @@ var kit_items: Array = []
 var kit_selected := 0
 var kit_buttons: Array[Button] = []
 var kit_mode := false
-var kit_button: Button
 var kitchen: PanelContainer
 var shop: PanelContainer
+var hud: Control
+var top_panel: PanelContainer
+var footer: PanelContainer
 var equipment_view: Array = []
-var build_bar: HBoxContainer
+var build_bar: Control
 var palette: HBoxContainer
 var mode_button: Button
 var sandbox_only: Array[Button] = []
@@ -192,7 +194,9 @@ func _button(text: String, action: Callable) -> Button:
 func _build_ui() -> void:
     var layer := CanvasLayer.new()
     add_child(layer)
+    # The sandbox keeps its tool bars; the campaign is drawn by the HUD and the themed windows under ui.
     var panel := PanelContainer.new()
+    top_panel = panel
     panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
     panel.offset_bottom = 124
     panel.add_theme_stylebox_override("panel", _style(Color("101e24")))
@@ -232,23 +236,6 @@ func _build_ui() -> void:
     palette = HBoxContainer.new()
     palette.add_theme_constant_override("separation", 6)
     column.add_child(palette)
-    build_bar = HBoxContainer.new()
-    build_bar.add_theme_constant_override("separation", 6)
-    column.add_child(build_bar)
-    kit_button = _button("Kitchen kit · K", func(): _set_kit_mode(not kit_mode))
-    build_bar.add_child(kit_button)
-    for i in kit_items.size():
-        var item: Dictionary = kit_items[i]
-        var kit_item_button := _button("%s %d" % [item.short, int(item.cost)], _select_kit.bind(i))
-        kit_item_button.tooltip_text = "%s · key %d · %s · %s" % [item.name, i + 1, "delivered in a crate; order it on the laptop" if item.get("crate", false) else "%d credits" % int(item.cost), item.note]
-        kit_buttons.append(kit_item_button)
-        build_bar.add_child(kit_item_button)
-    for i in build_items.size():
-        var item: Dictionary = build_items[i]
-        var build_button := _button("%s %d" % [item.short, int(item.cost)], _select_build.bind(i))
-        build_button.tooltip_text = "%s · key %d · %d credits per %s" % [item.name, (i + 1) % 10, int(item.cost), "cell" if item.get("cell", false) else "tile"]
-        build_buttons.append(build_button)
-        build_bar.add_child(build_button)
     material_picker.custom_minimum_size.x = 220
     for category in ["All", "Liquids", "Terrain", "Powders", "Machines", "Tools"]:
         category_picker.add_item(category)
@@ -271,7 +258,7 @@ func _build_ui() -> void:
     radius_label = _label("Brush 3")
     palette.add_child(radius_label)
     palette.add_child(_button("+", _resize_brush.bind(1)))
-    var footer := PanelContainer.new()
+    footer = PanelContainer.new()
     footer.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
     footer.offset_top = -66
     footer.add_theme_stylebox_override("panel", _style(Color("101e24")))
@@ -289,27 +276,40 @@ func _build_ui() -> void:
     foot_row.add_child(status_label)
     inspector_label = _label("Fine grains · Pour sugar into water. Heat or cool it to explore concentration.", 12, Color("91b7b2"))
     foot_column.add_child(inspector_label)
+    var ui := Control.new()
+    ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    ui.theme = UiStyle.theme()
+    ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    layer.add_child(ui)
     workshop = preload("res://workshop_panel.gd").new()
     workshop.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
-    workshop.offset_left = -440
+    workshop.offset_left = -480
+    workshop.offset_right = -12
     workshop.offset_top = 124
-    workshop.offset_bottom = -66
-    layer.add_child(workshop)
+    workshop.offset_bottom = -132
+    ui.add_child(workshop)
     workshop.hide()
     kitchen = preload("res://kitchen.gd").new()
     kitchen.setup(self)
-    kitchen.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
-    kitchen.offset_left = -440
+    kitchen.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+    kitchen.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+    kitchen.offset_left = -480
+    kitchen.offset_right = -12
     kitchen.offset_top = 124
-    kitchen.offset_bottom = -66
-    layer.add_child(kitchen)
+    ui.add_child(kitchen)
     shop = preload("res://shop_panel.gd").new()
     shop.setup(self)
-    shop.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
-    shop.offset_left = -440
-    shop.offset_top = 124
-    shop.offset_bottom = -66
-    layer.add_child(shop)
+    ui.add_child(shop)
+    hud = preload("res://hud.gd").new()
+    ui.add_child(hud)
+    hud.setup(self)
+    ui.move_child(hud, 0)
+    build_bar = hud.bar
+    for button in hud.slots.kit:
+        kit_buttons.append(button)
+    for button in hud.slots.build:
+        build_buttons.append(button)
     _refresh_kit()
     _filter_tools()
     _select(0)
@@ -339,30 +339,55 @@ func _select_build(index: int) -> void:
             VALVE_CODE: _notice("Valve: place it in a pipe run; click a valve to open or shut it.")
             PUMP_CODE: _notice("Pump: click the inlet cell, then the outlet cell. Click either end to switch it.")
     build_selected = clampi(index, 0, build_items.size() - 1)
-    for i in build_buttons.size():
-        build_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == build_selected else Color("1d3036"), Color("91bdae") if i == build_selected else Color.TRANSPARENT))
+    if hud != null:
+        hud.highlight(kit_mode, build_selected, kit_selected)
 
 func _select_kit(index: int) -> void:
     kit_selected = clampi(index, 0, kit_items.size() - 1)
-    for i in kit_buttons.size():
-        kit_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == kit_selected else Color("1d3036"), Color("91bdae") if i == kit_selected else Color.TRANSPARENT))
+    if hud != null:
+        hud.highlight(kit_mode, build_selected, kit_selected)
 
 # Crated pieces show how many delivered crates wait to be placed.
 func _refresh_kit() -> void:
     for i in kit_items.size():
         var item: Dictionary = kit_items[i]
         if item.get("crate", false):
-            kit_buttons[i].text = "%s ×%d" % [item.short, int(shop.model.crates.get(item.id, 0))]
+            hud.set_count(i, int(shop.model.crates.get(item.id, 0)))
 
 # The build bar shows either building tiles or the kitchen kit.
 func _set_kit_mode(on: bool) -> void:
     kit_mode = on
-    kit_button.text = "Building · K" if on else "Kitchen kit · K"
-    for button in kit_buttons:
-        button.visible = on
-    for button in build_buttons:
-        button.visible = not on
     _select_kit(kit_selected)
+
+# The line over the hotbar: what the selected slot builds or places, and what it costs.
+func _item_text() -> String:
+    if kitchen.carrying >= 0:
+        return "Carrying the %s · click to put it down" % kitchen.name_of(String(world.equipment_info(kitchen.carrying).get("kind", ""))).to_lower()
+    if kit_mode:
+        var item: Dictionary = kit_items[kit_selected]
+        if item.get("crate", false):
+            return "%s · %d in crates" % [item.name, int(shop.model.crates.get(item.id, 0))]
+        return "%s · %d credits" % [item.name, int(item.cost)]
+    var piece: Dictionary = build_items[build_selected]
+    return "%s · %d credit%s per %s" % [piece.name.get_slice(" · ", 0), int(piece.cost), "" if int(piece.cost) == 1 else "s", "cell" if piece.get("cell", false) else "tile"]
+
+# The tooltip at the pointer: equipment, the truck at the curb, valves and pumps.
+func _hover_tip() -> String:
+    var cell := Vector2i((get_global_mouse_position() / CELL).floor())
+    var id: int = world.equipment_at(cell.x, cell.y)
+    if id >= 0:
+        return kitchen.hover_text(id)
+    if shop.truck_at(cell):
+        return "%s · click to unload" % shop.model.status() if not shop.model.tanker_here() else shop.model.status()
+    var solid := int(world.inspect(cell.x, cell.y).get("solid", 0))
+    if solid == 26:
+        var open: bool = world.inspect(cell.x, cell.y).get("open", false)
+        return "Valve · %s · click to %s" % ["open" if open else "shut", "shut it" if open else "open it"]
+    if solid == 8 or solid == 9:
+        return "Pump %s · click to switch it" % ("inlet" if solid == 8 else "outlet")
+    if solid == 25:
+        return "Pipe"
+    return ""
 
 func _item_name() -> String:
     if kitchen != null and kitchen.carrying >= 0:
@@ -409,6 +434,12 @@ func _set_mode(on: bool) -> void:
     world.flow(pressure, momentum)
     palette.visible = not on
     build_bar.visible = on
+    top_panel.visible = not on
+    footer.visible = not on
+    hud.visible = on
+    workshop.campaign_view(on)
+    if not on:
+        hud.close_menu()
     mode_button.text = "Sandbox  ·  Tab" if on else "Campaign  ·  Tab"
     if kitchen != null:
         kitchen.close()
@@ -437,6 +468,8 @@ func _set_mode(on: bool) -> void:
 func _notice(text: String) -> void:
     inspector_label.text = text
     notice_until = animation_time + 2.5
+    if hud != null and campaign:
+        hud.toast(text)
 
 func _tile_at(cell: Vector2i) -> Vector2i:
     return Vector2i(cell.x & ~1, cell.y & ~1)
@@ -679,10 +712,9 @@ func _toggle_momentum() -> void:
     world.flow(pressure, momentum)
     inspector_label.text = "Momentum %s · waves, jets and splashes %s" % ["on" if momentum else "off", "on" if momentum else "off"]
 
+# Any control under the pointer that takes the mouse (bars, panels, windows, the hotbar) keeps clicks off the world.
 func _pointer_over_ui() -> bool:
-    var pointer := get_viewport().get_mouse_position()
-    var side := (workshop != null and workshop.visible) or (kitchen != null and kitchen.visible) or (shop != null and shop.visible)
-    return pointer.y < 124 or pointer.y > get_viewport_rect().size.y - 66 or (side and pointer.x > get_viewport_rect().size.x - 440)
+    return get_viewport().gui_get_hovered_control() != null
 
 func _input(event: InputEvent) -> void:
     # Always release a drag, including when the pointer ends over a button.
@@ -712,9 +744,13 @@ func _unhandled_input(event: InputEvent) -> void:
         if event.keycode == KEY_P:
             _toggle_pause()
         elif event.keycode == KEY_ESCAPE:
-            kitchen.close()
-            shop.close()
-            kitchen.carrying = -1
+            if kitchen.visible or shop.visible or workshop.visible or kitchen.carrying >= 0:
+                kitchen.close()
+                shop.close()
+                workshop.hide()
+                kitchen.carrying = -1
+            else:
+                hud.toggle_menu()
         elif event.physical_keycode == KEY_K:
             _set_kit_mode(not kit_mode)
         elif event.physical_keycode == KEY_E and target >= 0 and _in_reach(_tile_at(hovered)):
@@ -846,6 +882,9 @@ func _process(delta: float) -> void:
         status_clock = 0.0
         var stats := world.stats()
         status_label.text = "%s · %d fps · %d grains" % ["Paused" if paused else "Running", Engine.get_frames_per_second(), stats.grains]
+        if campaign:
+            hud.refresh(player, workshop.model.cash, shop.model.minute, shop.model.status(), _item_text(), paused)
+            hud.set_tip(_hover_tip() if not _pointer_over_ui() else "")
         if campaign and player.get("active", false):
             var delivery: String = shop.model.status()
             clock_label.text = "   %s%s" % [LogisticsModel.clock_text(shop.model.minute), "   ·   " + delivery if not delivery.is_empty() else ""]

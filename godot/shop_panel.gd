@@ -17,81 +17,131 @@ var sheet: Texture2D
 var hooked := -1
 var clock := 0.0
 var supplier_ids: Array[String] = []
-var heading := Label.new()
-var money := Label.new()
-var supplier_pick := OptionButton.new()
-var blurb := Label.new()
-var item_pick := OptionButton.new()
-var offer_text := Label.new()
+var supplier_index := 0
+var item_index := 0
+var supplier_buttons: Array[Button] = []
+var item_buttons: Array[Button] = []
+var money := UiStyle.label("", "WebLabel")
+var supplier_name := UiStyle.label("", "WebLabel", 26)
+var blurb := UiStyle.label("", "WebMuted")
+var lead := UiStyle.label("", "WebMuted")
+var item_list := VBoxContainer.new()
 var count := SpinBox.new()
+var total := UiStyle.label("", "WebLabel")
 var order_button: Button
-var deliveries := Label.new()
-var crates_text := Label.new()
-var note := Label.new()
+var deliveries := UiStyle.label("", "WebLabel")
+var crates_text := UiStyle.label("", "WebLabel")
+var note := UiStyle.label("", "WebMuted")
 
 func setup(owner: Node) -> void:
     main = owner
     sheet = main._load_texture(VEHICLES)
 
+# The shop is a web page on the laptop's screen: Bulkr, a marketplace for bulk goods, with the suppliers down the
+# left, their goods as cards in the middle and your orders on the right.
 func _ready() -> void:
     data = JSON.parse_string(FileAccess.get_file_as_string("res://data/shop.json"))
     model = Model.new(data, main.workshop.model, main.kit_items)
-    custom_minimum_size.x = 420
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color("13272d")
-    style.set_content_margin_all(14)
-    style.border_color = Color("365359")
-    style.border_width_left = 1
-    add_theme_stylebox_override("panel", style)
+    theme_type_variation = "Bezel"
+    set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+    grow_horizontal = Control.GROW_DIRECTION_BOTH
+    grow_vertical = Control.GROW_DIRECTION_BOTH
+    custom_minimum_size = Vector2(940, 560)
+    mouse_filter = Control.MOUSE_FILTER_STOP
+    var page := PanelContainer.new()
+    page.theme_type_variation = "WebPanel"
+    add_child(page)
     var layout := VBoxContainer.new()
-    layout.add_theme_constant_override("separation", 10)
-    add_child(layout)
+    layout.add_theme_constant_override("separation", 8)
+    page.add_child(layout)
     var top := HBoxContainer.new()
+    top.add_theme_constant_override("separation", 12)
     layout.add_child(top)
-    heading.text = "Laptop · shop"
-    heading.add_theme_font_size_override("font_size", 20)
-    heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-    top.add_child(heading)
-    top.add_child(_button("Close · Esc", close))
-    for label in [money, blurb, offer_text, deliveries, crates_text, note]:
-        label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        label.add_theme_color_override("font_color", Color("cfe3dc"))
-    money.add_theme_color_override("font_color", Color("8cb8aa"))
-    blurb.add_theme_color_override("font_color", Color("afc3c9"))
-    note.add_theme_color_override("font_color", Color("e7c77b"))
-    layout.add_child(money)
-    for entry in data.suppliers:
+    top.add_child(UiStyle.label("Bulkr", "WebTitle"))
+    var tagline := UiStyle.label("bulk goods to your curb · no questions, some answers", "WebMuted")
+    tagline.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    tagline.size_flags_vertical = Control.SIZE_SHRINK_END
+    top.add_child(tagline)
+    money.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    top.add_child(money)
+    var close_button := _button("", close)
+    close_button.theme_type_variation = "WebButton"
+    close_button.icon = UiStyle.icon("close")
+    close_button.tooltip_text = "Close · Esc"
+    top.add_child(close_button)
+    layout.add_child(_rule())
+    var body := HBoxContainer.new()
+    body.add_theme_constant_override("separation", 14)
+    body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    layout.add_child(body)
+    var nav := VBoxContainer.new()
+    nav.custom_minimum_size.x = 170
+    nav.add_theme_constant_override("separation", 4)
+    body.add_child(nav)
+    nav.add_child(UiStyle.label("SUPPLIERS", "WebMuted"))
+    for i in data.suppliers.size():
+        var entry: Dictionary = data.suppliers[i]
         supplier_ids.append(entry.id)
-        supplier_pick.add_item(entry.name)
-    supplier_pick.item_selected.connect(func(_index): _fill_items())
-    layout.add_child(supplier_pick)
-    layout.add_child(blurb)
-    item_pick.item_selected.connect(func(_index): _fill_offer())
-    layout.add_child(item_pick)
-    layout.add_child(offer_text)
+        var button := _button(entry.short, select_supplier.bind(i))
+        button.theme_type_variation = "WebButton"
+        button.toggle_mode = true
+        button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+        supplier_buttons.append(button)
+        nav.add_child(button)
+    var center := VBoxContainer.new()
+    center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    center.add_theme_constant_override("separation", 6)
+    body.add_child(center)
+    center.add_child(supplier_name)
+    for label in [blurb, deliveries, crates_text, note]:
+        label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    center.add_child(blurb)
+    center.add_child(lead)
+    item_list.add_theme_constant_override("separation", 6)
+    center.add_child(item_list)
+    var spacer := Control.new()
+    spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+    center.add_child(spacer)
     var buy_row := HBoxContainer.new()
+    buy_row.add_theme_constant_override("separation", 10)
+    buy_row.add_child(UiStyle.label("Quantity", "WebMuted"))
     count.min_value = 1
     count.max_value = 1
     count.value = 1
+    count.custom_minimum_size.x = 96
     count.value_changed.connect(func(_value): _fill_offer())
     buy_row.add_child(count)
+    total.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    total.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+    buy_row.add_child(total)
     order_button = _button("Order", _order)
+    order_button.theme_type_variation = "WebButton"
     buy_row.add_child(order_button)
-    layout.add_child(buy_row)
-    layout.add_child(_text("DELIVERIES"))
-    layout.add_child(deliveries)
-    layout.add_child(_text("CRATES"))
-    layout.add_child(crates_text)
+    center.add_child(buy_row)
+    var side := PanelContainer.new()
+    side.theme_type_variation = "WebCard"
+    side.custom_minimum_size.x = 250
+    body.add_child(side)
+    var orders := VBoxContainer.new()
+    orders.add_theme_constant_override("separation", 4)
+    side.add_child(orders)
+    orders.add_child(UiStyle.label("ON THE WAY", "WebMuted"))
+    orders.add_child(deliveries)
+    orders.add_child(_rule())
+    orders.add_child(UiStyle.label("IN THE YARD", "WebMuted"))
+    orders.add_child(crates_text)
+    layout.add_child(_rule())
     layout.add_child(note)
-    _fill_items()
+    select_supplier(0)
     hide()
 
-func _text(value: String) -> Label:
-    var label := Label.new()
-    label.text = value
-    label.add_theme_color_override("font_color", Color("afc3c9"))
-    label.add_theme_font_size_override("font_size", 13)
-    return label
+func _rule() -> HSeparator:
+    var rule := HSeparator.new()
+    var line := StyleBoxLine.new()
+    line.color = Color("c4beb0")
+    line.thickness = 2
+    rule.add_theme_stylebox_override("separator", line)
+    return rule
 
 func _button(value: String, action: Callable) -> Button:
     var button := Button.new()
@@ -104,32 +154,75 @@ func world() -> EcologistWorld:
     return main.campaign_world
 
 func supplier_id() -> String:
-    return supplier_ids[maxi(0, supplier_pick.selected)]
+    return supplier_ids[supplier_index]
 
-func _fill_items() -> void:
+# A sack for dry goods, a drop for sea water, and the piece itself for crated equipment.
+func _picture(item: Dictionary) -> Texture2D:
+    if item.kind == "crate":
+        return UiStyle.sprite(main.kitchen.SPRITES, main.kitchen.items[item.id].sprite)
+    return UiStyle.icon({"sugar_beet": "beet", "sea_water": "drop"}.get(item.id, "sack"))
+
+func _card(item: Dictionary, index: int) -> Button:
+    var card := Button.new()
+    card.theme_type_variation = "WebItem"
+    card.toggle_mode = true
+    card.focus_mode = Control.FOCUS_NONE
+    card.custom_minimum_size.y = 52
+    card.pressed.connect(select_item.bind(index))
+    var row := HBoxContainer.new()
+    row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    row.offset_left = 10
+    row.offset_right = -12
+    row.add_theme_constant_override("separation", 10)
+    row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    card.add_child(row)
+    row.add_child(UiStyle.icon_rect(_picture(item), 36))
+    var title := UiStyle.label("%s · %s" % [model.item_name(item), item.unit], "WebLabel")
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    row.add_child(title)
+    var cost := UiStyle.label("%.2f cr" % model.price(item), "WebLabel")
+    cost.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    row.add_child(cost)
+    return card
+
+func select_supplier(index: int) -> void:
+    supplier_index = clampi(index, 0, supplier_ids.size() - 1)
+    for i in supplier_buttons.size():
+        supplier_buttons[i].set_pressed_no_signal(i == supplier_index)
     var entry := model.supplier(supplier_id())
+    supplier_name.text = entry.name
     blurb.text = entry.blurb
-    item_pick.clear()
-    for item in entry.items:
-        item_pick.add_item("%s · %s · %.2f" % [model.item_name(item), item.unit, model.price(item)])
-    item_pick.select(0)
+    lead.text = "Delivers in %s h" % str(snappedf(float(entry.lead_minutes) / 60.0, 0.1)).trim_suffix(".0")
+    for child in item_list.get_children():
+        child.queue_free()
+    item_buttons.clear()
+    for i in entry.items.size():
+        var card := _card(entry.items[i], i)
+        item_buttons.append(card)
+        item_list.add_child(card)
+    select_item(0)
+
+func select_item(index: int) -> void:
+    item_index = clampi(index, 0, item_buttons.size() - 1)
+    for i in item_buttons.size():
+        item_buttons[i].set_pressed_no_signal(i == item_index)
+    var item := model.offer(supplier_id(), item_index)
+    count.min_value = int(item.get("min", 1))
+    count.max_value = int(item.get("max", 1))
+    count.value = clampi(int(count.value), int(count.min_value), int(count.max_value))
     _fill_offer()
 
 func _fill_offer() -> void:
-    var entry := model.supplier(supplier_id())
-    var item := model.offer(supplier_id(), maxi(0, item_pick.selected))
+    var item := model.offer(supplier_id(), item_index)
     if item.is_empty():
         return
-    count.min_value = int(item.get("min", 1))
-    count.max_value = int(item.get("max", 1))
-    var hours := float(entry.lead_minutes) / 60.0
-    offer_text.text = "%s · %.2f credits each · arrives in %s h by %s%s" % [item.unit, model.price(item),
-        str(snappedf(hours, 0.1)).trim_suffix(".0"), item.vehicle,
-        " · needs a fill coupling by the road" if item.vehicle == "tanker" else ""]
-    order_button.text = "Order · %.2f" % (model.price(item) * int(count.value))
+    total.text = "%s · %.2f cr" % ["by tanker · needs a fill coupling by the road" if item.vehicle == "tanker" else "by van", model.price(item) * int(count.value)]
+    order_button.text = "Order"
+    order_button.disabled = model.workshop.cash + 0.000001 < model.price(item) * int(count.value)
 
 func _order() -> void:
-    model.order(supplier_id(), maxi(0, item_pick.selected), int(count.value))
+    model.order(supplier_id(), item_index, int(count.value))
     _say(model.message)
     refresh()
 
@@ -156,7 +249,7 @@ func _process(delta: float) -> void:
         refresh()
 
 func refresh() -> void:
-    money.text = "%s   ·   %.2f credits" % [Model.clock_text(model.minute), model.workshop.cash]
+    money.text = "%s   ·   %.2f cr" % [Model.clock_text(model.minute), model.workshop.cash]
     var lines: Array[String] = []
     var status := model.status()
     if not model.truck.is_empty():
@@ -171,7 +264,7 @@ func refresh() -> void:
     var crates: Array[String] = []
     for id in model.crates:
         crates.append("%s × %d" % [main.kitchen.name_of(id), int(model.crates[id])])
-    crates_text.text = ", ".join(crates) + ". Place them from the kitchen kit (K)." if not crates.is_empty() else "None waiting."
+    crates_text.text = "\n".join(crates) + "\nPlace them from the kitchen kit (K)." if not crates.is_empty() else "No crates waiting."
     _fill_offer()
 
 # One campaign tick: the clock, arrivals, and a tanker pumping into the coupling nearest the road.

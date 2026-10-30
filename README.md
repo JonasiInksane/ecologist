@@ -34,19 +34,19 @@ match the Windows actions. Setup downloads the pinned Godot 4.7.2 macOS build an
 
 The game starts in **campaign** mode: your character in a wooden shack on a small plot. Walk with **A D**,
 jump with **Space**, climb ladders with **W S** and open doors with **E**. Left click builds the selected tile
-from the build bar (it costs credits), right click removes one for a partial refund. **F5** saves the whole
-world and the workshop, **F9** loads them, and **Tab** switches to the free sandbox. See
-[M0 foundations](docs/design/m0-foundations.md).
+from the hotbar (it costs credits), right click removes one for a partial refund. **Esc** opens the menu,
+**F5** saves the whole world and the workshop, **F9** loads them, and **Tab** switches to the free sandbox. See
+[M0 foundations](docs/design/m0-foundations.md) and [the game interface](docs/design/ui.md).
 
 The shack has a working kitchen: a stove, a sink, a table, a saucepan and a candy mold. Click a piece (or hover it
 and press **E**) to open the kitchen panel: set the flame, add sugar, sea water or tap water, pour, drain, move
-and collect. Make syrup, hard candy and sea salt, then sell them in the **Workshop** panel. **K** swaps the build
-bar to the kitchen kit for placing more equipment. See [M1 shack slice](docs/design/m1-shack-slice.md).
+and collect. Make syrup, hard candy and sea salt, then sell them in **stock and sales** (the crate button, top
+right). **K** swaps the hotbar to the kitchen kit for placing more equipment. See [M1 shack slice](docs/design/m1-shack-slice.md).
 
 Supplies come by truck. Click the **laptop** on the table to order from the suppliers; a van parks at the curb
-after the lead time (the clock and the next delivery are in the top bar) and you walk over and click it to unload.
+after the lead time (the clock and the next delivery are at the top right) and you walk over and click it to unload.
 Drums, totes, a fill coupling, a jacketed kettle and a centrifuge arrive in crates and are placed from the kit.
-Lay **pipes**, **valves** and **pumps** from the build bar: pipe ends couple to the ports on tanks and kettles,
+Lay **pipes**, **valves** and **pumps** from the hotbar: pipe ends couple to the ports on tanks and kettles,
 and a sea water tanker pumps through a coupling by the road. With a kettle, lime and a centrifuge, beets become
 white sugar, molasses and pulp. See [M2 logistics](docs/design/m2-logistics.md).
 

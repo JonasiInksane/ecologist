@@ -15,8 +15,9 @@ var billed_joules := 0.0
 var billed_power := 0.0
 var sheet: Texture2D
 var clock := 0.0
-var title := Label.new()
-var place_text := Label.new()
+var title := UiStyle.label("", "Title")
+var picture := UiStyle.icon_rect(null, 40)
+var place_text := UiStyle.label("", "Muted")
 var readings := Label.new()
 var contents_text := Label.new()
 var flame_row := HBoxContainer.new()
@@ -32,7 +33,7 @@ var spin_row := HBoxContainer.new()
 var spin_button: Button
 var wash_button: Button
 var tool_row := HFlowContainer.new()
-var note := Label.new()
+var note := UiStyle.label("", "Note")
 
 func setup(owner: Node) -> void:
     main = owner
@@ -42,33 +43,32 @@ func _ready() -> void:
     data = JSON.parse_string(FileAccess.get_file_as_string("res://data/equipment.json"))
     for item in data.items:
         items[item.id] = item
+    # The look comes from the game theme (UiStyle): a riveted steel window with the piece's picture in the heading.
     custom_minimum_size.x = 420
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color("13272d")
-    style.set_content_margin_all(14)
-    style.border_color = Color("365359")
-    style.border_width_left = 1
-    add_theme_stylebox_override("panel", style)
+    mouse_filter = Control.MOUSE_FILTER_STOP
     var layout := VBoxContainer.new()
-    layout.add_theme_constant_override("separation", 10)
+    layout.add_theme_constant_override("separation", 8)
     add_child(layout)
     var heading := HBoxContainer.new()
+    heading.add_theme_constant_override("separation", 10)
     layout.add_child(heading)
-    title.add_theme_font_size_override("font_size", 20)
+    heading.add_child(picture)
     title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     heading.add_child(title)
-    heading.add_child(_button("Close · Esc", close))
+    var close_button := _button("X", close)
+    close_button.tooltip_text = "Close · Esc"
+    close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    heading.add_child(close_button)
     for label in [place_text, readings, contents_text, note]:
         label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-        label.add_theme_color_override("font_color", Color("cfe3dc"))
-    place_text.add_theme_color_override("font_color", Color("8cb8aa"))
-    note.add_theme_color_override("font_color", Color("e7c77b"))
     layout.add_child(place_text)
+    layout.add_child(HSeparator.new())
     layout.add_child(readings)
     layout.add_child(contents_text)
     flame_row.add_child(_text("Flame"))
     for level in data.flames.stove.size():
         var button := _button(data.flames.stove[level], _set_flame.bind(level))
+        button.toggle_mode = true
         flame_buttons.append(button)
         flame_row.add_child(button)
     layout.add_child(flame_row)
@@ -106,10 +106,7 @@ func _ready() -> void:
     hide()
 
 func _text(value: String) -> Label:
-    var label := Label.new()
-    label.text = value
-    label.add_theme_color_override("font_color", Color("afc3c9"))
-    return label
+    return UiStyle.label(value, "Muted")
 
 func _button(value: String, action: Callable) -> Button:
     var button := Button.new()
@@ -272,6 +269,8 @@ func refresh() -> void:
         close()
         return
     title.text = name_of(info.kind)
+    picture.texture = UiStyle.sprite(SPRITES, items[info.kind].sprite) if items.has(info.kind) and items[info.kind].has("sprite") else null
+    picture.visible = picture.texture != null
     var under: Dictionary = world().equipment_info(int(info.resting_on))
     var places: Array[String] = [("On the " + name_of(under.kind).to_lower()) if not under.is_empty() else "On the floor"]
     if not in_reach(info):
@@ -288,7 +287,7 @@ func refresh() -> void:
         var labels := flames(burner.kind)
         for level in flame_buttons.size():
             flame_buttons[level].text = labels[level]
-            flame_buttons[level].modulate = Color("9fe6b0") if level == int(burner.setting) else Color.WHITE
+            flame_buttons[level].set_pressed_no_signal(level == int(burner.setting))
     var vessel: bool = info.vessel
     for row in [pour_row, vessel_actions, contents_text]:
         row.visible = vessel

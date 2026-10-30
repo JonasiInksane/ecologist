@@ -23,29 +23,39 @@ var run_button: Button
 var recipe_ids: Array[String] = []
 var material_ids: Array[String] = []
 var clock := 0.0
+var tabs := TabContainer.new()
+var saves := HBoxContainer.new()
+var subtitle: Label
 
 func _ready() -> void:
     definitions = JSON.parse_string(FileAccess.get_file_as_string("res://data/workshop.json"))
     model = Model.new(definitions)
+    # The look comes from the game theme (UiStyle). In the campaign this is the stock and sales window; the sandbox
+    # also shows the prototype lab, machines and underground tabs.
     custom_minimum_size.x = 420
-    var style := StyleBoxFlat.new()
-    style.bg_color = Color("13272d")
-    style.set_content_margin_all(14)
-    style.border_color = Color("365359")
-    style.border_width_left = 1
-    add_theme_stylebox_override("panel", style)
+    mouse_filter = Control.MOUSE_FILTER_STOP
     var layout := VBoxContainer.new()
-    layout.add_theme_constant_override("separation", 10)
+    layout.add_theme_constant_override("separation", 8)
     add_child(layout)
-    var title := _text("WORKSHOP", 20)
-    layout.add_child(title)
-    layout.add_child(_text("Finite stock · real names · prototype economics", 12))
+    var heading := HBoxContainer.new()
+    layout.add_child(heading)
+    var title := UiStyle.label("Stock and sales", "Title")
+    title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+    heading.add_child(title)
+    var close_button := Button.new()
+    close_button.text = "X"
+    close_button.tooltip_text = "Close · Esc"
+    close_button.focus_mode = Control.FOCUS_NONE
+    close_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+    close_button.pressed.connect(hide)
+    heading.add_child(close_button)
+    subtitle = _text("Finite stock · real names · prototype economics", 12)
+    layout.add_child(subtitle)
+    money.theme_type_variation = "Note"
     layout.add_child(money)
-    var saves := HBoxContainer.new()
     layout.add_child(saves)
     saves.add_child(_button("Save workshop", _save))
     saves.add_child(_button("Load workshop", _load_save))
-    var tabs := TabContainer.new()
     tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
     layout.add_child(tabs)
     var stock := _tab(tabs, "Stock")
@@ -120,13 +130,22 @@ func _ready() -> void:
     _populate()
     refresh()
 
+# Small print is muted, headings are titles, the rest is body text; the pixel font has one body size.
 func _text(value: String, size := 14) -> Label:
-    var label := Label.new()
-    label.text = value
+    var label := UiStyle.label(value, "Title" if size >= 17 else "Muted" if size <= 13 else "")
     label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    label.add_theme_font_size_override("font_size", size)
-    label.add_theme_color_override("font_color", Color("c6d9d8"))
+    if size >= 17:
+        label.add_theme_font_size_override("font_size", 24)
     return label
+
+# The campaign shows only the stock: the lab, machines and underground tabs are sandbox prototypes.
+func campaign_view(on: bool) -> void:
+    for tab in range(1, tabs.get_tab_count()):
+        tabs.set_tab_hidden(tab, on)
+    if on:
+        tabs.current_tab = 0
+    saves.visible = not on
+    subtitle.text = "Sell what you make. Supplies come from the laptop in the shack." if on else "Finite stock · real names · prototype economics"
 
 func _button(value: String, action: Callable) -> Button:
     var button := Button.new()
