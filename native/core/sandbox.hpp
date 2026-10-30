@@ -24,10 +24,28 @@ struct Pump {
     bool on = true;
     FluidBuffer buffer;
 };
+// Kitchen and lab equipment (M1, native/core/equipment.cpp). A vessel is a lumped model in grams: 1 world unit is
+// 10000/255 g of water, and dissolved[s] holds each solute channel as grams of that component, so liquid moves
+// between vessels and world cells without changing mass, solutes or heat.
+struct Vessel {
+    double water = 0;
+    std::array<double, NSOL> dissolved{};
+    double sugar_crystal = 0, salt_crystal = 0, bittern_crystal = 0, burnt = 0;
+    double energy = 0;                    // J, including the vessel body
+    double temperature = 20, peak = 20;
+    double salt_heat = 0, salt_formed = 0; // crystallization temperature x grams, for flaky salt
+    double vapour = 0;                     // about the grams evaporated in the last second, for drawing steam
+    double smoke = 0;
+    bool set = false;                      // a candy mold's contents have hardened
+};
+struct Equipment {
+    int kind = 0, x = 0, y = 0, setting = 0;
+    Vessel vessel;
+};
 // Air in each empty cell, in the browser's units: oxygen in tenths of a percent, CO2 in hundredths.
 // Building layer (M0): a door is a solid block while closed; the background layer holds walls behind rooms,
 // ladders and the cells of an open door, none of which block liquids.
-inline constexpr int B_DOOR = 80;
+inline constexpr int B_DOOR = 80, B_EQUIPMENT = 81;
 inline constexpr std::uint8_t BACK_WALL = 0x0f, BACK_LADDER = 0x40, BACK_DOOR_OPEN = 0x20;
 inline constexpr int BUILD_REMOVE = 1000, BUILD_BACK_WOOD = 1001, BUILD_BACK_BRICK = 1002, BUILD_LADDER = 1003,
                      BUILD_DOOR = 1004, BUILD_REMOVE_BACK = 1005;
@@ -56,6 +74,7 @@ struct Sandbox {
     int explosions = 0;
     std::map<std::string, double> budget;
     std::vector<std::uint8_t> back;
+    std::map<int, Equipment> equipment;
     std::string message;
     void reset(const World &w);
     bool paint(World &w, Grains &g, int x, int y, int radius, int material);

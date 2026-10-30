@@ -1,4 +1,5 @@
 #pragma once
+#include "../core/equipment.hpp"
 #include "../core/grains.hpp"
 #include "../core/save.hpp"
 #include "../core/sandbox.hpp"
@@ -31,6 +32,20 @@ class EcologistWorld : public RefCounted {
     String save_world(const String &path) const;
     String load_world(const String &path);
     PackedByteArray back_data() const;
+    Array equipment_kinds() const;
+    Dictionary equipment_place(const String &kind, int x, int y);
+    String equipment_remove(int id);
+    Dictionary equipment_move(int id, int x, int y);
+    int equipment_at(int x, int y) const;
+    Array equipment_list() const;
+    Dictionary equipment_info(int id) const;
+    bool equipment_set(int id, int setting);
+    String vessel_add(int id, const String &ingredient, double grams, double temperature);
+    Dictionary vessel_pour(int from, int to);
+    int vessel_spill(int id);
+    double vessel_drain(int id, bool keep_crystals);
+    Dictionary vessel_collect(int id);
+    double budget(const String &key) const;
     void advance(int ticks);
     bool paint(int x, int y, int radius, int material);
     int paint_grains(int x, int y, int radius, int kind);

@@ -40,10 +40,11 @@ int Sandbox::build(World &w, Grains &g, int x, int y, int code) {
         // A solid tile first, then a ladder, then the background wall behind it.
         bool any_solid = false;
         for (int k : cells)
-            any_solid = any_solid || w.solid[k];
+            any_solid = any_solid || (w.solid[k] && w.solid[k] != B_EQUIPMENT);
         for (int k : cells) {
             if (any_solid) {
-                if (!w.solid[k] || DEVICE_KIND(w.solid[k]) || w.solid[k] == B_PUMP_IN || w.solid[k] == B_PUMP_OUT)
+                if (!w.solid[k] || DEVICE_KIND(w.solid[k]) || w.solid[k] == B_PUMP_IN || w.solid[k] == B_PUMP_OUT ||
+                    w.solid[k] == B_EQUIPMENT)
                     continue;
                 FluidBuffer water;
                 if (auto p = pores.find(k); p != pores.end())

@@ -18,7 +18,8 @@ void Sandbox::melt(World &w, int k, int type) {
 }
 void Sandbox::thermal_step(World &w) {
     auto conductivity = [&](int k) {
-        return w.solid[k] ? BLOCK_COND[w.solid[k]] : w.liq[k] ? LIQ_COND[w.typ[k]] : AIR_CONDUCTANCE;
+        // Equipment cells are a shell; vessels exchange heat with the world through equipment.cpp.
+        return w.solid[k] == B_EQUIPMENT ? 0.0 : w.solid[k] ? BLOCK_COND[w.solid[k]] : w.liq[k] ? LIQ_COND[w.typ[k]] : AIR_CONDUCTANCE;
     };
     auto exchange = [&](int a, int b) {
         double delta = w.temp[b] - w.temp[a];

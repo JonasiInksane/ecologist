@@ -1,4 +1,5 @@
 #include "player.hpp"
+#include "equipment.hpp"
 #include <algorithm>
 #include <cmath>
 namespace ecologist {
@@ -23,7 +24,8 @@ bool Player::free_at(const World &w, double px, double py) const {
         for (int cx = x0; cx <= x1; cx++) {
             if (cx < 0 || cx >= w.width || cy >= w.height)
                 return false;
-            if (cy >= 0 && w.solid[cy * w.width + cx])
+            // The player walks in front of furniture and equipment.
+            if (cy >= 0 && w.solid[cy * w.width + cx] && w.solid[cy * w.width + cx] != B_EQUIPMENT)
                 return false;
         }
     return true;
@@ -204,9 +206,15 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
     for (int y = ROOF + 2; y < GROUND; y++)
         for (int x = L + 2; x < R - 1; x++)
             s.back[y * w.width + x] = 1;
+    // The kitchen: a sink with mains water, a table with a candy mold, and a stove with a saucepan on it.
+    place_equipment(w, g, s, EQ_SINK, L + 4, GROUND - 1);
+    place_equipment(w, g, s, EQ_TABLE, L + 10, GROUND - 1);
+    place_equipment(w, g, s, EQ_CANDY_MOLD, L + 12, GROUND - 5);
+    place_equipment(w, g, s, EQ_STOVE, L + 18, GROUND - 1);
+    place_equipment(w, g, s, EQ_SAUCEPAN, L + 18, GROUND - 5);
     w.wake_all();
     p = Player{};
     p.active = true;
-    p.place((L + 6) * CELL, GROUND * CELL - Player::HEIGHT);
+    p.place((L + 23) * CELL, GROUND * CELL - Player::HEIGHT);
 }
 } // namespace ecologist

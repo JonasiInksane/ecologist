@@ -127,11 +127,12 @@ vec3 base_pixel(ivec2 pixel) {
     vec3 bg = backdrop(pixel, cell);
     int material = cell.b;
     int back = back_at(tile);
-    if (back != 0 && (material == 0 || material == 22 || material == 25 || material == 26 || material == 27)) { bg = back_pixel(bg, pixel, back); }
+    if (back != 0 && (material == 0 || material == 22 || material == 25 || material == 26 || material == 27 || material == 81)) { bg = back_pixel(bg, pixel, back); }
     if (material == 80) { return door_pixel(pixel, tile); }
     if (material == 0) { return bg; }
     if (material == 22) { return blend_pixel(bg,vec3(207.0,238.0,246.0)/255.0,0.22); }
-    if (material == 25 || material == 26 || material == 27) { return bg; }
+    // Pipes and valves draw as machines, and equipment (81) as sprites, over the background.
+    if (material == 25 || material == 26 || material == 27 || material == 81) { return bg; }
     bool up = !solid_at(tile+ivec2(0,-1)), down = !solid_at(tile+ivec2(0,1));
     bool left = !solid_at(tile+ivec2(-1,0)), right = !solid_at(tile+ivec2(1,0));
     bool corner = (local.x == 0 && local.y == 0 && up && left) || (local.x == 7 && local.y == 0 && up && right) || (local.x == 0 && local.y == 7 && down && left) || (local.x == 7 && local.y == 7 && down && right);

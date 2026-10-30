@@ -1,4 +1,6 @@
 #include "save.hpp"
+#include "equipment.hpp"
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <type_traits>
@@ -13,12 +15,14 @@ struct Out {
     std::ofstream &f;
     template <class T> std::enable_if_t<std::is_arithmetic_v<T>> raw(T &v) { f.write(reinterpret_cast<const char *>(&v), sizeof v); }
     bool ok() const { return bool(f); }
+    std::uint32_t version = SAVE_VERSION;
     static constexpr bool reading = false;
 };
 struct In {
     std::ifstream &f;
     template <class T> std::enable_if_t<std::is_arithmetic_v<T>> raw(T &v) { f.read(reinterpret_cast<char *>(&v), sizeof v); }
     bool ok() const { return bool(f); }
+    std::uint32_t version = SAVE_VERSION;
     static constexpr bool reading = true;
 };
 
@@ -109,7 +113,15 @@ template <class S> void io(S &s, Sandbox &b) {
     io(s, b.level_until), io(s, b.seen), io(s, b.moved), io(s, b.level_row), io(s, b.queue), io(s, b.search_pass);
     io(s, b.pressure_on), io(s, b.momentum_on), io(s, b.pressure_was_on), io(s, b.shake), io(s, b.explosions);
     io(s, b.budget), io(s, b.back);
+    if (s.version >= 2)
+        io(s, b.equipment);
 }
+template <class S> void io(S &s, Vessel &v) {
+    io(s, v.water), io(s, v.dissolved), io(s, v.sugar_crystal), io(s, v.salt_crystal), io(s, v.bittern_crystal);
+    io(s, v.burnt), io(s, v.energy), io(s, v.temperature), io(s, v.peak), io(s, v.salt_heat), io(s, v.salt_formed);
+    io(s, v.vapour), io(s, v.smoke), io(s, v.set);
+}
+template <class S> void io(S &s, Equipment &e) { io(s, e.kind), io(s, e.x), io(s, e.y), io(s, e.setting), io(s, e.vessel); }
 template <class S> void io(S &s, Player &p) {
     io(s, p.x), io(s, p.y), io(s, p.vx), io(s, p.vy), io(s, p.spawn_x), io(s, p.spawn_y), io(s, p.health);
     io(s, p.breath), io(s, p.facing), io(s, p.deaths), io(s, p.active), io(s, p.on_ground), io(s, p.climbing), io(s, p.swimming);
@@ -149,8 +161,9 @@ bool load_world(const std::string &path, World &w, Grains &g, Sandbox &s, Player
     In in{f};
     std::uint32_t version = 0;
     io(in, version);
-    if (!in.ok() || version != SAVE_VERSION)
+    if (!in.ok() || version < 1 || version > SAVE_VERSION)
         return fail(error, "this save was made by a different version of the game");
+    in.version = version; // version 1 saves have no equipment
     // Read into fresh copies so a damaged file leaves the running world untouched.
     World nw;
     Grains ng;
@@ -165,6 +178,17 @@ bool load_world(const std::string &path, World &w, Grains &g, Sandbox &s, Player
                         ns.back.size() == n && ns.air_ox.size() == n && ns.fire.size() == n;
     if (!shaped)
         return fail(error, "the save file does not describe a valid world");
+    for (const auto &[id, e] : ns.equipment) {
+        const auto &spec = equipment_spec(e.kind);
+        bool placed = e.kind > 0 && e.kind < EQ_KINDS && e.x >= 0 && e.y >= 0 && e.x + spec.width <= nw.width &&
+                      e.y + spec.height <= nw.height && id == e.y * nw.width + e.x && e.setting >= 0 && e.setting <= 3 &&
+                      std::isfinite(e.vessel.energy) && std::isfinite(e.vessel.temperature);
+        for (int cy = e.y; placed && cy < e.y + spec.height; cy++)
+            for (int cx = e.x; cx < e.x + spec.width; cx++)
+                placed = placed && nw.solid[std::size_t(cy) * nw.width + cx] == B_EQUIPMENT;
+        if (!placed)
+            return fail(error, "the save file describes equipment that does not fit the world");
+    }
     w = std::move(nw);
     g = std::move(ng);
     s = std::move(ns);

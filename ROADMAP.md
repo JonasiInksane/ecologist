@@ -39,7 +39,11 @@ no survival needs, staff, Steam on Windows and macOS, solo at about 2 hours a da
 - [x] M0 Foundations: campaign plot with a shack, a walking/jumping/climbing/swimming player hurt by heat, falls
   and bad air, background walls, ladders and doors, a costed build mode, whole-world saves and a macOS build.
   See [M0 foundations](docs/design/m0-foundations.md).
-- [ ] M1 Shack slice: bench glassware, syrup, candy and salt, selling. (Gate G1 after M2.)
+- [x] M1 Shack slice: a kitchen of placed equipment (stove, sink, table, saucepan, candy mold, salt pan) whose
+  vessels heat, boil at their true boiling point, dissolve, crystallize and caramelize; syrup, hard candy and sea
+  salt graded A to C and sold through the workshop; thermometer and refractometer; gas and tap water bills; every
+  joule booked. Open vessels vent their vapour outside (the world has no humidity yet).
+  See [M1 shack slice](docs/design/m1-shack-slice.md). (Gate G1 after M2.)
 - [ ] M2 Logistics: shop, trucks, couplings, tanks, beet sugar.
 - [ ] M3 Property · M4 Farming · M5 Police and risk (gate G2) · M6 Hazards · M7 Scale up · M8 Polish and launch (gate G3).
 

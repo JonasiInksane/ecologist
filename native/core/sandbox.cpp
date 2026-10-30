@@ -1,4 +1,4 @@
-#include "sandbox.hpp"
+#include "equipment.hpp"
 #include <algorithm>
 #include <cmath>
 #include <queue>
@@ -58,6 +58,7 @@ void Sandbox::reset(const World &w) {
     explosions = 0;
     budget.clear();
     back.assign(n, 0);
+    equipment.clear();
     message = "Choose a material or build a machine.";
 }
 int Sandbox::neighbor(const World &w, int k, int d) const {
@@ -533,6 +534,7 @@ void Sandbox::step(World &w, Grains &g) {
         reactions_step(w);
     if (w.tick % 4 == 1)
         atmosphere_step(w);
+    equipment_step(w, g, *this);
     shake = std::max(0.0, shake - 0.5);
 }
 } // namespace ecologist

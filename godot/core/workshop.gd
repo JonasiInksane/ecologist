@@ -79,6 +79,24 @@ func sell(id: String, grams: float) -> bool:
         suspicion = minf(100, suspicion + float(data.balance.suspicion_per_sale))
     return _say("Sold %.1f g %s for %.2f credits." % [grams, data.materials[id].name, price])
 
+# The campaign kitchen draws ingredients from stock, returns finished products to it and pays running costs.
+func take(id: String, grams: float) -> bool:
+    if not data.materials.has(id) or not _quantity(grams) or amount(id) + EPS < grams:
+        return _say("Not enough %s in stock." % (data.materials[id].name if data.materials.has(id) else id), false)
+    _add(stock, id, -grams)
+    return true
+
+func store(id: String, grams: float) -> bool:
+    if not data.materials.has(id) or not _quantity(grams):
+        return _say("Nothing to store.", false)
+    _add(stock, id, grams)
+    return _say("Stored %.1f g %s." % [grams, data.materials[id].name])
+
+func charge(credits: float) -> void:
+    if is_finite(credits) and credits > 0:
+        cash = maxf(0, cash - credits)
+        spent += credits
+
 func purchase_equipment(id: String) -> bool:
     if not data.equipment.has(id) or equipment.has(id):
         return _say("That machine is already owned or unavailable.", false)

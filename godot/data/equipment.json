@@ -1,0 +1,20 @@
+{
+  "_comment": "Campaign kitchen kit (M1). Placed pieces cost credits and refund salvage when picked up empty. Sprites are regions of art/equipment.png. Prices per gram; energy is billed from the stove's burn at workshop.json balance.energy_price_per_kj.",
+  "tap_price_per_g": 0.000005,
+  "room_temperature": 20,
+  "tap_temperature": 15,
+  "items": [
+    {"id": "stove", "name": "Gas stove", "short": "Stove", "cost": 60, "salvage": 0.5, "sprite": [0, 0, 32, 32], "note": "Off, low 600 W, medium 1200 W, high 2000 W. Pans stand on top."},
+    {"id": "sink", "name": "Sink", "short": "Sink", "cost": 30, "salvage": 0.5, "sprite": [32, 0, 32, 32], "note": "Tap water and a drain within reach; a pan stood in it sits in a cold bath."},
+    {"id": "table", "name": "Work table", "short": "Table", "cost": 15, "salvage": 0.5, "sprite": [64, 0, 48, 32], "note": "Somewhere to stand molds and pans."},
+    {"id": "saucepan", "name": "Saucepan · 2.5 kg", "short": "Pan", "cost": 12, "salvage": 0.5, "sprite": [112, 0, 16, 16], "note": "For syrup and candy."},
+    {"id": "candy_mold", "name": "Candy mold · 800 g", "short": "Mold", "cost": 8, "salvage": 0.5, "sprite": [112, 16, 16, 8], "note": "Pour hot candy in; it sets below 45 °C."},
+    {"id": "salt_pan", "name": "Salt pan · 2 kg", "short": "Salt pan", "cost": 25, "salvage": 0.5, "sprite": [128, 0, 32, 8], "note": "Wide and shallow, for evaporating sea water slowly."}
+  ],
+  "ingredients": [
+    {"id": "sugar", "name": "Sugar", "source": "stock"},
+    {"id": "sea_water", "name": "Sea water", "source": "stock"},
+    {"id": "water", "name": "Tap water", "source": "tap"}
+  ],
+  "tools": {"thermometer": "temperature", "refractometer": "brix and salinity"}
+}

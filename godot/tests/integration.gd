@@ -87,6 +87,60 @@ func run() -> void:
     copy.advance(60)
     check(copy.stats().tick == plot.stats().tick and copy.player_state().x == plot.player_state().x and copy.render_data() == plot.render_data(), "A loaded world continues identically")
     check(copy.load_world(ProjectSettings.globalize_path("res://project.godot")) != "", "Other files are refused as saves")
+    # M1: the shack kitchen, driven through the adapter: fill a pan, cook candy, pour, set, collect, carry, save.
+    var shack := EcologistWorld.new()
+    shack.setup_plot(7)
+    var kinds: Array = shack.equipment_kinds()
+    check(kinds.size() == 6 and kinds[3].id == "saucepan" and kinds[0].support and not kinds[3].support, "Six kinds of kitchen equipment")
+    var ids := {}
+    for info in shack.equipment_list():
+        ids[info.kind] = info.id
+    var pan: int = ids.get("saucepan", -1)
+    var stove: int = ids.get("stove", -1)
+    var mold: int = ids.get("candy_mold", -1)
+    var sink: int = ids.get("sink", -1)
+    check(ids.size() == 5 and shack.equipment_info(pan).resting_on == stove and shack.inspect(259, 95).solid == 81, "The shack starts with a stove, a pan on it, a sink, a table and a mold")
+    check(shack.equipment_at(259, 95) == pan and shack.equipment_at(259, 97) == stove and shack.equipment_at(259, 92) == -1, "Cells find their equipment")
+    check(shack.vessel_add(pan, "sugar", 600, 20) == "" and shack.vessel_add(pan, "water", 200, 15) == "", "Sugar and water go in the pan")
+    check(shack.vessel_add(pan, "sugar", 5000, 20) == "it would overflow", "A pan cannot overflow")
+    check(shack.equipment_set(stove, 2) and not shack.equipment_set(pan, 2), "Only stoves have a flame")
+    var pan_info: Dictionary = shack.equipment_info(pan)
+    for i in 300:
+        pan_info = shack.equipment_info(pan)
+        if pan_info.temperature >= 150.0:
+            break
+        if pan_info.sugar_crystals < 0.01:
+            shack.equipment_set(stove, 1 if pan_info.temperature > 138.0 else 3)
+        shack.advance(60)
+    check(pan_info.temperature >= 150.0 and pan_info.stage == "hard crack" and pan_info.brix > 0.97, "Boiled down to the hard crack with every crystal dissolved")
+    check(shack.budget("stove_joules") > 100000.0, "The stove's gas is metered")
+    var poured: Dictionary = shack.vessel_pour(pan, mold)
+    shack.equipment_set(stove, 0)
+    check(float(poured.grams) > 600.0 and poured.error == "", "Hot candy pours into the mold")
+    for i in 120:
+        if shack.equipment_info(mold).set:
+            break
+        shack.advance(60)
+    var candy: Dictionary = shack.vessel_collect(mold)
+    check(candy.id == "hard_candy_a" and candy.grade == "A" and float(candy.grams) > 600.0, "Candy poured at 150 °C sets glass-clear, grade A")
+    check(shack.vessel_collect(mold).error == "the mold is empty", "An empty mold has nothing to collect")
+    check(shack.vessel_add(pan, "sea_water", 1000, 20) == "" and shack.equipment_info(pan).salinity > 0.03, "Sea water reads as brine")
+    var moved: Dictionary = shack.equipment_move(pan, 244, 95)
+    pan = moved.id
+    check(pan >= 0 and shack.equipment_info(pan).resting_on == sink and shack.equipment_info(pan).mass > 999.0, "A pan is carried to the sink, contents and all")
+    check(shack.equipment_remove(sink) == "take what stands on it off first" and shack.equipment_remove(pan) == "empty it first", "Equipment in use cannot be picked up")
+    var drained: float = shack.vessel_drain(pan, true)
+    check(drained > 999.0 and shack.equipment_remove(pan) == "", "A drained pan is picked up")
+    var bench: Dictionary = shack.equipment_place("table", 400, 99)
+    check(int(bench.id) >= 0 and shack.equipment_place("stove", 401, 99).error == "something is in the way", "New equipment is placed and does not overlap")
+    var kitchen_path := ProjectSettings.globalize_path("res://../.test-artifacts/kitchen-save-test.ecosave")
+    shack.vessel_add(mold, "water", 300, 60)
+    check(shack.save_world(kitchen_path) == "", "A world with a kitchen saves")
+    var kitchen_copy := EcologistWorld.new()
+    check(kitchen_copy.load_world(kitchen_path) == "" and kitchen_copy.equipment_list().size() == shack.equipment_list().size(), "The kitchen loads with every piece")
+    shack.advance(60)
+    kitchen_copy.advance(60)
+    check(kitchen_copy.equipment_info(mold).temperature == shack.equipment_info(mold).temperature and kitchen_copy.budget("stove_joules") == shack.budget("stove_joules"), "A loaded kitchen carries on identically")
     var scene := load("res://main.tscn") as PackedScene
     check(scene != null, "Load playable scene")
     if scene:
@@ -167,6 +221,49 @@ func run() -> void:
         game.removing = false
         game._campaign_build(Vector2i(20, 90))
         check(is_equal_approx(game.workshop.model.cash, cash_before - 1.0) and game.world.inspect(20, 90).solid == 0, "Building out of reach is refused")
+        # M1 in the game: the kitchen kit bar, the kitchen panel, ingredients from stock and the tap, gas billing.
+        check(game.kit_items.size() == 6 and game.kitchen != null and not game.kitchen.visible, "The kitchen kit loads")
+        game._set_kit_mode(true)
+        check(game.kit_buttons[0].visible and not game.build_buttons[0].visible, "K swaps the build bar to the kitchen kit")
+        var game_ids := {}
+        for info in game.world.equipment_list():
+            game_ids[info.kind] = info.id
+        var game_pan: int = game_ids.saucepan
+        var pan_cell := Vector2i(int(game.world.equipment_info(game_pan).x), int(game.world.equipment_info(game_pan).y))
+        check(game._equipment_click(pan_cell, false) and game.kitchen.visible and game.kitchen.current == game_pan, "Clicking a pan opens the kitchen panel")
+        var sugar: float = game.workshop.model.amount("sugar")
+        game.kitchen.ingredient.select(0)
+        game.kitchen.grams.value = 100
+        game.kitchen._add()
+        check(is_equal_approx(game.workshop.model.amount("sugar"), sugar - 100.0) and is_equal_approx(game.world.equipment_info(game_pan).mass, 100.0), "Sugar comes out of stock into the pan")
+        var tap_cash: float = game.workshop.model.cash
+        game.kitchen.ingredient.select(2)
+        game.kitchen._add()
+        check(game.workshop.model.cash < tap_cash and is_equal_approx(game.world.equipment_info(game_pan).mass, 200.0), "Tap water is billed")
+        check(game.kitchen.flame_row.visible and game.kitchen.readings.text.contains("thermometer"), "The panel shows the flame and asks for a thermometer")
+        game.kitchen._buy_tool("thermometer")
+        game.kitchen.refresh()
+        check(game.workshop.model.equipment.has("thermometer") and game.kitchen.readings.text.contains("°C"), "A thermometer reveals the temperature")
+        game.kitchen._set_flame(3)
+        var gas_cash: float = game.workshop.model.cash
+        game.kitchen.reset()
+        game.world.advance(600)
+        game.kitchen.bill()
+        check(game.workshop.model.cash < gas_cash - 0.1, "Gas is billed as the stove burns")
+        game.kitchen.open(game_pan)
+        game.kitchen._set_flame(0)
+        game.kitchen._collect()
+        check(game.kitchen.note.text.begins_with("Let it cool"), "Collecting hot syrup is refused with the reason")
+        var kit_cash: float = game.workshop.model.cash
+        game._select_kit(4)
+        check(game._equipment_click(Vector2i(266, 99), false) and game.world.equipment_at(266, 99) >= 0 and is_equal_approx(game.workshop.model.cash, kit_cash - 8.0), "The kit places a candy mold on the floor for its price")
+        check(game._equipment_click(Vector2i(266, 99), true) and game.world.equipment_at(266, 99) == -1 and is_equal_approx(game.workshop.model.cash, kit_cash - 4.0), "Picking it up again refunds half")
+        game.kitchen.open(game_pan)
+        var carried_mass: float = game.world.equipment_info(game_pan).mass
+        game.kitchen._move()
+        check(game.kitchen.carrying == game_pan and not game.kitchen.visible, "Move picks the pan up to carry")
+        game._equipment_click(Vector2i(266, 99), false)
+        check(game.kitchen.carrying == -1 and game.world.equipment_at(266, 99) >= 0 and is_equal_approx(game.world.equipment_info(game.world.equipment_at(266, 99)).mass, carried_mass), "The carried pan is put down on the floor with its syrup")
         game.free()
     print("Ecologist integration: %d checks, %d failures" % [checks, failures])
     quit(1 if failures else 0)

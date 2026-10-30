@@ -30,6 +30,13 @@ var build_items: Array = []
 var build_reach := 12
 var build_selected := 0
 var build_buttons: Array[Button] = []
+var kit_items: Array = []
+var kit_selected := 0
+var kit_buttons: Array[Button] = []
+var kit_mode := false
+var kit_button: Button
+var kitchen: PanelContainer
+var equipment_view: Array = []
 var build_bar: HBoxContainer
 var palette: HBoxContainer
 var mode_button: Button
@@ -103,6 +110,7 @@ func _load_build_items() -> void:
     var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/build_costs.json"))
     build_items = data.items
     build_reach = int(data.reach_tiles)
+    kit_items = JSON.parse_string(FileAccess.get_file_as_string("res://data/equipment.json")).items
 
 # Imported when the editor has seen the file; read straight from disk otherwise (headless test runs).
 func _load_texture(path: String) -> Texture2D:
@@ -214,6 +222,14 @@ func _build_ui() -> void:
     build_bar = HBoxContainer.new()
     build_bar.add_theme_constant_override("separation", 6)
     column.add_child(build_bar)
+    kit_button = _button("Kitchen kit · K", func(): _set_kit_mode(not kit_mode))
+    build_bar.add_child(kit_button)
+    for i in kit_items.size():
+        var item: Dictionary = kit_items[i]
+        var kit_item_button := _button("%s %d" % [item.short, int(item.cost)], _select_kit.bind(i))
+        kit_item_button.tooltip_text = "%s · key %d · %d credits · %s" % [item.name, i + 1, int(item.cost), item.note]
+        kit_buttons.append(kit_item_button)
+        build_bar.add_child(kit_item_button)
     for i in build_items.size():
         var item: Dictionary = build_items[i]
         var build_button := _button("%s %d" % [item.short, int(item.cost)], _select_build.bind(i))
@@ -272,6 +288,13 @@ func _build_ui() -> void:
     workshop.offset_bottom = -66
     layer.add_child(workshop)
     workshop.hide()
+    kitchen = preload("res://kitchen.gd").new()
+    kitchen.setup(self)
+    kitchen.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+    kitchen.offset_left = -440
+    kitchen.offset_top = 124
+    kitchen.offset_bottom = -66
+    layer.add_child(kitchen)
     _filter_tools()
     _select(0)
 
@@ -298,6 +321,57 @@ func _select_build(index: int) -> void:
     for i in build_buttons.size():
         build_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == build_selected else Color("1d3036"), Color("91bdae") if i == build_selected else Color.TRANSPARENT))
 
+func _select_kit(index: int) -> void:
+    kit_selected = clampi(index, 0, kit_items.size() - 1)
+    for i in kit_buttons.size():
+        kit_buttons[i].add_theme_stylebox_override("normal", _style(Color("29433f") if i == kit_selected else Color("1d3036"), Color("91bdae") if i == kit_selected else Color.TRANSPARENT))
+
+# The build bar shows either building tiles or the kitchen kit.
+func _set_kit_mode(on: bool) -> void:
+    kit_mode = on
+    kit_button.text = "Building · K" if on else "Kitchen kit · K"
+    for button in kit_buttons:
+        button.visible = on
+    for button in build_buttons:
+        button.visible = not on
+    _select_kit(kit_selected)
+
+func _item_name() -> String:
+    if kitchen != null and kitchen.carrying >= 0:
+        return "Carrying"
+    return kit_items[kit_selected].name if kit_mode else build_items[build_selected].name
+
+# Clicks on equipment use it; with the kit selected, clicks place and pick up equipment instead of building.
+func _equipment_click(cell: Vector2i, right: bool) -> bool:
+    if kitchen.carrying >= 0:
+        if right:
+            kitchen.carrying = -1
+            _notice("Left where it was.")
+        elif _in_reach(_tile_at(cell)):
+            kitchen.put_down(cell)
+        else:
+            _notice("Too far away to put it there.")
+        return true
+    var id: int = world.equipment_at(cell.x, cell.y)
+    if id >= 0:
+        if not _in_reach(_tile_at(cell)):
+            _notice("Too far away to reach it.")
+        elif right and kit_mode:
+            kitchen.pick_up(id)
+        elif right:
+            _notice("Choose the kitchen kit (K) to pick equipment up.")
+        else:
+            kitchen.open(id)
+        return true
+    if not kit_mode:
+        return false
+    if not right:
+        if _in_reach(_tile_at(cell)):
+            kitchen.place(kit_items[kit_selected].id, cell)
+        else:
+            _notice("Too far away to put it there.")
+    return true
+
 func _set_mode(on: bool) -> void:
     if world != null:
         world.player_input(false, false, false, false, false)
@@ -308,6 +382,8 @@ func _set_mode(on: bool) -> void:
     palette.visible = not on
     build_bar.visible = on
     mode_button.text = "Sandbox  ·  Tab" if on else "Campaign  ·  Tab"
+    if kitchen != null:
+        kitchen.close()
     hud_label.visible = on
     for button in sandbox_only:
         button.visible = not on
@@ -322,7 +398,8 @@ func _set_mode(on: bool) -> void:
         camera.position = Vector2(104, 74) * CELL
     _clamp_camera()
     _select_build(build_selected)
-    info_label.text = "Move: A D · Jump: Space · Climb: W S · Door: E · Build: left click · Remove: right click · Pause: P" if on else "Paint: left drag   ·   Pan: middle drag / Shift + drag   ·   Zoom: wheel   ·   Brush: [ ]"
+    _set_kit_mode(kit_mode)
+    info_label.text = "Move: A D · Jump: Space · Climb: W S · Use: E or click · Build: left click · Remove: right click · Kit: K · Pause: P" if on else "Paint: left drag   ·   Pan: middle drag / Shift + drag   ·   Zoom: wheel   ·   Brush: [ ]"
     dirty = true
 
 # A message that the hover inspector leaves on screen for a moment.
@@ -427,6 +504,7 @@ func _load_world() -> void:
         _notice("Could not load the world: " + error)
         return
     workshop._load_save()
+    kitchen.reset()
     _set_mode(true)
     _notice("Game loaded.")
 
@@ -458,6 +536,8 @@ func _reset() -> void:
 
 func _toggle_workshop() -> void:
     workshop.visible = not workshop.visible
+    if workshop.visible:
+        kitchen.close()
     drawing = false
     panning = false
 
@@ -484,7 +564,8 @@ func _toggle_momentum() -> void:
 
 func _pointer_over_ui() -> bool:
     var pointer := get_viewport().get_mouse_position()
-    return pointer.y < 124 or pointer.y > get_viewport_rect().size.y - 66 or (workshop != null and workshop.visible and pointer.x > get_viewport_rect().size.x - 440)
+    var side := (workshop != null and workshop.visible) or (kitchen != null and kitchen.visible)
+    return pointer.y < 124 or pointer.y > get_viewport_rect().size.y - 66 or (side and pointer.x > get_viewport_rect().size.x - 440)
 
 func _input(event: InputEvent) -> void:
     # Always release a drag, including when the pointer ends over a button.
@@ -509,12 +590,24 @@ func _unhandled_input(event: InputEvent) -> void:
                 _load_world()
                 return
     if campaign and event is InputEventKey and event.pressed and not event.echo:
+        var hovered := Vector2i((get_global_mouse_position() / CELL).floor())
+        var target: int = world.equipment_at(hovered.x, hovered.y)
         if event.keycode == KEY_P:
             _toggle_pause()
+        elif event.keycode == KEY_ESCAPE:
+            kitchen.close()
+            kitchen.carrying = -1
+        elif event.physical_keycode == KEY_K:
+            _set_kit_mode(not kit_mode)
+        elif event.physical_keycode == KEY_E and target >= 0 and _in_reach(_tile_at(hovered)):
+            kitchen.open(target)
         elif event.physical_keycode == KEY_E and world.use_door_near_player():
             dirty = true
         elif event.keycode >= KEY_0 and event.keycode <= KEY_9:
-            _select_build((event.keycode - KEY_1 + 10) % 10)
+            if kit_mode:
+                _select_kit(event.keycode - KEY_1)
+            else:
+                _select_build((event.keycode - KEY_1 + 10) % 10)
     elif event is InputEventKey and event.pressed and not event.echo:
         match event.keycode:
             KEY_SPACE: _toggle_pause()
@@ -527,6 +620,8 @@ func _unhandled_input(event: InputEvent) -> void:
     if campaign and event is InputEventMouseButton and event.pressed and not _pointer_over_ui():
         match event.button_index:
             MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT:
+                if _equipment_click(Vector2i((get_global_mouse_position() / CELL).floor()), event.button_index == MOUSE_BUTTON_RIGHT):
+                    return
                 drawing = true
                 removing = event.button_index == MOUSE_BUTTON_RIGHT
                 last_build = Vector2i(-1, -1)
@@ -599,6 +694,8 @@ func _physics_process(_delta: float) -> void:
     if not paused:
         world.advance(1)
         workshop.model.step(1)
+        if campaign:
+            kitchen.bill()
         dirty = true
 
 func _process(delta: float) -> void:
@@ -624,13 +721,15 @@ func _process(delta: float) -> void:
         var stats := world.stats()
         status_label.text = "%s · %d fps · %d grains" % ["Paused" if paused else "Running", Engine.get_frames_per_second(), stats.grains]
         if campaign and player.get("active", false):
-            var item: Dictionary = build_items[build_selected]
-            hud_label.text = "%.2f credits   ·   Health %d   ·   Breath %d   ·   %s   " % [workshop.model.cash, ceili(player.health), ceili(player.breath), "Removing" if removing and drawing else item.name]
+            hud_label.text = "%.2f credits   ·   Health %d   ·   Breath %d   ·   %s   " % [workshop.model.cash, ceili(player.health), ceili(player.breath), "Removing" if removing and drawing else _item_name()]
         var cell := Vector2i((get_global_mouse_position() / CELL).floor())
         var sample: Dictionary = world.inspect(cell.x, cell.y)
-        var label: String = build_items[build_selected].name if campaign else TOOLS[selected][0]
+        var label: String = _item_name() if campaign else TOOLS[selected][0]
+        var hovered_equipment: int = world.equipment_at(cell.x, cell.y) if campaign else -1
         if not sample.is_empty() and not _pointer_over_ui() and animation_time >= notice_until:
-            if sample.has("machine"):
+            if hovered_equipment >= 0:
+                inspector_label.text = kitchen.hover_text(hovered_equipment)
+            elif sample.has("machine"):
                 inspector_label.text = "%s · %.1f °C · %s · setting %s · liquid #%s · %s" % [label, sample.temperature, "active" if sample.active or sample.on or sample.open else "idle", sample.level if sample.machine != 14 else sample.period, sample.liquid, stats.message]
             elif sample.air:
                 inspector_label.text = "%s · air %.1f °C · oxygen %.1f%% · CO₂ %.2f%% · %d burning · %s" % [label, sample.temperature, sample.oxygen, sample.co2, stats.burning, stats.message]
@@ -678,6 +777,7 @@ func _refresh_texture() -> void:
             grain_texture.update(grain_image)
     dirty = false
     machine_view = world.device_data()
+    equipment_view = world.equipment_list() if campaign else []
     pending_wire = world.stats().pending_wire
     queue_redraw()
 
@@ -752,8 +852,19 @@ func _player_frame() -> int:
     return 0
 
 func _draw_campaign() -> void:
-    if not _pointer_over_ui() and not build_items.is_empty():
-        var tile := _tile_at(Vector2i((get_global_mouse_position() / CELL).floor()))
+    kitchen.draw_equipment(self, equipment_view, animation_time)
+    var pointer_cell := Vector2i((get_global_mouse_position() / CELL).floor())
+    if not _pointer_over_ui() and (kit_mode or kitchen.carrying >= 0) and world.equipment_at(pointer_cell.x, pointer_cell.y) < 0:
+        var kind: String = kit_items[kit_selected].id
+        if kitchen.carrying >= 0:
+            kind = String(world.equipment_info(kitchen.carrying).get("kind", kind))
+        var spot: Rect2 = kitchen.footprint(kind, pointer_cell)
+        var fits: bool = _in_reach(_tile_at(pointer_cell)) and (kitchen.carrying >= 0 or workshop.model.cash + 0.000001 >= float(kit_items[kit_selected].cost))
+        var shade := Color(0.55, 0.95, 0.65) if fits else Color(1.0, 0.45, 0.4)
+        draw_rect(spot, Color(shade, 0.18))
+        draw_rect(spot, Color(shade, 0.8), false, 1.0 / camera.zoom.x)
+    elif not _pointer_over_ui() and not kit_mode and not build_items.is_empty() and world.equipment_at(pointer_cell.x, pointer_cell.y) < 0:
+        var tile := _tile_at(pointer_cell)
         var item: Dictionary = build_items[build_selected]
         var rect := Rect2(Vector2(tile) * CELL, Vector2(2, 2) * CELL)
         if int(item.code) == DOOR_CODE and not removing:

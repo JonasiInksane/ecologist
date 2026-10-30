@@ -38,6 +38,11 @@ from the build bar (it costs credits), right click removes one for a partial ref
 world and the workshop, **F9** loads them, and **Tab** switches to the free sandbox. See
 [M0 foundations](docs/design/m0-foundations.md).
 
+The shack has a working kitchen: a stove, a sink, a table, a saucepan and a candy mold. Click a piece (or hover it
+and press **E**) to open the kitchen panel: set the flame, add sugar, sea water or tap water, pour, drain, move
+and collect. Make syrup, hard candy and sea salt, then sell them in the **Workshop** panel. **K** swaps the build
+bar to the kitchen kit for placing more equipment. See [M1 shack slice](docs/design/m1-shack-slice.md).
+
 In the sandbox:
 
 Paint with left drag; select a material with **1–8** or the toolbar. **Ignite** brings fuel under the brush

@@ -1,3 +1,4 @@
+#include "equipment.hpp"
 #include "save.hpp"
 #include <algorithm>
 #include <cmath>
@@ -850,6 +851,169 @@ int main() {
         check(choked && p.x == p.spawn_x, "running out of air respawns the player");
     }
     {
+        // Equipment (M1): stoves, sinks and tables stand on floors and pans stand on them. Every joule that enters
+        // or leaves a vessel is booked, and the books balance through each process.
+        Fixture f;
+        for (int y = 30; y < 32; y++)
+            for (int x = 0; x < 32; x++)
+                f.w.solid[f.cell(x, y)] = B_STONE;
+        std::string why;
+        const int stove = place_equipment(f.w, f.g, f.s, EQ_STOVE, 3, 29, &why);
+        const int sink = place_equipment(f.w, f.g, f.s, EQ_SINK, 9, 29, &why);
+        const int table = place_equipment(f.w, f.g, f.s, EQ_TABLE, 16, 29, &why);
+        check(stove == f.cell(2, 26) && sink == f.cell(8, 26) && table == f.cell(16, 26) &&
+                  f.w.solid[f.cell(5, 29)] == B_EQUIPMENT,
+              "a stove, a sink and a table stand on the floor");
+        check(place_equipment(f.w, f.g, f.s, EQ_SAUCEPAN, 26, 10, &why) < 0 && why == "it needs a floor or a table under it",
+              "equipment does not float");
+        check(place_equipment(f.w, f.g, f.s, EQ_STOVE, 4, 29, &why) < 0, "equipment does not overlap");
+        int pan = place_equipment(f.w, f.g, f.s, EQ_SAUCEPAN, 2, 25, &why);
+        check(pan == f.cell(2, 24) && resting_on(f.w, f.s, pan) == stove && equipment_at(f.w, f.s, 3, 25) == pan,
+              "a saucepan stands on the stove");
+        check(place_equipment(f.w, f.g, f.s, EQ_CANDY_MOLD, 2, 23, &why) < 0, "nothing stands on a saucepan");
+        auto books = [&] { // what the vessels hold minus what the budgets say went in and out
+            double held = 0;
+            for (auto &[id, e] : f.s.equipment)
+                held += e.vessel.energy;
+            auto &b = f.s.budget;
+            return held - (b["placed_J"] - b["removed_J"] - b["destroyed_J"] + b["added_J"] + b["stove_J"] +
+                           b["intake_J"] - b["loss_J"] - b["vented_J"] - b["sink_J"] - b["smoke_J"] - b["drained_J"] -
+                           b["spilled_J"] - b["collected_J"]);
+        };
+        // Water poured onto the open top is taken up with its salt and heat; condensed fog is left alone.
+        for (int x : {2, 3}) {
+            f.fill(f.cell(x, 23), WATER, 20, 20);
+            f.w.sol[f.cell(x, 23) * NSOL + SOL_SALT] = 30;
+        }
+        Vessel *pv = &f.s.equipment[pan].vessel;
+        const double world0 = f.heat(), vessel0 = pv->energy, salt0 = f.component(SOL_SALT), units0 = f.volume();
+        equipment_step(f.w, f.g, f.s);
+        check(near(f.volume(), units0 - 40) && near(pv->water, 40 * GRAMS_PER_UNIT, 1e-9) &&
+                  near(pv->dissolved[SOL_SALT], salt0 * GRAMS_PER_UNIT, 1e-9) &&
+                  near((f.heat() - world0) * JOULES_PER_ENERGY + pv->energy - vessel0, 0, 1e-6),
+              "a pan takes up poured water with its salt and heat");
+        const int fog = f.cell(2, 23);
+        f.fill(fog, WATER, 30, 95);
+        f.w.latent[fog] = 30 * 2.2;
+        const double before_fog = pv->water;
+        equipment_step(f.w, f.g, f.s);
+        check(f.w.liq[fog] == 30 && near(pv->water, before_fog), "a pan does not catch condensed fog");
+        f.w.liq[fog] = 0;
+        f.w.typ[fog] = 0;
+        f.w.latent[fog] = 0;
+        // Tipping a pan out puts its liquid back into the world, heat and salt included.
+        const double world1 = f.heat(), vessel1 = pv->energy, salt1 = f.component(SOL_SALT), units1 = f.volume();
+        const int spilled = vessel_spill(f.w, f.s, pan);
+        check(spilled == 40 && near(f.volume(), units1 + 40) && pv->water < 1e-6 &&
+                  near((f.component(SOL_SALT) - salt1) * GRAMS_PER_UNIT, salt0 * GRAMS_PER_UNIT, 1e-6) &&
+                  near((f.heat() - world1) * JOULES_PER_ENERGY + pv->energy - vessel1, 0, 1e-6),
+              "a spilled pan pours its water, salt and heat into the world");
+        for (int k = 0; k < 1024; k++)
+            if (f.w.liq[k]) {
+                f.w.liq[k] = 0;
+                f.w.typ[k] = 0;
+                f.w.latent[k] = 0;
+            }
+        vessel_discard(f.s, pan, false);
+        check(near(books(), 0, 1e-6), "the books balance after pouring, catching and spilling");
+        // Hard candy: dissolve the sugar on a medium flame, boil hard, ease off near the end and pour at 150 °C.
+        Equipment &st = f.s.equipment[stove];
+        auto cook = [&](double sugar, double water, double pull, bool gentle) {
+            vessel_add(f.s, pan, "sugar", sugar, 20, &why);
+            vessel_add(f.s, pan, "water", water, 15, &why);
+            bool soft_ball = false;
+            st.setting = gentle ? 2 : 3;
+            for (int i = 0; i < 60 * 300 && pv->temperature < pull; i++) {
+                if (gentle && pv->sugar_crystal < 0.01)
+                    st.setting = pv->temperature > pull - 12 ? 1 : 3;
+                step_game(f.w, f.g, f.s, nullptr);
+                soft_ball = soft_ball || candy_stage(*pv) == "soft ball";
+            }
+            st.setting = 0;
+            return soft_ball;
+        };
+        const int mold = place_equipment(f.w, f.g, f.s, EQ_CANDY_MOLD, 16, 25, &why);
+        auto pour_and_set = [&] {
+            vessel_transfer(f.s, pan, mold, &why);
+            for (int i = 0; i < 60 * 300 && !f.s.equipment[mold].vessel.set; i++)
+                step_game(f.w, f.g, f.s, nullptr);
+            return vessel_collect(f.s, mold, &why);
+        };
+        const double water0 = pv->water + f.s.budget["vented_vapour_g"];
+        const bool stages = cook(600, 200, 150, true);
+        check(stages && pv->temperature >= 150 && near(boiling_point(*pv), pv->temperature, 0.5) &&
+                  candy_stage(*pv) == "hard crack" && pv->sugar_crystal < 0.01 && pv->burnt < 0.5,
+              "a syrup climbs through the candy stages at its boiling point");
+        check(near(pv->water + f.s.budget["vented_vapour_g"], water0 + 200, 1e-6), "boiled-off water is all accounted for");
+        Product candy = pour_and_set();
+        check(candy.id == "hard_candy_a" && candy.grams > 600 && candy.grams < 615, "candy poured at 150 °C sets glass-clear");
+        check(vessel_collect(f.s, mold, &why).id.empty() && why == "the mold is empty", "an empty mold gives nothing");
+        cook(600, 200, 138, true);
+        check(pour_and_set().id == "hard_candy_b", "candy poured short of the hard crack is soft");
+        cook(600, 100, 150, false);
+        candy = pour_and_set();
+        check(candy.id == "hard_candy_c" && candy.note.find("Grainy") == 0, "too little water and a hard boil make grainy candy");
+        check(near(books(), 0, 1e-3), "the books balance through three batches of candy");
+        // Syrup: dissolve on a low flame, then cool the pan in the sink before bottling.
+        vessel_add(f.s, pan, "sugar", 500, 20, &why);
+        vessel_add(f.s, pan, "water", 500, 15, &why);
+        st.setting = 2;
+        for (int i = 0; i < 60 * 300 && pv->sugar_crystal > 0.01; i++)
+            step_game(f.w, f.g, f.s, nullptr);
+        st.setting = 0;
+        check(vessel_collect(f.s, pan, &why).id.empty() && why == "let it cool below 50 °C before bottling",
+              "hot syrup is not bottled");
+        check(move_equipment(f.w, f.g, f.s, stove, 24, 29, &why) < 0 && why == "take what stands on it off first",
+              "a stove with a pan on it stays put");
+        const double carried = pv->water;
+        pan = move_equipment(f.w, f.g, f.s, pan, 8, 25, &why);
+        pv = &f.s.equipment[pan].vessel;
+        check(pan == f.cell(8, 24) && resting_on(f.w, f.s, pan) == sink && near(pv->water, carried) &&
+                  f.w.solid[f.cell(2, 24)] == 0,
+              "a pan is carried to the sink with its contents");
+        int cooled = 0;
+        for (; cooled < 60 * 300 && pv->temperature > 49; cooled++)
+            step_game(f.w, f.g, f.s, nullptr);
+        Product syrup = vessel_collect(f.s, pan, &why);
+        check(cooled < 60 * 15 && syrup.id == "syrup_simple_a" && syrup.grams > 980, "syrup cooled in the sink bottles as grade A");
+        check(remove_equipment(f.w, f.s, sink, &why) == false && why == "take what stands on it off first",
+              "a sink with a pan in it stays");
+        // Sea salt: simmer below the boil, pour off the bitter brine once the salt has crystallized, dry the rest.
+        auto salt_run = [&](bool drain) {
+            const int salt_pan = place_equipment(f.w, f.g, f.s, EQ_SALT_PAN, 2, 25, &why);
+            Vessel &v = f.s.equipment[salt_pan].vessel;
+            vessel_add(f.s, salt_pan, "sea_water", 2000, 15, &why);
+            const double water = v.water;
+            bool drained = false;
+            st.setting = 2;
+            for (int i = 0; i < 60 * 900; i++) {
+                step_game(f.w, f.g, f.s, nullptr);
+                if (drain && !drained && v.water < 0.03 * water) {
+                    vessel_discard(f.s, salt_pan, true);
+                    drained = true;
+                }
+                if ((drained || !drain) && v.water <= 0.015 * vessel_mass(v))
+                    break;
+            }
+            st.setting = 0;
+            Product salt = vessel_collect(f.s, salt_pan, &why);
+            vessel_discard(f.s, salt_pan, false);
+            remove_equipment(f.w, f.s, salt_pan, &why);
+            return salt;
+        };
+        Product salt = salt_run(true);
+        check(salt.id == "sea_salt_flaky" && salt.grams > 30 && salt.grams < 40, "slow-simmered, drained sea water gives flaky salt");
+        check(salt_run(false).id == "road_salt", "boiling sea water dry leaves bitter road salt");
+        check(near(books(), 0, 1e-3), "the books balance through syrup and salt");
+        // Equipment whose cells are destroyed is gone, contents and all, and the books still balance.
+        vessel_add(f.s, pan, "water", 300, 30, &why);
+        f.w.solid[f.cell(9, 25)] = 0;
+        step_game(f.w, f.g, f.s, nullptr);
+        check(!f.s.equipment.count(pan) && f.w.solid[f.cell(8, 24)] == 0 && near(f.s.budget["equipment_destroyed_g"], 300) &&
+                  near(books(), 0, 1e-3),
+              "a destroyed pan is gone with its contents");
+    }
+    {
         // A save holds the whole simulation: a loaded world steps on exactly like the original.
         World w;
         Grains g;
@@ -860,6 +1024,14 @@ int main() {
         s.paint(w, g, 210, 96, 2, -B_WOOD);
         s.ignite(w, 210, 96, 2);
         g.paint(w, 100 * 8, 70 * 8, 6, SAND);
+        int pan = -1;
+        for (auto &[id, e] : s.equipment)
+            if (e.kind == EQ_SAUCEPAN) {
+                pan = id;
+                s.equipment[resting_on(w, s, id)].setting = 3;
+            }
+        vessel_add(s, pan, "sugar", 300, 20);
+        vessel_add(s, pan, "water", 200, 20);
         p.input.left = true;
         for (int i = 0; i < 40; i++)
             step_game(w, g, s, &p);
@@ -877,8 +1049,10 @@ int main() {
             step_game(w2, g2, s2, &p2);
         }
         check(w.liq == w2.liq && w.typ == w2.typ && w.solid == w2.solid && w.temp == w2.temp && w.sol == w2.sol &&
-                  s.air_ox == s2.air_ox && s.fire == s2.fire && g.image == g2.image && p.x == p2.x && p.y == p2.y,
-              "a loaded world steps on identically");
+                  s.air_ox == s2.air_ox && s.fire == s2.fire && g.image == g2.image && p.x == p2.x && p.y == p2.y &&
+                  s2.equipment.size() == 5 && s.equipment[pan].vessel.energy == s2.equipment[pan].vessel.energy &&
+                  s.equipment[pan].vessel.water == s2.equipment[pan].vessel.water && s.equipment[pan].vessel.temperature > 30,
+              "a loaded world steps on identically, pans cooking and all");
         {
             std::ofstream bad(path, std::ios::binary | std::ios::trunc);
             bad << "ECOSAVE1 not really";

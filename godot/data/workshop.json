@@ -1,7 +1,7 @@
 {
   "version":1,
   "balance":{"starting_cash":500,"tick_rate":60,"vessel_capacity_g":2000,"energy_price_per_kj":0.002,"distill_parcel_g":50,"inspection_seconds":180,"closure_seconds":30,"fine":80,"suspicion_per_second":0.3,"suspicion_per_sale":12,"suspicion_decay_per_second":0.02},
-  "initial_stock":{"sugar_juice":2000,"water":1000,"sugar":250,"salt":100,"vinegar":250,"bicarbonate":50,"blood":1000,"packaging":20},
+  "initial_stock":{"sugar_juice":2000,"water":1000,"sugar":1000,"sea_water":2000,"salt":100,"vinegar":250,"bicarbonate":50,"blood":1000,"packaging":20},
   "materials":{
     "water":{"name":"Water","formula":"H₂O","phase":"liquid","buy":0.001,"sell":0.0004,"components":{"water":1}},
     "sugar":{"name":"Sugar · sucrose","formula":"C₁₂H₂₂O₁₁","phase":"powder","buy":0.025,"sell":0.018,"components":{"sugar":1}},
@@ -25,9 +25,26 @@
     "packed_sugar":{"name":"Packaged sugar · 200 g + 5 g paper","phase":"package","buy":0.08,"sell":0.065,"components":{"sugar":0.975609756097561,"packaging":0.024390243902439}},
     "fictional_feedstock":{"name":"Fictional black-market feedstock","phase":"fictional","buy":0.15,"sell":0.06,"illegal":true,"components":{"fictional_feedstock":1}},
     "cocaine":{"name":"Cocaine · game commodity","phase":"fictional","buy":0,"sell":0.9,"illegal":true,"components":{"cocaine":1}},
-    "fictional_waste":{"name":"Fictional process waste","phase":"fictional","buy":0,"sell":0,"illegal":true,"components":{"fictional_waste":1}}
+    "fictional_waste":{"name":"Fictional process waste","phase":"fictional","buy":0,"sell":0,"illegal":true,"components":{"fictional_waste":1}},
+    "sea_water":{"name":"Sea water","formula":"H₂O + 3.5 % sea salts","phase":"liquid","buy":0.0005,"sell":0.0002,"components":{"water":0.965,"salt":0.035}},
+    "hard_candy_a":{"name":"Hard candy · grade A","phase":"product","buy":0,"sell":0.06,"components":{"sugar":1}},
+    "hard_candy_b":{"name":"Hard candy · grade B","phase":"product","buy":0,"sell":0.04,"components":{"sugar":1}},
+    "hard_candy_c":{"name":"Hard candy · grade C","phase":"product","buy":0,"sell":0.02,"components":{"sugar":1}},
+    "burnt_candy":{"name":"Burnt candy","phase":"product","buy":0,"sell":0.004,"components":{"sugar":1}},
+    "syrup_simple_a":{"name":"Simple syrup 1:1 · grade A","phase":"product","buy":0,"sell":0.022,"components":{"water":0.5,"sugar":0.5}},
+    "syrup_simple_b":{"name":"Simple syrup 1:1 · grade B","phase":"product","buy":0,"sell":0.018,"components":{"water":0.5,"sugar":0.5}},
+    "syrup_simple_c":{"name":"Simple syrup 1:1 · grade C","phase":"product","buy":0,"sell":0.013,"components":{"water":0.5,"sugar":0.5}},
+    "syrup_rich_a":{"name":"Rich syrup 2:1 · grade A","phase":"product","buy":0,"sell":0.03,"components":{"water":0.333333,"sugar":0.666667}},
+    "syrup_rich_b":{"name":"Rich syrup 2:1 · grade B","phase":"product","buy":0,"sell":0.025,"components":{"water":0.333333,"sugar":0.666667}},
+    "syrup_rich_c":{"name":"Rich syrup 2:1 · grade C","phase":"product","buy":0,"sell":0.018,"components":{"water":0.333333,"sugar":0.666667}},
+    "sea_salt_flaky":{"name":"Flaky sea salt · grade A","phase":"product","buy":0,"sell":0.4,"components":{"salt":1}},
+    "sea_salt":{"name":"Fine sea salt · grade B","phase":"product","buy":0,"sell":0.15,"components":{"salt":1}},
+    "coarse_salt":{"name":"Coarse salt · grade C","phase":"product","buy":0,"sell":0.05,"components":{"salt":1}},
+    "road_salt":{"name":"Road salt","phase":"product","buy":0,"sell":0.005,"components":{"salt":1}}
   },
   "equipment":{
+    "thermometer":{"name":"Kitchen thermometer","cost":15,"tool":true},
+    "refractometer":{"name":"Refractometer · Brix and salinity","cost":40,"tool":true},
     "filter":{"name":"Filter press","cost":35},
     "evaporator":{"name":"Evaporator + condenser","cost":60},
     "crystallizer":{"name":"Crystallizer","cost":70},

@@ -19,6 +19,20 @@ void EcologistWorld::_bind_methods() {
     ClassDB::bind_method(D_METHOD("save_world", "path"), &EcologistWorld::save_world);
     ClassDB::bind_method(D_METHOD("load_world", "path"), &EcologistWorld::load_world);
     ClassDB::bind_method(D_METHOD("back_data"), &EcologistWorld::back_data);
+    ClassDB::bind_method(D_METHOD("equipment_kinds"), &EcologistWorld::equipment_kinds);
+    ClassDB::bind_method(D_METHOD("equipment_place", "kind", "x", "y"), &EcologistWorld::equipment_place);
+    ClassDB::bind_method(D_METHOD("equipment_remove", "id"), &EcologistWorld::equipment_remove);
+    ClassDB::bind_method(D_METHOD("equipment_move", "id", "x", "y"), &EcologistWorld::equipment_move);
+    ClassDB::bind_method(D_METHOD("equipment_at", "x", "y"), &EcologistWorld::equipment_at);
+    ClassDB::bind_method(D_METHOD("equipment_list"), &EcologistWorld::equipment_list);
+    ClassDB::bind_method(D_METHOD("equipment_info", "id"), &EcologistWorld::equipment_info);
+    ClassDB::bind_method(D_METHOD("equipment_set", "id", "setting"), &EcologistWorld::equipment_set);
+    ClassDB::bind_method(D_METHOD("vessel_add", "id", "ingredient", "grams", "temperature"), &EcologistWorld::vessel_add);
+    ClassDB::bind_method(D_METHOD("vessel_pour", "from", "to"), &EcologistWorld::vessel_pour);
+    ClassDB::bind_method(D_METHOD("vessel_spill", "id"), &EcologistWorld::vessel_spill);
+    ClassDB::bind_method(D_METHOD("vessel_drain", "id", "keep_crystals"), &EcologistWorld::vessel_drain);
+    ClassDB::bind_method(D_METHOD("vessel_collect", "id"), &EcologistWorld::vessel_collect);
+    ClassDB::bind_method(D_METHOD("budget", "key"), &EcologistWorld::budget);
     ClassDB::bind_method(D_METHOD("paint", "x", "y", "radius", "material"), &EcologistWorld::paint);
     ClassDB::bind_method(D_METHOD("paint_grains", "x", "y", "radius", "kind"), &EcologistWorld::paint_grains);
     ClassDB::bind_method(D_METHOD("heat", "x", "y", "radius", "delta"), &EcologistWorld::heat);
@@ -133,6 +147,152 @@ String EcologistWorld::load_world(const String &path) {
     std::string error;
     return ecologist::load_world(path.utf8().get_data(), simulation, grains, sandbox, player, &error) ? String()
                                                                                                     : String(error.c_str());
+}
+// Kitchen and lab equipment (M1): see native/core/equipment.hpp. Ids are anchor cells (top-left), which change
+// when a piece is carried elsewhere.
+namespace {
+int kind_named(const String &name) {
+    for (int k = 1; k < ecologist::EQ_KINDS; k++)
+        if (name == ecologist::equipment_spec(k).id)
+            return k;
+    return 0;
+}
+Dictionary summary(const ecologist::World &w, const ecologist::Sandbox &s, int id, const ecologist::Equipment &e) {
+    const auto &spec = ecologist::equipment_spec(e.kind);
+    const auto &v = e.vessel;
+    Dictionary d;
+    d["id"] = id;
+    d["kind"] = String(spec.id);
+    d["x"] = e.x;
+    d["y"] = e.y;
+    d["width"] = spec.width;
+    d["height"] = spec.height;
+    d["setting"] = e.setting;
+    d["vessel"] = spec.capacity > 0;
+    d["resting_on"] = ecologist::resting_on(w, s, id);
+    if (spec.capacity <= 0)
+        return d;
+    const double mass = ecologist::vessel_mass(v);
+    d["mass"] = mass;
+    d["capacity"] = spec.capacity;
+    d["fill"] = mass / spec.capacity;
+    d["temperature"] = v.temperature;
+    d["vapour"] = v.vapour;
+    d["set"] = v.set;
+    d["crystals"] = mass > 0 ? (v.sugar_crystal + v.salt_crystal + v.bittern_crystal) / mass : 0.0;
+    d["burnt"] = mass > 0 ? v.burnt / mass : 0.0;
+    d["sugar"] = mass > 0 ? v.dissolved[ecologist::SOL_SUGAR] / mass : 0.0;
+    return d;
+}
+} // namespace
+Array EcologistWorld::equipment_kinds() const {
+    Array result;
+    for (int k = 1; k < ecologist::EQ_KINDS; k++) {
+        const auto &spec = ecologist::equipment_spec(k);
+        Dictionary d;
+        d["id"] = String(spec.id);
+        d["width"] = spec.width;
+        d["height"] = spec.height;
+        d["capacity"] = spec.capacity;
+        d["support"] = spec.support;
+        result.push_back(d);
+    }
+    return result;
+}
+Dictionary EcologistWorld::equipment_place(const String &kind, int x, int y) {
+    Dictionary d;
+    std::string why;
+    const int k = kind_named(kind);
+    const auto &spec = ecologist::equipment_spec(k);
+    const int x0 = x & ~1, y0 = (y | 1) - spec.height + 1;
+    int id = -1;
+    if (!k)
+        why = "unknown equipment";
+    else if (player.active && player.overlaps(x0, y0, spec.width, spec.height))
+        why = "you are standing there";
+    else
+        id = ecologist::place_equipment(simulation, grains, sandbox, k, x, y, &why);
+    d["id"] = id;
+    d["error"] = String(why.c_str());
+    return d;
+}
+String EcologistWorld::equipment_remove(int id) {
+    std::string why;
+    return ecologist::remove_equipment(simulation, sandbox, id, &why) ? String() : String(why.empty() ? "nothing to remove" : why.c_str());
+}
+Dictionary EcologistWorld::equipment_move(int id, int x, int y) {
+    Dictionary d;
+    std::string why;
+    d["id"] = ecologist::move_equipment(simulation, grains, sandbox, id, x, y, &why);
+    d["error"] = String(why.c_str());
+    return d;
+}
+int EcologistWorld::equipment_at(int x, int y) const { return ecologist::equipment_at(simulation, sandbox, x, y); }
+Array EcologistWorld::equipment_list() const {
+    Array result;
+    for (const auto &[id, e] : sandbox.equipment)
+        result.push_back(summary(simulation, sandbox, id, e));
+    return result;
+}
+// Everything there is to know about one piece; the game decides which readings the player's tools reveal.
+Dictionary EcologistWorld::equipment_info(int id) const {
+    auto it = sandbox.equipment.find(id);
+    if (it == sandbox.equipment.end())
+        return {};
+    Dictionary d = summary(simulation, sandbox, id, it->second);
+    if (!bool(d["vessel"]))
+        return d;
+    const auto &v = it->second.vessel;
+    const double sugar = v.dissolved[ecologist::SOL_SUGAR], salts = v.dissolved[ecologist::SOL_SALT] + v.dissolved[ecologist::SOL_METAL];
+    d["water"] = v.water;
+    d["sugar_dissolved"] = sugar;
+    d["sugar_crystals"] = v.sugar_crystal;
+    d["salt_dissolved"] = v.dissolved[ecologist::SOL_SALT];
+    d["salt_crystals"] = v.salt_crystal;
+    d["bittern_dissolved"] = v.dissolved[ecologist::SOL_METAL];
+    d["bittern_crystals"] = v.bittern_crystal;
+    d["burnt_g"] = v.burnt;
+    d["peak"] = v.peak;
+    d["boiling_point"] = v.water > 1e-6 ? ecologist::boiling_point(v) : 0.0;
+    d["stage"] = String(ecologist::candy_stage(v).c_str());
+    d["brix"] = v.water + sugar > 1e-9 ? sugar / (v.water + sugar) : 0.0;
+    d["salinity"] = v.water + salts > 1e-9 ? salts / (v.water + salts) : 0.0;
+    return d;
+}
+bool EcologistWorld::equipment_set(int id, int setting) {
+    auto it = sandbox.equipment.find(id);
+    if (it == sandbox.equipment.end() || it->second.kind != ecologist::EQ_STOVE)
+        return false;
+    it->second.setting = std::clamp(setting, 0, 3);
+    return true;
+}
+String EcologistWorld::vessel_add(int id, const String &ingredient, double grams, double temperature) {
+    std::string why;
+    return ecologist::vessel_add(sandbox, id, ingredient.utf8().get_data(), grams, temperature, &why) ? String() : String(why.c_str());
+}
+Dictionary EcologistWorld::vessel_pour(int from, int to) {
+    Dictionary d;
+    std::string why;
+    d["grams"] = ecologist::vessel_transfer(sandbox, from, to, &why);
+    d["error"] = String(why.c_str());
+    return d;
+}
+int EcologistWorld::vessel_spill(int id) { return ecologist::vessel_spill(simulation, sandbox, id); }
+double EcologistWorld::vessel_drain(int id, bool keep_crystals) { return ecologist::vessel_discard(sandbox, id, keep_crystals); }
+Dictionary EcologistWorld::vessel_collect(int id) {
+    std::string why;
+    const ecologist::Product p = ecologist::vessel_collect(sandbox, id, &why);
+    Dictionary d;
+    d["id"] = String(p.id.c_str());
+    d["grade"] = String(p.grade.c_str());
+    d["note"] = String(p.note.c_str());
+    d["grams"] = p.grams;
+    d["error"] = String(why.c_str());
+    return d;
+}
+double EcologistWorld::budget(const String &key) const {
+    auto it = sandbox.budget.find(key.utf8().get_data());
+    return it == sandbox.budget.end() ? 0.0 : it->second;
 }
 // One byte per cell: background wall (bits 0-3: 1 wood, 2 brick), open door (0x20) and ladder (0x40).
 PackedByteArray EcologistWorld::back_data() const {

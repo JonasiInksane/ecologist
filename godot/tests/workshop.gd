@@ -78,7 +78,7 @@ func run() -> void:
     check(near(model.amount("syrup"), 400), "Concentration creates standalone syrup")
     check(model.start_job("crystallize"), "Start crystallization")
     model.step(600)
-    check(near(model.amount("sugar"), 450), "Crystallization returns dry sugar")
+    check(near(model.amount("sugar"), float(data.initial_stock.sugar) + 200), "Crystallization returns dry sugar")
     check(model.start_job("pack_sugar"), "Package with actual paper stock")
     model.step(240)
     check(near(model.amount("packed_sugar"), 205) and near(mass(model), initial_mass), "Packaging preserves sugar and paper mass")
