@@ -42,6 +42,21 @@ void Sandbox::reset(const World &w) {
     pending_inlet = pending_wire = -1;
     source_units = drain_units = source_heat = drain_heat = 0;
     drained_solutes.fill(0);
+    const auto n = w.liq.size();
+    air_ox.assign(n, AIR_OX);
+    air_carb.assign(n, AIR_CARB);
+    fire.assign(n, 0);
+    air_busy.assign(w.awake.size(), 6);
+    level_until.assign(n, 0);
+    level_row.assign(n, 0);
+    seen.assign(n, 0);
+    moved.assign(n, 0);
+    queue.assign(n, 0);
+    search_pass = 0;
+    pressure_was_on = true; // a new world starts awake; only switching pressure back on wakes it again
+    shake = 0;
+    explosions = 0;
+    budget.clear();
     message = "Choose a material or build a machine.";
 }
 int Sandbox::neighbor(const World &w, int k, int d) const {
@@ -147,6 +162,8 @@ void Sandbox::erase(World &w, int k) {
     pores.erase(k);
     meltwater.erase(k);
     held[k] = 255;
+    if (!fire.empty())
+        fire[k] = 0;
     pipe_show[k] = pipe_time[k] = 0;
     if (pending_inlet == k)
         pending_inlet = -1;
@@ -488,17 +505,33 @@ void Sandbox::pipes_step(World &w) {
     }
 }
 void Sandbox::step(World &w, Grains &g) {
+    // Browser order (js/sim.js): momentum follows the liquid pass; fire after heat; then pressure, gases,
+    // erosion and the air's oxygen on their quarter-tick cadences.
+    momentum_step(w);
     devices_step(w, g);
     pumps_step(w);
     if (w.tick & 1)
         pipes_step(w);
     if (!(w.tick & 1))
         thermal_step(w);
+    fire_step(w);
+    if (pressure_on) {
+        if (w.tick % 4 == 0)
+            pressure_step(w);
+    } else
+        pressure_was_on = false;
+    if (w.tick % 4 == 2)
+        gas_step(w);
+    if (w.tick % 4 == 1)
+        erosion_step(w);
     if (w.tick % 4 == 2) {
         material_step(w, g);
         grain_effects(w, g);
     }
     if (w.tick % 4 == 3)
         reactions_step(w);
+    if (w.tick % 4 == 1)
+        atmosphere_step(w);
+    shake = std::max(0.0, shake - 0.5);
 }
 } // namespace ecologist

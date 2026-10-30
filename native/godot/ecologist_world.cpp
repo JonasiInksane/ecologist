@@ -17,6 +17,9 @@ void EcologistWorld::_bind_methods() {
                          &EcologistWorld::device_action);
     ClassDB::bind_method(D_METHOD("wire_action", "x", "y"), &EcologistWorld::wire_action);
     ClassDB::bind_method(D_METHOD("dye", "x", "y", "radius", "channel"), &EcologistWorld::dye);
+    ClassDB::bind_method(D_METHOD("ignite", "x", "y", "radius"), &EcologistWorld::ignite);
+    ClassDB::bind_method(D_METHOD("flow", "pressure", "momentum"), &EcologistWorld::flow);
+    ClassDB::bind_method(D_METHOD("fire_data"), &EcologistWorld::fire_data);
     ClassDB::bind_method(D_METHOD("environment", "sunlight", "wind"), &EcologistWorld::environment);
     ClassDB::bind_method(D_METHOD("device_data"), &EcologistWorld::device_data);
     ClassDB::bind_method(D_METHOD("grain_pixels"), &EcologistWorld::grain_pixels);
@@ -81,6 +84,27 @@ bool EcologistWorld::heat(int x, int y, int radius, double delta) {
 }
 bool EcologistWorld::device_action(int x, int y, int tool, int liquid) {
     return sandbox.use(simulation, x, y, tool, liquid, &grains);
+}
+bool EcologistWorld::ignite(int x, int y, int radius) { return sandbox.ignite(simulation, x, y, radius); }
+void EcologistWorld::flow(bool pressure, bool momentum) {
+    sandbox.pressure_on = pressure;
+    sandbox.momentum_on = momentum;
+}
+// One byte per cell: 201-255 is a flame (its flicker phase), 1-200 the glow of a hot solid.
+PackedByteArray EcologistWorld::fire_data() const {
+    PackedByteArray result;
+    const int n = simulation.width * simulation.height;
+    result.resize(n);
+    auto *out = result.ptrw();
+    for (int k = 0; k < n; k++) {
+        if (!sandbox.fire.empty() && sandbox.fire[k])
+            out[k] = 201 + (k * 37 + sandbox.fire[k]) % 55;
+        else if (simulation.solid[k] && simulation.temp[k] > 450)
+            out[k] = std::clamp(int((simulation.temp[k] - 450) / 1000 * 200), 1, 200);
+        else
+            out[k] = 0;
+    }
+    return result;
 }
 bool EcologistWorld::wire_action(int x, int y) { return sandbox.wire(simulation, x, y); }
 void EcologistWorld::environment(double sun, double wind) {
@@ -252,6 +276,15 @@ Dictionary EcologistWorld::stats() const {
     d["pumps"] = static_cast<int>(sandbox.pumps.size());
     d["message"] = String(sandbox.message.c_str());
     d["pending_wire"] = sandbox.pending_wire;
+    d["shake"] = sandbox.shake;
+    d["explosions"] = sandbox.explosions;
+    int burning = 0;
+    for (auto f : sandbox.fire)
+        burning += f > 0;
+    d["burning"] = burning;
+    d["pressure"] = sandbox.pressure_on;
+    d["momentum"] = sandbox.momentum_on;
+    d["oxygen_burned"] = sandbox.budget.count("combustion_oxygen") ? sandbox.budget.at("combustion_oxygen") : 0.0;
     return d;
 }
 Dictionary EcologistWorld::inspect(int x, int y) const {
@@ -265,6 +298,12 @@ Dictionary EcologistWorld::inspect(int x, int y) const {
     d["temperature"] = simulation.temp[k];
     d["sugar"] = simulation.sol[k * ecologist::NSOL + ecologist::SOL_SUGAR] * simulation.liq[k] / 255.0;
     d["salt"] = simulation.sol[k * ecologist::NSOL + ecologist::SOL_SALT] * simulation.liq[k] / 255.0;
+    d["burning"] = !sandbox.fire.empty() && sandbox.fire[k] > 0;
+    d["air"] = sandbox.air(simulation, k);
+    if (!sandbox.air_ox.empty()) {
+        d["oxygen"] = sandbox.air_ox[k] / 10;   // percent
+        d["co2"] = sandbox.air_carb[k] / 100;   // percent
+    }
     auto m = sandbox.machines.find(k);
     if (m != sandbox.machines.end()) {
         d["machine"] = m->second.kind;

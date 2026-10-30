@@ -8,6 +8,8 @@ uniform sampler2D grain_data : filter_nearest, repeat_disable;
 uniform sampler2D solution_data : filter_nearest, repeat_disable;
 uniform bool has_solutions = false;
 uniform bool has_grains = false;
+uniform sampler2D fire_data : filter_nearest, repeat_disable;
+uniform bool has_fire = false;
 uniform ivec2 world_size = ivec2(512, 128);
 uniform float animation_time = 0.0;
 uniform uint world_seed = 7u;
@@ -225,6 +227,27 @@ void fragment() {
         if (grain > 0) {
             vec3 base = grain == 1 ? vec3(0.76,0.60,0.34) : grain == 2 ? vec3(1.0,0.94,0.77) : grain == 3 ? vec3(0.79,0.90,0.96) : grain == 4 ? vec3(0.95,0.98,1.0) : grain == 5 ? vec3(0.86,0.9,0.8) : grain == 6 ? vec3(0.4,0.4,0.38) : grain == 7 ? vec3(0.85,0.82,0.65) : grain == 8 ? vec3(0.68,0.34,0.13) : grain == 9 ? vec3(0.65,0.86,0.89) : grain == 10 ? vec3(0.17,0.18,0.2) : vec3(0.83,0.88,0.75);
             color = base*(0.81+world_hash(pixel)*0.19);
+        }
+    }
+    if (has_fire && in_world(tile)) {
+        // 201-255: a flame, brightest at the base of its cell; 1-200: a hot solid's glow (native fire_data()).
+        int heat = int(round(texelFetch(fire_data, tile, 0).r*255.0));
+        ivec2 local = pixel - tile*8;
+        if (heat > 200) {
+            float flick = world_hash(ivec2(pixel.x, pixel.y+int(animation_time*14.0)*53+heat));
+            float base = float(local.y)/7.0;
+            color = mix(color, mix(vec3(1.0,0.32,0.05), vec3(1.0,0.88,0.42), flick*base), 0.45+0.45*flick*base);
+        } else if (heat > 0) {
+            float glow = float(heat)/200.0;
+            color = mix(color, vec3(1.0,0.35+0.4*glow,0.1*glow), 0.25+0.5*glow);
+        }
+        // tongues of flame lick up into the open cell above a fire
+        if (heat == 0 && tile.y+1 < world_size.y && cell_at(tile).b == 0) {
+            int below = int(round(texelFetch(fire_data, tile+ivec2(0,1), 0).r*255.0));
+            if (below > 200) {
+                float tongue = world_hash(ivec2(pixel.x, int(animation_time*12.0)*71+below));
+                if (float(7-local.y) < tongue*6.0-1.0) { color = mix(color, vec3(1.0,0.55,0.12), 0.7); }
+            }
         }
     }
     COLOR = vec4(color,1.0);

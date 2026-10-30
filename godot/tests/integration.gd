@@ -49,6 +49,15 @@ func run() -> void:
     check(world.stats().active_chunks > 0, "Painting wakes sleeping chunks")
     world.reset_demo(7)
     check(world.stats().tick == 0 and world.stats().liquid_units > 0, "Reset playable scene")
+    world.setup(512, 128, 7)
+    world.paint(30, 100, 1, -18)
+    check(world.ignite(30, 100, 1), "Ignite heats fuel under the brush")
+    world.advance(4)
+    check(world.inspect(30, 100).burning and world.stats().burning > 0, "Hot wood in open air burns")
+    check(world.inspect(31, 100).air and world.inspect(31, 100).oxygen <= 21.0, "Inspect reports the air's oxygen")
+    check(world.fire_data().size() == 512 * 128, "One fire byte per cell")
+    world.flow(false, true)
+    check(not world.stats().pressure and world.stats().momentum, "Pressure and momentum can be switched separately")
     var scene := load("res://main.tscn") as PackedScene
     check(scene != null, "Load playable scene")
     if scene:

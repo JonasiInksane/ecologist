@@ -4,6 +4,7 @@
 #include <array>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace ecologist {
 struct FluidBuffer {
@@ -23,6 +24,9 @@ struct Pump {
     bool on = true;
     FluidBuffer buffer;
 };
+// Air in each empty cell, in the browser's units: oxygen in tenths of a percent, CO2 in hundredths.
+inline constexpr double AIR_OX = 210, AIR_CARB = 4, MAX_AIR_OX = 1000, MAX_AIR_CARB = 10000, CARB_PER_OX = 10,
+                        FIRE_OX = 150;
 struct Sandbox {
     std::map<int, Machine> machines;
     std::vector<Pump> pumps;
@@ -34,6 +38,17 @@ struct Sandbox {
     double source_units = 0, drain_units = 0, source_heat = 0, drain_heat = 0;
     std::array<double, NSOL> drained_solutes{};
     double sunlight = 1, wind = 0.4;
+    // Finite atmosphere, combustion and flow (native/core/combustion.cpp, native/core/flow_systems.cpp).
+    std::vector<double> air_ox, air_carb;
+    std::vector<std::uint8_t> fire, air_busy;
+    std::vector<std::uint32_t> level_until, seen, moved;
+    std::vector<std::uint16_t> level_row;
+    std::vector<int> queue;
+    std::uint32_t search_pass = 0;
+    bool pressure_on = true, momentum_on = true, pressure_was_on = false;
+    double shake = 0;
+    int explosions = 0;
+    std::map<std::string, double> budget;
     std::string message;
     void reset(const World &w);
     bool paint(World &w, Grains &g, int x, int y, int radius, int material);
@@ -47,6 +62,17 @@ struct Sandbox {
     void thermal_step(World &w);
     void reactions_step(World &w);
     void grain_effects(World &w, Grains &g);
+    void fire_step(World &w);
+    void explode(World &w, int k);
+    bool ignite(World &w, int x, int y, int radius);
+    void atmosphere_step(World &w);
+    void gas_step(World &w);
+    void pressure_step(World &w);
+    void momentum_step(World &w);
+    void erosion_step(World &w);
+    bool air(const World &w, int k) const;
+    double breathe_air(World &w, int k, double oxygen);
+    void stir(const World &w, int k);
     void erase(World &w, int k);
     void freeze(World &w, int k, int block);
     void melt(World &w, int k, int type);

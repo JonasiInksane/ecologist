@@ -27,6 +27,9 @@ class EcologistWorld : public RefCounted {
     bool device_action(int x, int y, int tool, int liquid);
     bool wire_action(int x, int y);
     bool dye(int x, int y, int radius, int channel);
+    bool ignite(int x, int y, int radius);
+    void flow(bool pressure, bool momentum);
+    PackedByteArray fire_data() const;
     void environment(double sunlight, double wind);
     Array device_data() const;
     PackedByteArray grain_pixels() const;

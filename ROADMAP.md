@@ -16,8 +16,11 @@ See [the native foundation specification](docs/design/godot-foundation.md) and R
   pipes/valves/filters, wiring/logic/sensors, gates, sources/drains, boilers, separators,
   generators, motors/magnets, geysers and vents; add native heat, pore storage, phase transitions,
   exported block reactions and expanded fine powders with regression checks.
-- [ ] Finish physical parity: fire/combustion and explosions with finite atmosphere, remaining
-  solute/gas reactions, pressure/momentum, erosion and complete light behavior.
+- [x] Port fire/combustion and explosions with a finite atmosphere (per-cell oxygen/CO₂, sky top-up,
+  mixing and water-surface exchange), gas escape/fading/mixing, pressure, momentum and erosion.
+  See [the native fire, air and flow pass](docs/design/native-fire-air-flow.md).
+- [ ] Finish physical parity: remaining solute/gas reactions, ecology-measured fuels and mud methane,
+  magnets holding ferrofluid, floating bodies, and complete light behavior.
 - [ ] Port atmosphere and cloud-sourced weather, then plants, creatures and finite ecosystem budgets.
 - [ ] Bring over world generation, browser save import and the existing presentation.
 - [ ] Profile the complete simulation, then optimize chunk scheduling, memory and parallel work.

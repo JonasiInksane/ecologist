@@ -497,6 +497,214 @@ int main() {
         f.s.thermal_step(f.w);
         check(f.s.pores[k].temperature == 0, "orphan pore water is not heated for free by air conduction");
     }
+
+    // Combustion, explosions, gases, pressure, momentum and erosion (native/core/combustion.cpp, flow_systems.cpp).
+    auto run = [](Fixture &f, int ticks) {
+        for (int i = 0; i < ticks; i++) {
+            f.w.step();
+            f.s.step(f.w, f.g);
+        }
+    };
+    auto stone_box = [](Fixture &f, int x0, int y0, int x1, int y1) {
+        for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++)
+                if (x == x0 || x == x1 || y == y0 || y == y1)
+                    f.w.solid[f.cell(x, y)] = B_STONE;
+    };
+    {
+        Fixture f;
+        for (int x = 0; x < 32; x++)
+            f.w.solid[f.cell(x, 20)] = B_STONE;
+        const int k = f.cell(10, 19);
+        f.w.solid[k] = B_WOOD;
+        f.w.temp[k] = 300;
+        run(f, 4);
+        check(f.s.fire[k] > 0, "hot wood in open air catches fire");
+        double sky = 0;
+        run(f, 600);
+        check(f.w.solid[k] != B_WOOD && f.s.fire[k] == 0, "burning wood is used up and leaves air or ash");
+        for (int x = 0; x < 32; x++)
+            sky += f.s.air_ox[f.cell(x, 0)];
+        check(near(sky, 32 * AIR_OX), "the open sky's air is topped up to 21% oxygen");
+    }
+    {
+        Fixture f;
+        stone_box(f, 8, 8, 14, 14);
+        const int k = f.cell(11, 13);
+        f.w.solid[k] = B_WOOD;
+        f.w.temp[k] = 300;
+        auto air_total = [&] {
+            double o = 0;
+            for (int y = 9; y < 14; y++)
+                for (int x = 9; x < 14; x++)
+                    o += f.s.air_ox[f.cell(x, y)] + f.s.air_carb[f.cell(x, y)] / CARB_PER_OX;
+            return o;
+        };
+        const double before = air_total();
+        run(f, 1500);
+        double oxygen = 0;
+        int cells = 0;
+        for (int y = 9; y < 14; y++)
+            for (int x = 9; x < 14; x++)
+                if (f.s.air(f.w, f.cell(x, y))) {
+                    oxygen += f.s.air_ox[f.cell(x, y)];
+                    cells++;
+                }
+        check(f.w.solid[k] == B_WOOD && f.s.fire[k] == 0, "a fire in a sealed room goes out with fuel left");
+        check(oxygen / cells < FIRE_OX + 15, "a smothered room's oxygen ends near the 15% burning limit");
+        check(near(air_total(), before, 1e-6), "sealed combustion trades oxygen for CO2 one for one");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 10);
+        f.fill(k, L_METHANE, 200, 600);
+        f.fill(k + 1, L_OXYGEN, 200);
+        f.s.fire_step(f.w);
+        check(f.s.explosions == 1 && f.w.typ[k + 1] != L_OXYGEN && f.w.typ[k] != L_METHANE, "lit methane touching oxygen explodes");
+        check(f.s.shake > 0, "an explosion shakes the camera");
+    }
+    {
+        Fixture f;
+        for (int x = 0; x < 32; x++)
+            f.w.solid[f.cell(x, 25)] = B_STONE;
+        f.fill(f.cell(10, 2), L_NITRO, 255, 20);
+        f.w.solid[f.cell(20, 24)] = B_WOOD;
+        run(f, 80);
+        check(f.s.explosions >= 1, "nitro dropped from a height explodes on landing");
+        check(f.w.solid[f.cell(10, 25)] == 0 || f.w.solid[f.cell(9, 25)] == 0 || f.w.solid[f.cell(11, 25)] == 0,
+              "the blast breaks the stone it lands on");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 10);
+        f.w.solid[k] = B_FNITRO;
+        f.w.temp[k] = 300;
+        f.s.fire_step(f.w);
+        check(f.s.explosions == 1 && f.w.solid[k] == 0, "heated frozen nitro still goes off");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 10);
+        f.fill(k, L_HYDROGEN, 255, 600);
+        const double before = f.s.air_ox[k - 1] + f.s.air_ox[k + 1] + f.s.air_ox[k - 32] + f.s.air_ox[k + 32];
+        f.s.fire_step(f.w);
+        int steam = 0;
+        for (int n = 0; n < 1024; n++)
+            if (f.w.typ[n] == L_STEAM)
+                steam += f.w.liq[n];
+        const double after = f.s.air_ox[k - 1] + f.s.air_ox[k + 1] + f.s.air_ox[k - 32] + f.s.air_ox[k + 32];
+        check(f.w.liq[k] == 255 - 64 && steam == 64, "burning hydrogen makes its own volume of steam");
+        check(near(before - after, 64 * 1000.0 / 255 * 0.5), "hydrogen burns with half its volume of oxygen");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 10);
+        f.w.solid[k] = B_WOOD;
+        f.s.fire[k] = 100;
+        f.w.temp[k] = 1000;
+        f.fill(k - 32, WATER);
+        f.s.fire_step(f.w);
+        check(f.s.fire[k] == 0 && f.w.temp[k] <= 90, "water poured over a fire puts it out");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 20);
+        f.w.solid[k + 32] = B_STONE;
+        f.fill(k, L_OIL, 255, 300);
+        f.fill(k + 32, WATER);
+        f.w.solid[k + 32] = 0;
+        f.w.solid[k + 64] = B_STONE;
+        f.s.fire_step(f.w);
+        check(f.s.fire[k] == 1 && f.w.liq[k] == 254, "hot oil on water burns, using its own fuel");
+    }
+    {
+        Fixture f;
+        for (int y = 0; y < 32; y++)
+            for (int x = 0; x < 32; x++)
+                f.w.solid[f.cell(x, y)] = B_STONE;
+        for (int y = 2; y < 25; y++)
+            for (int x : {5, 6, 7, 18, 19, 20})
+                f.w.solid[f.cell(x, y)] = 0;
+        for (int y = 22; y < 25; y++)
+            for (int x = 5; x <= 20; x++)
+                f.w.solid[f.cell(x, y)] = 0;
+        for (int y = 2; y < 22; y++)
+            for (int x = 5; x <= 7; x++)
+                f.fill(f.cell(x, y), WATER);
+        f.w.wake_all();
+        const double volume = f.volume();
+        run(f, 1600);
+        int right = 0;
+        for (int y = 2; y < 22; y++)
+            for (int x = 18; x <= 20; x++)
+                right += f.w.liq[f.cell(x, y)];
+        check(right > 255, "pressure lifts water up the far arm of a U-bend");
+        check(near(f.volume(), volume), "pressure conserves liquid");
+    }
+    {
+        Fixture f;
+        f.s.pressure_on = false;
+        for (int x = 0; x < 32; x++)
+            f.w.solid[f.cell(x, 31)] = B_STONE;
+        for (int y = 16; y < 31; y++)
+            for (int x = 0; x < 10; x++)
+                f.fill(f.cell(x, y), WATER);
+        f.w.wake_all();
+        const double volume = f.volume();
+        bool moving = false;
+        for (int i = 0; i < 30; i++) {
+            run(f, 1);
+            for (int k = 0; k < 1024; k++)
+                moving = moving || std::abs(f.w.vel[k]) > 0.1f;
+        }
+        check(moving, "a dam break gives the water sideways momentum");
+        check(near(f.volume(), volume), "momentum conserves liquid");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 10);
+        f.fill(k, WATER);
+        f.s.paint(f.w, f.g, 11, 10, 1, -B_WETDIRT);
+        f.w.liq[k] = 100;
+        auto all_heat = [&] {
+            double e = 0;
+            for (int n = 0; n < 1024; n++)
+                e += f.s.capacity(f.w, n) * f.w.temp[n] + f.w.latent[n];
+            for (auto &p : f.s.pores)
+                e += p.second.latent;
+            return e;
+        };
+        const double volume = f.volume(), heat = all_heat();
+        for (int i = 0; i < 20000 && f.w.solid[k + 1]; i++) {
+            f.w.tick++;
+            f.w.flux[k] = f.w.tick;
+            f.w.vel[k] = 0.5f;
+            f.s.erosion_step(f.w);
+        }
+        check(!f.w.solid[k + 1] && f.w.sol[k * NSOL + SOL_SILT] >= 48, "flowing water wears soil away into silt");
+        check(near(f.volume(), volume), "eroded wet soil releases its pore water");
+        check(near(all_heat(), heat, 1e-3), "erosion keeps the bank's heat");
+    }
+    {
+        Fixture f;
+        const int k = f.cell(10, 0);
+        f.fill(k, L_SMOKE, 100);
+        f.s.gas_step(f.w);
+        check(!f.w.liq[k] && f.s.budget["escaped_smoke"] == 100, "smoke at the open top escapes and is recorded");
+        stone_box(f, 4, 4, 8, 8);
+        const int c = f.cell(6, 6);
+        f.fill(c, L_CO2, 200);
+        double carbon = 0;
+        for (int n = 0; n < 1024; n++)
+            carbon += f.s.air_carb[n];
+        for (int i = 0; i < 400; i++)
+            f.s.gas_step(f.w);
+        double after = 0;
+        for (int n = 0; n < 1024; n++)
+            after += f.s.air_carb[n];
+        check(f.w.liq[c] < 200 && near(after - carbon, (200 - f.w.liq[c]) * 10000.0 / 255, 1e-6),
+              "loose CO2 gas joins the air without loss");
+    }
     std::cout << "Native sandbox: " << checks << " checks, " << failures << " failures\n";
     return failures ? 1 : 0;
 }

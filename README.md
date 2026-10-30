@@ -18,7 +18,8 @@ Setup downloads pinned Godot 4.7.2, LLVM-MinGW and godot-cpp into `.tools/`, ver
 and installs local CMake/Ninja. It does not change system settings. The extension targets Godot's
 4.5 API. Windows x64 is the tested platform; other platforms need their own toolchain/build.
 
-Paint with left drag; select a material with **1–8** or the toolbar. **Space** pauses, **N** advances
+Paint with left drag; select a material with **1–8** or the toolbar. **Ignite** brings fuel under the brush
+past its ignition point; **Pressure on / off** and **Momentum on / off** switch those flow systems. **Space** pauses, **N** advances
 one tick and **R** resets the sandbox (not the workshop ledger). Pan with middle drag or Shift + left drag, zoom with the wheel,
 and adjust brush size with **[ ]** or the toolbar.
 
@@ -80,9 +81,21 @@ Purchased production equipment is still operated through the workshop panel. The
 machines move physical material, but are not yet connected to the finite workshop economy.
 See [the five-sequence specification and model limits](docs/design/chemistry-workshop.md).
 
-Full browser parity is **not yet complete**. Fire/combustion and explosions, atmospheric gas budgets,
-the remaining solute/ecological reactions, pressure/momentum, living plants/creatures, cloud-sourced
-weather, world generation, browser save import and complete lighting remain to be ported.
+**Fire, air and flow are now native.** Every empty cell holds finite oxygen and CO₂ (the browser's units):
+the open sky tops itself up and other air mixes with its neighbours, so a sealed room's fire goes out
+below 15% oxygen while a room with a door keeps burning. Wood, comb, wool, fuses, charcoal, plants, oil,
+strong spirit, methane and hydrogen burn with the browser's ignition points, burn times, dousing and
+smothering; burning gas makes steam and CO₂ by the browser's gas-volume equivalents. Nitro explodes when
+heated, dropped or touched by live power, and lit methane or hydrogen beside oxygen explodes; blasts break
+soft blocks (releasing their pore water), push liquid outward and set off chains. Gases escape the open
+top, fade or join the air, and mix into each other. Pressure levels connected vessels, momentum gives
+waves, splashes, wall run-ups and drain pull, and flowing water erodes soil into silt that settles as
+mud and packs into wet soil. Combustion, escape and atmosphere exchanges are recorded in a budget.
+See [the native fire, air and flow pass](docs/design/native-fire-air-flow.md).
+
+Full browser parity is **not yet complete**. Ecology-measured fuels, the remaining solute/ecological
+reactions, living plants/creatures, cloud-sourced weather, world generation, browser save import,
+floating bodies, magnets holding ferrofluid and complete lighting remain to be ported.
 Organic terrain is placeable but does not grow. The sandbox world still has no save/load.
 Use the browser version for those complete systems. See [this pass's scope](docs/design/native-sandbox-port.md).
 

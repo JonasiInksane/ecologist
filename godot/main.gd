@@ -13,7 +13,8 @@ var TOOLS: Array = [
     ["Salt · sodium chloride", 103, Color("d6edf1")], ["Ethanol", 35, Color("b2d3dc")],
     ["Blood", 36, Color("c64d5c")], ["Blood plasma", 37, Color("e4bf57")],
     ["Vinegar", 38, Color("d1cc9e")], ["Brine", 39, Color("70b6cd")],
-    ["Heat", 201, Color("ee936b")], ["Cool", 202, Color("8ecbea")]
+    ["Heat", 201, Color("ee936b")], ["Cool", 202, Color("8ecbea")],
+    ["Ignite", 203, Color("ff9a3c")]
 ]
 
 var world := EcologistWorld.new()
@@ -22,6 +23,7 @@ var surface := Sprite2D.new()
 var texture: ImageTexture
 var grain_texture: ImageTexture
 var solution_texture: ImageTexture
+var fire_texture: ImageTexture
 var liquid_material := ShaderMaterial.new()
 var animation_time := 0.0
 var paused := false
@@ -47,6 +49,8 @@ var machine_view: Array = []
 var last_liquid := 1
 var day := true
 var breezy := true
+var pressure := true
+var momentum := true
 var pending_wire := -1
 
 func _ready() -> void:
@@ -150,6 +154,8 @@ func _build_ui() -> void:
     heading.add_child(subtitle)
     heading.add_child(_button("Day / night", _toggle_day))
     heading.add_child(_button("Wind on / off", _toggle_wind))
+    heading.add_child(_button("Pressure on / off", _toggle_pressure))
+    heading.add_child(_button("Momentum on / off", _toggle_momentum))
     heading.add_child(_button("Workshop", _toggle_workshop))
     pause_button = _button("Pause  ·  Space", _toggle_pause)
     heading.add_child(pause_button)
@@ -169,8 +175,8 @@ func _build_ui() -> void:
     palette.add_child(tool_search)
     material_picker.item_selected.connect(func(index): _select(material_picker.get_item_id(index)))
     palette.add_child(material_picker)
-    for i in [0, 8, 9, 10, 16, 17]:
-        var button := _button(["Water", "Sand", "Sugar", "Salt", "Heat", "Cool"][[0, 8, 9, 10, 16, 17].find(i)], _select.bind(i))
+    for i in [0, 8, 9, 10, 16, 17, 18]:
+        var button := _button(["Water", "Sand", "Sugar", "Salt", "Heat", "Cool", "Ignite"][[0, 8, 9, 10, 16, 17, 18].find(i)], _select.bind(i))
         button.add_theme_color_override("font_color", TOOLS[i][2])
         palette.add_child(button)
     var spacer := Control.new()
@@ -261,6 +267,16 @@ func _toggle_wind() -> void:
     world.environment(1.0 if day else 0.0, 0.4 if breezy else 0.0)
     inspector_label.text = "Environment: %s · wind %s" % ["day" if day else "night", "on" if breezy else "off"]
 
+func _toggle_pressure() -> void:
+    pressure = not pressure
+    world.flow(pressure, momentum)
+    inspector_label.text = "Pressure %s · liquid %s through connected vessels" % ["on" if pressure else "off", "levels" if pressure else "no longer levels"]
+
+func _toggle_momentum() -> void:
+    momentum = not momentum
+    world.flow(pressure, momentum)
+    inspector_label.text = "Momentum %s · waves, jets and splashes %s" % ["on" if momentum else "off", "on" if momentum else "off"]
+
 func _pointer_over_ui() -> bool:
     var pointer := get_viewport().get_mouse_position()
     return pointer.y < 124 or pointer.y > get_viewport_rect().size.y - 66 or (workshop != null and workshop.visible and pointer.x > get_viewport_rect().size.x - 440)
@@ -330,6 +346,8 @@ func _physics_process(_delta: float) -> void:
         if material >= 101 and material <= 107:
             var pixel := Vector2i(get_global_mouse_position().floor())
             dirty = world.paint_grains(pixel.x, pixel.y, radius * 4, material - 100) > 0 or dirty
+        elif material == 203:
+            dirty = world.ignite(cell.x, cell.y, radius) or dirty
         elif material == 201 or material == 202:
             dirty = world.heat(cell.x, cell.y, radius, 60.0 if material == 201 else -30.0) or dirty
         elif material >= 400:
@@ -347,6 +365,8 @@ func _process(delta: float) -> void:
     liquid_material.set_shader_parameter("view_origin", (camera.get_screen_center_position() - get_viewport_rect().size / camera.zoom / 2).floor())
     if dirty:
         _refresh_texture()
+    var shake: float = world.stats().shake
+    camera.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * shake * 0.6 if shake > 0.0 else Vector2.ZERO
     status_clock += delta
     if status_clock >= 0.25:
         status_clock = 0.0
@@ -357,8 +377,10 @@ func _process(delta: float) -> void:
         if not sample.is_empty() and not _pointer_over_ui():
             if sample.has("machine"):
                 inspector_label.text = "%s · %.1f °C · %s · setting %s · liquid #%s · %s" % [TOOLS[selected][0], sample.temperature, "active" if sample.active or sample.on or sample.open else "idle", sample.level if sample.machine != 14 else sample.period, sample.liquid, stats.message]
+            elif sample.air:
+                inspector_label.text = "%s · air %.1f °C · oxygen %.1f%% · CO₂ %.2f%% · %d burning · %s" % [TOOLS[selected][0], sample.temperature, sample.oxygen, sample.co2, stats.burning, stats.message]
             else:
-                inspector_label.text = "%s · %.1f °C · sugar %.2f · salt %.2f · stored water %.1f · %s" % [TOOLS[selected][0], sample.temperature, sample.sugar, sample.salt, sample.stored_water, stats.message]
+                inspector_label.text = "%s · %.1f °C%s · sugar %.2f · salt %.2f · stored water %.1f · %s" % [TOOLS[selected][0], sample.temperature, " · burning" if sample.burning else "", sample.sugar, sample.salt, sample.stored_water, stats.message]
 
 func _refresh_texture() -> void:
     var pixels: PackedByteArray = world.render_data()
@@ -376,6 +398,13 @@ func _refresh_texture() -> void:
         liquid_material.set_shader_parameter("has_solutions", true)
     else:
         solution_texture.update(solution_image)
+    var fire_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, world.fire_data())
+    if fire_texture == null:
+        fire_texture = ImageTexture.create_from_image(fire_image)
+        liquid_material.set_shader_parameter("fire_data", fire_texture)
+        liquid_material.set_shader_parameter("has_fire", true)
+    else:
+        fire_texture.update(fire_image)
     var grains: PackedByteArray = world.grain_pixels()
     liquid_material.set_shader_parameter("has_grains", not grains.is_empty())
     if not grains.is_empty():
