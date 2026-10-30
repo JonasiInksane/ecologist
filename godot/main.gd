@@ -11,6 +11,8 @@ const REMOVE_CODE := 1000
 const PIPE_CODE := 1006
 const VALVE_CODE := 1007
 const PUMP_CODE := 1008
+# How far above the player the campaign camera looks, as a share of the view's height.
+const FRAME_LIFT := 0.14
 var TOOLS: Array = [
     ["Water", 1, Color("5daee7")], ["Oil", 9, Color("b6a16b")],
     ["Honey", 3, Color("edb151")], ["Steam", 8, Color("c3d5da")],
@@ -41,8 +43,10 @@ var kitchen: PanelContainer
 var shop: PanelContainer
 var people: PanelContainer
 var hud: Control
-var lighting: Node2D
-var room_data := PackedByteArray()
+var lighting: Node
+var backdrop: Node2D
+var decor: Node2D
+var sprite_material := ShaderMaterial.new()
 var sun_level := -1.0
 var top_panel: PanelContainer
 var footer: PanelContainer
@@ -113,6 +117,15 @@ func _ready() -> void:
     add_child(surface)
     lighting = preload("res://lighting.gd").new()
     add_child(lighting)
+    # Sprites drawn here and the props share the campaign light; the backdrop sits behind the world.
+    sprite_material.shader = preload("res://sprite_light.gdshader")
+    material = sprite_material
+    backdrop = preload("res://backdrop.gd").new()
+    backdrop.camera = camera
+    add_child(backdrop)
+    decor = preload("res://decor.gd").new()
+    decor.setup(self)
+    add_child(decor)
     camera.position = Vector2(104, 74) * CELL
     add_child(camera)
     _build_ui()
@@ -445,7 +458,11 @@ func _set_mode(on: bool) -> void:
     world.environment(1.0 if day else 0.0, 0.4 if breezy else 0.0)
     world.flow(pressure, momentum)
     sun_level = -1.0
-    lighting.visible = false
+    lighting.dirty = true
+    lighting.off([liquid_material, sprite_material])
+    liquid_material.set_shader_parameter("styled", on)
+    backdrop.visible = on
+    decor.visible = on
     liquid_material.set_shader_parameter("stars", 0.0)
     liquid_material.set_shader_parameter("sunlight", 1.0 if day or on else 0.0)
     palette.visible = not on
@@ -716,14 +733,18 @@ func _toggle_workshop() -> void:
     drawing = false
     panning = false
 
-# The campaign's light follows the clock: the lighting node, the stars, the water's sun glints and solar machines.
+# The campaign's light follows the clock: the light on the world and the sprites, the backdrop's sky, the water's
+# sun glints and solar machines.
 func _follow_sun() -> void:
     lighting.update_light(shop.model.minute)
+    backdrop.minute = shop.model.minute
+    backdrop.level = lighting.level
+    if lighting.dirty:
+        lighting.apply([liquid_material, sprite_material])
     if absf(lighting.level - sun_level) > 0.01:
         sun_level = lighting.level
         world.environment(sun_level, 0.4 if breezy else 0.0)
         liquid_material.set_shader_parameter("sunlight", sun_level)
-        liquid_material.set_shader_parameter("stars", clampf(1.0 - sun_level * 1.6, 0.0, 1.0))
 
 func _toggle_day() -> void:
     if campaign:
@@ -906,7 +927,8 @@ func _process(delta: float) -> void:
         player = world.player_state()
         if player.get("active", false):
             walk_clock += delta
-            var target := Vector2(player.x + player.width / 2.0, player.y + player.height / 2.0)
+            # Framed a little above the player, so the ground sits low and the town fills the sky (art.md).
+            var target := Vector2(player.x + player.width / 2.0, player.y + player.height / 2.0 - get_viewport_rect().size.y / camera.zoom.y * FRAME_LIFT)
             camera.position = camera.position.lerp(target, 1.0 - exp(-delta * 8.0))
             _clamp_camera()
             if player.event == "respawn":
@@ -972,13 +994,13 @@ func _refresh_texture() -> void:
         fire_texture.update(fire_image)
     var back := world.back_data()
     var back_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, back)
-    if campaign and back != room_data:
-        room_data = back
-        lighting.set_rooms(back, WIDTH, HEIGHT)
     if back_texture == null:
         back_texture = ImageTexture.create_from_image(back_image)
         liquid_material.set_shader_parameter("back_data", back_texture)
         liquid_material.set_shader_parameter("has_back", true)
+        sprite_material.set_shader_parameter("room_data", back_texture)
+    if campaign and decor.refresh(pixels, back, WIDTH, HEIGHT):
+        lighting.set_lamps(decor.lamps())
     else:
         back_texture.update(back_image)
     var grains: PackedByteArray = world.grain_pixels()

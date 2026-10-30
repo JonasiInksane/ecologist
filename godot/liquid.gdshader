@@ -2,6 +2,8 @@ shader_type canvas_item;
 render_mode unshaded;
 #include "res://generated/palettes.gdshaderinc"
 #include "res://generated/blocks.gdshaderinc"
+#include "res://generated/campaign_palette.gdshaderinc"
+#include "res://lighting.gdshaderinc"
 
 uniform sampler2D world_data : filter_nearest, repeat_disable;
 uniform sampler2D grain_data : filter_nearest, repeat_disable;
@@ -20,6 +22,9 @@ uniform vec2 view_origin = vec2(0.0);
 uniform float sunlight : hint_range(0.0, 1.0) = 1.0;
 // Stars in the open sky at night (campaign day and night; the lighting node darkens the sky itself).
 uniform float stars : hint_range(0.0, 1.0) = 0.0;
+// The campaign look (docs/design/art.md): textured ground and buildings in the palette, the open sky left clear for
+// the backdrop node behind, and the campaign light. The sandbox keeps the browser's look.
+uniform bool styled = false;
 // Controlled backdrop for comparisons with the HTML drawBody/drawStream functions.
 uniform bool reference_mode = false;
 uniform vec3 reference_color = vec3(0.12, 0.18, 0.25);
@@ -280,9 +285,7 @@ vec3 liquid_pixel(vec3 behind, ivec2 tile, ivec2 pixel) {
     }
     return result;
 }
-void fragment() {
-    ivec2 pixel = ivec2(floor(UV*vec2(world_size)*8.0));
-    ivec2 tile = pixel/8;
+vec3 sandbox_fragment(ivec2 pixel, ivec2 tile) {
     vec3 color = base_pixel(pixel);
     // Preserve HTML scan order and the one-pixel crests crossing cell boundaries.
     if (pixel.y%8 == 0) { color = liquid_pixel(color,tile+ivec2(0,-1),pixel); }
@@ -316,5 +319,322 @@ void fragment() {
             }
         }
     }
-    COLOR = vec4(color,1.0);
+    return color;
+}
+
+// ---- The campaign look -------------------------------------------------------------------------------------------
+int mat_at(ivec2 t) {
+    if (!in_world(t)) { return t.y < 0 ? 0 : 2; }
+    return cell_at(t).b;
+}
+// Surface soil: dirt with open air above that was never dug out from underground.
+bool grassy(ivec2 t) {
+    if (!in_world(t) || t.y < 1) { return false; }
+    ivec4 cell = cell_at(t);
+    return cell.b == 1 && (cell.a & 1) == 0 && mat_at(t + ivec2(0, -1)) == 0;
+}
+vec3 rock_pixel(ivec2 p, int darken) {
+    // Cobbles: the nearest of jittered points six pixels apart; cracks where two are nearly as close.
+    ivec2 c = ivec2(floor(vec2(p) / 6.0));
+    float d1 = 99.0, d2 = 99.0; vec2 near = vec2(0.0); float tone = 0.0;
+    for (int j = -1; j <= 1; j++) {
+        for (int i = -1; i <= 1; i++) {
+            ivec2 k = c + ivec2(i, j);
+            vec2 point = vec2(k) * 6.0 + vec2(world_hash(k + ivec2(0, 7100)), world_hash(k + ivec2(0, 7200))) * 5.0 + 0.5;
+            float d = length(vec2(p) + 0.5 - point);
+            if (d < d1) { d2 = d1; d1 = d; near = point; tone = world_hash(k + ivec2(0, 7300)); }
+            else if (d < d2) { d2 = d; }
+        }
+    }
+    int shade = tone < 0.45 ? 1 : tone < 0.85 ? 2 : 3;
+    if (d2 - d1 < 0.9) { return darken > 0 ? PAL_SOIL[0] : PAL_INK[2]; }
+    if (d2 - d1 < 1.9 && float(p.y) + 0.5 < near.y) { shade += 1; }
+    return PAL_ROCK[clamp(shade - darken, 0, 5)];
+}
+vec3 soil_pixel(ivec2 p, ivec2 t, ivec2 l) {
+    // Darker with depth, in dithered bands below the surface row.
+    float depth = float(p.y - 800) / 14.0 + (world_noise(vec2(p) / vec2(7.0, 3.0), 4400) - 0.5) * 1.8;
+    int tone = 3 - clamp(int(floor(depth)), 0, 2);
+    float n = world_noise(vec2(p) / 3.0, 4100);
+    if (n < 0.3) { tone -= 1; } else if (n > 0.8) { tone += 1; }
+    if (world_hash(p + ivec2(0, 4200)) > 0.965) { tone -= 1; }
+    vec3 color = PAL_SOIL[clamp(tone, 0, 5)];
+    // A pebble in some tiles: an ellipse lit from the top left.
+    float h = world_hash(t + ivec2(0, 5300));
+    if (h < 0.2) {
+        vec2 r = vec2(2.5 + floor(world_hash(t + ivec2(0, 5400)) * 1.99) * 0.5, 2.0 + floor(world_hash(t + ivec2(0, 5500)) * 1.99) * 0.5);
+        vec2 c = vec2(r.x + floor(world_hash(t + ivec2(0, 5600)) * (8.0 - 2.0 * r.x)), r.y + 0.5 + floor(world_hash(t + ivec2(0, 5700)) * (7.0 - 2.0 * r.y)));
+        vec2 q = (vec2(l) + 0.5 - c) / r;
+        float e = dot(q, q);
+        if (e <= 1.0) {
+            int s = q.y < -0.35 && q.x < 0.3 ? 4 : q.y > 0.45 || q.x > 0.65 ? 2 : 3;
+            return PAL_ROCK[clamp(s - (tone < 2 ? 1 : 0), 0, 5)];
+        }
+        if (e <= 1.6 && q.y > 0.0) { return PAL_SOIL[clamp(tone - 2, 0, 5)]; }
+    }
+    // Roots hang from the grass into the two tiles below it.
+    int surface_y = grassy(t) ? t.y : grassy(t + ivec2(0, -1)) ? t.y - 1 : grassy(t + ivec2(0, -2)) ? t.y - 2 : -1;
+    if (surface_y >= 0) {
+        ivec2 st = ivec2(t.x, surface_y);
+        float r = world_hash(st + ivec2(0, 5800));
+        if (r < 0.4) {
+            int dy = p.y - surface_y * 8;
+            int reach = 9 + int(world_hash(st + ivec2(0, 5900)) * 11.0);
+            int x = 1 + int(r * 15.0) % 6 + int(floor(sin(float(dy) * 0.45 + r * 40.0) * 1.4 + 0.5));
+            if (dy >= 3 && dy < reach && l.x == x) { return PAL_ROOT[dy > reach - 3 ? 0 : (dy % 3 == 0 ? 2 : 1)]; }
+        }
+    }
+    return color;
+}
+vec3 grass_pixel(ivec2 p, ivec2 l, vec3 soil) {
+    float h = world_hash(ivec2(p.x, 6000));
+    // each column hangs its own length; neighbours share it in pairs so the blades read as blades
+    int hang = 3 + int(world_hash(ivec2(p.x >> 1, 6040)) * 4.0) - (h > 0.8 ? 1 : 0);
+    if (l.y == 0) { return PAL_LEAF[h > 0.55 ? 6 : 5]; }
+    if (l.y == 1) { return PAL_LEAF[world_hash(p + ivec2(0, 6010)) > 0.5 ? 5 : 4]; }
+    if (l.y == 2) { return PAL_LEAF[world_hash(p + ivec2(0, 6020)) > 0.6 ? 4 : 3]; }
+    if (l.y < hang) { return PAL_LEAF[l.y == hang - 1 ? 2 : world_hash(p + ivec2(0, 6030)) > 0.5 ? 3 : 4]; }
+    if (l.y == hang && world_hash(ivec2(p.x, 6050)) > 0.6) { return PAL_LEAF[1]; }
+    return soil;
+}
+// Blades and the odd flower growing into the air cell above surface soil.
+vec4 blade_pixel(ivec2 p, ivec2 l) {
+    float h = world_hash(ivec2(p.x, 6100));
+    int height = h < 0.25 ? 0 : 1 + int(world_hash(ivec2(p.x, 6200)) * 4.0);
+    if (world_hash(ivec2(p.x >> 2, 6300)) < 0.3) { height = max(0, height - 2); }
+    int top = 8 - height;
+    if (l.y < top) { return vec4(0.0); }
+    if (l.y == top) {
+        float f = world_hash(ivec2(p.x, 6400));
+        if (height >= 3 && f > 0.93) {
+            vec3 petal = f > 0.98 ? PAL_PURPLE[4] : f > 0.96 ? PAL_GOLD[4] : PAL_WHITE[4];
+            return vec4(petal, 1.0);
+        }
+        return vec4(PAL_LEAF[6], 1.0);
+    }
+    return vec4(PAL_LEAF[l.y == 7 ? 5 : (h > 0.6 ? 5 : 4)], 1.0);
+}
+vec3 wood_pixel(ivec2 p, ivec2 t, ivec2 l, bool up, bool down, bool left, bool right) {
+    bool wl = mat_at(t + ivec2(-1, 0)) == 18, wr = mat_at(t + ivec2(1, 0)) == 18;
+    bool wu = mat_at(t + ivec2(0, -1)) == 18, wd = mat_at(t + ivec2(0, 1)) == 18;
+    bool outline = (!wu && l.y == 0) || (!wd && l.y == 7) || (!wl && l.x == 0) || (!wr && l.x == 7);
+    if (outline) { return PAL_WOOD[0]; }
+    if ((wu || wd) && !(wl && wr)) {
+        // a post or a wall: an upright beam with long grain, lit from the left
+        if (!wl && l.x == 1) { return PAL_WOOD[5]; }
+        if (!wr && l.x == 6) { return PAL_WOOD[2]; }
+        float g = world_hash(ivec2(p.x, (p.y + p.x * 5) >> 3) + ivec2(0, 6500));
+        return PAL_WOOD[g > 0.82 ? 2 : g > 0.5 ? 3 : 4];
+    }
+    // planks: boards four pixels high, butt joints staggered from board to board
+    int board = p.y >> 2;
+    if (!wu && l.y == 1) { return PAL_WOOD[6]; }
+    if ((p.y & 3) == 3) { return PAL_WOOD[1]; }
+    int joint = (p.x + board * 11) % 20;
+    if (joint == 0) { return PAL_WOOD[1]; }
+    if ((joint == 2 || joint == 18) && (p.y & 3) == 1) { return PAL_WOOD[1]; }
+    float r = world_hash(ivec2((p.x + board * 11) / 20, board) + ivec2(0, 6600));
+    int tone = r < 0.35 ? 3 : r < 0.8 ? 4 : 5;
+    if (world_hash(p + ivec2(0, 6700)) > 0.9) { tone -= 1; }
+    return PAL_WOOD[tone];
+}
+vec3 brick_pixel(ivec2 p, ivec2 t, ivec2 l, bool edge) {
+    if (edge) { return PAL_INK[2]; }
+    int row = p.y >> 2, shifted = p.x + (row & 1) * 4;
+    if ((p.y & 3) == 3 || (shifted & 7) == 7) { return PAL_ROCK[2]; }
+    float r = world_hash(ivec2(shifted >> 3, row) + ivec2(0, 6800));
+    int tone = r < 0.4 ? 2 : r < 0.85 ? 3 : 4;
+    if ((p.y & 3) == 0 && (shifted & 7) == 0) { tone += 1; }
+    return PAL_BRICK[min(tone, 4)];
+}
+vec3 asphalt_pixel(ivec2 p, ivec2 t, ivec2 l, bool up) {
+    // the curb where the road meets the yard
+    if (mat_at(t + ivec2(-1, 0)) != 10 && l.x < 5 && t.y == 100) {
+        if (l.y == 0 || l.x == 0) { return PAL_CONCRETE[l.y == 0 ? 5 : 2]; }
+        return PAL_CONCRETE[l.x == 4 || l.y == 7 ? 2 : 4];
+    }
+    if (up && l.y == 0) { return PAL_ASPHALT[3]; }
+    if (up && l.y == 1) { return PAL_ASPHALT[2]; }
+    float r = world_hash(p + ivec2(0, 6900));
+    return PAL_ASPHALT[r > 0.93 ? 3 : r > 0.55 ? 2 : r > 0.15 ? 1 : 0];
+}
+vec3 steel_pixel(ivec2 p, ivec2 l, bool edge) {
+    if (edge) { return PAL_STEEL[0]; }
+    if ((l.x == 1 || l.x == 6) && (l.y == 1 || l.y == 6)) { return PAL_STEEL[4]; }
+    if (l.y == 1) { return PAL_STEEL[3]; }
+    return PAL_STEEL[world_hash(ivec2(p.x >> 2, p.y) + ivec2(0, 7400)) > 0.8 ? 1 : 2];
+}
+vec3 styled_door(ivec2 pixel, ivec2 tile) {
+    int lx = pixel.x % 16, top = tile.y;
+    for (int i = 0; i < 6 && top > 0 && cell_at(ivec2(tile.x, top - 1)).b == 80; i++) { top--; }
+    int ly = pixel.y - top * 8;
+    bool bottom = cell_at(ivec2(tile.x, tile.y + 1)).b != 80 && pixel.y % 8 == 7;
+    if (lx == 0 || lx == 15 || ly == 0 || bottom) { return PAL_WOOD[0]; }
+    if (lx == 1 || ly == 1) { return PAL_WOOD[5]; }
+    if (lx >= 11 && lx <= 12 && ly >= 24 && ly <= 25) { return PAL_GOLD[lx == 11 ? 4 : 2]; }
+    bool panel = (lx == 3 || lx == 12) && ly > 3 && ly < 43 || ly == 4 || ly == 21 || ly == 42;
+    if (panel) { return PAL_WOOD[2]; }
+    bool inset = lx > 3 && lx < 12 && (ly > 4 && ly < 21 || ly > 21 && ly < 42);
+    float g = world_hash(ivec2(pixel.x, pixel.y >> 2) + ivec2(0, 7500));
+    return PAL_WOOD[inset ? (g > 0.75 ? 3 : 4) : (g > 0.75 ? 4 : 5)];
+}
+// Walls behind rooms: wood boards, brick, or plaster (3).
+vec3 styled_wall(ivec2 p, int wall) {
+    if (wall == 2) {
+        int row = p.y >> 2, shifted = p.x + (row & 1) * 4;
+        if ((p.y & 3) == 3 || (shifted & 7) == 7) { return PAL_ROCK[1]; }
+        float r = world_hash(ivec2(shifted >> 3, row) + ivec2(0, 9100));
+        return PAL_BRICK[r < 0.45 ? 1 : r < 0.9 ? 2 : 3];
+    }
+    if (wall == 3) {
+        float n = world_noise(vec2(p) / vec2(9.0, 5.0), 9300);
+        float r = world_hash(p + ivec2(0, 9400));
+        int tone = n < 0.3 ? 2 : n > 0.75 ? 4 : 3;
+        if (r > 0.97) { tone -= 1; }
+        return PAL_PLASTER[tone];
+    }
+    // boards running up the wall
+    int board = p.x / 6;
+    if (p.x % 6 == 5) { return PAL_WOOD[1]; }
+    int joint = (p.y + board * 13) % 28;
+    if (joint == 0) { return PAL_WOOD[1]; }
+    float r = world_hash(ivec2(board, (p.y + board * 13) / 28) + ivec2(0, 9200));
+    float g = world_hash(ivec2(p.x, p.y >> 2) + ivec2(0, 9250));
+    return PAL_WOOD[(r < 0.4 ? 2 : 3) + (g > 0.85 ? 1 : 0)];
+}
+// Ladders and open doors over the wall (or the open air: alpha 0 between the rails).
+vec4 styled_back(vec4 bg, ivec2 p, int back) {
+    if ((back & 15) != 0) { bg = vec4(styled_wall(p, back & 15), 1.0); }
+    int lx = p.x % 16;
+    if ((back & 32) != 0) {
+        if (lx < 3) { bg = vec4(PAL_WOOD[lx == 0 ? 0 : 3], 1.0); }
+        else if (bg.a > 0.0) { bg.rgb *= 0.85; }
+    }
+    if ((back & 64) != 0) {
+        bool rail = lx == 2 || lx == 3 || lx == 12 || lx == 13;
+        bool rung = (p.y % 6 == 2 || p.y % 6 == 3) && lx > 3 && lx < 12;
+        if (rail) { bg = vec4(PAL_WOOD[lx == 2 || lx == 12 ? 5 : 3], 1.0); }
+        else if (rung) { bg = vec4(PAL_WOOD[p.y % 6 == 2 ? 5 : 2], 1.0); }
+        else if (lx == 4 || lx == 14) { if (bg.a > 0.0) { bg.rgb *= 0.7; } }
+    }
+    return bg;
+}
+// The cell itself, before liquids: alpha 0 where the open sky shows through to the backdrop.
+vec4 styled_base(ivec2 pixel) {
+    ivec2 tile = pixel >> 3;
+    if (!in_world(tile)) { return vec4(PAL_SOIL[0], 1.0); }
+    ivec4 cell = cell_at(tile); ivec2 local = pixel - tile * 8;
+    int material = cell.b;
+    int back = back_at(tile);
+    vec4 bg = vec4(0.0);
+    // (the surface row has no underground flag, but the row under it does)
+    bool dug_surface = material == 0 && (cell.a & 1) == 0 && tile.y + 1 < world_size.y && (cell_at(tile + ivec2(0, 1)).a & 1) != 0;
+    if ((cell.a & 1) != 0 || dug_surface) {
+        // dug out underground: the dark soil behind
+        float n = world_noise(vec2(pixel) / 4.0, 9500);
+        bg = vec4(PAL_SOIL[n < 0.35 ? 0 : 1], 1.0);
+        if (world_hash(tile + ivec2(0, 9600)) < 0.2 && world_hash(pixel + ivec2(0, 9700)) > 0.6) { bg.rgb = PAL_SOIL[2]; }
+    } else if (material == 0 && cell.g == 0 && grassy(tile + ivec2(0, 1)) && back == 0) {
+        bg = blade_pixel(pixel, local);
+    }
+    if (back != 0 && (material == 0 || material == 22 || material == 25 || material == 26 || material == 27 || material == 81)) { bg = styled_back(bg, pixel, back); }
+    if (material == 80) { return vec4(styled_door(pixel, tile), 1.0); }
+    if (material == 0 || material == 25 || material == 26 || material == 27 || material == 81) { return bg; }
+    if (material == 22) {
+        bool frame = mat_at(tile + ivec2(0, -1)) != 22 && local.y == 0 || mat_at(tile + ivec2(0, 1)) != 22 && local.y == 7
+            || mat_at(tile + ivec2(-1, 0)) != 22 && local.x == 0 || mat_at(tile + ivec2(1, 0)) != 22 && local.x == 7;
+        if (frame) { return vec4(PAL_WOOD[2], 1.0); }
+        bool glint = (pixel.x + pixel.y) % 13 == 0 || (pixel.x + pixel.y) % 13 == 2;
+        vec3 tint = glint ? PAL_WHITE[4] : PAL_SKY[4];
+        float a = glint ? 0.55 : 0.22;
+        if (bg.a == 0.0) { return vec4(tint, a); }
+        return vec4(mix(bg.rgb, tint, a), 1.0);
+    }
+    bool up = !solid_at(tile + ivec2(0, -1)), down = !solid_at(tile + ivec2(0, 1));
+    bool left = !solid_at(tile + ivec2(-1, 0)), right = !solid_at(tile + ivec2(1, 0));
+    bool corner = (local.x == 0 && local.y == 0 && up && left) || (local.x == 7 && local.y == 0 && up && right) || (local.x == 0 && local.y == 7 && down && left) || (local.x == 7 && local.y == 7 && down && right);
+    if (corner) { return bg; }
+    bool edge = (up && local.y == 0) || (down && local.y == 7) || (left && local.x == 0) || (right && local.x == 7);
+    if (material == 1) {
+        // the soil gives way to rock in a ragged line
+        if (mat_at(tile + ivec2(0, 1)) == 2 && local.y >= 5 + int(world_noise(vec2(float(pixel.x), 0.0) / 3.0, 7600) * 3.0)) { return vec4(rock_pixel(pixel, 0), 1.0); }
+        vec3 soil = soil_pixel(pixel, tile, local);
+        if (grassy(tile)) { return vec4(grass_pixel(pixel, local, soil), 1.0); }
+        if (edge) { return vec4(PAL_SOIL[0], 1.0); }
+        if (up && local.y == 1) { return vec4(PAL_SOIL[5], 1.0); }
+        return vec4(soil, 1.0);
+    }
+    if (material == 2) {
+        if (edge) { return vec4(PAL_ROCK[0], 1.0); }
+        return vec4(rock_pixel(pixel, pixel.y > 900 ? 1 : 0), 1.0);
+    }
+    if (material == 10) { return vec4(asphalt_pixel(pixel, tile, local, up), 1.0); }
+    if (material == 18) { return vec4(wood_pixel(pixel, tile, local, up, down, left, right), 1.0); }
+    if (material == 23) { return vec4(brick_pixel(pixel, tile, local, edge), 1.0); }
+    if (material == 24) { return vec4(steel_pixel(pixel, local, edge), 1.0); }
+    // anything else keeps the sandbox colours, outlined
+    if (edge) { return vec4(PAL_INK[1], 1.0); }
+    float r = world_hash(ivec2((pixel.x >> 1) + material * 977, pixel.y >> 1));
+    return vec4(BLOCK_COLORS[material * 6 + (r < 0.5 ? 0 : r < 0.72 ? 1 : r < 0.9 ? 2 : 3)], 1.0);
+}
+vec3 liquid_passes(vec3 color, ivec2 pixel, ivec2 tile) {
+    if (pixel.y % 8 == 0) { color = liquid_pixel(color, tile + ivec2(0, -1), pixel); }
+    color = liquid_pixel(color, tile, pixel);
+    if (pixel.y % 8 == 7) { color = liquid_pixel(color, tile + ivec2(0, 1), pixel); }
+    return color;
+}
+vec4 styled_fragment(ivec2 pixel, ivec2 tile) {
+    vec4 base = styled_base(pixel);
+    vec3 color; float alpha;
+    if (base.a == 0.0) {
+        // Liquid over the open sky: composite over black and over white to recover its colour and coverage.
+        vec3 over_black = liquid_passes(vec3(0.0), pixel, tile);
+        vec3 over_white = liquid_passes(vec3(1.0), pixel, tile);
+        alpha = clamp(1.0 - dot(over_white - over_black, vec3(1.0 / 3.0)), 0.0, 1.0);
+        color = alpha > 0.004 ? clamp(over_black / alpha, 0.0, 1.0) : vec3(0.0);
+    } else {
+        color = liquid_passes(base.rgb, pixel, tile);
+        alpha = base.a;
+    }
+    if (has_grains && in_world(tile)) {
+        int grain = int(round(texelFetch(grain_data, pixel, 0).r * 255.0));
+        if (grain > 0) {
+            vec3 g = grain == 1 ? vec3(0.76,0.60,0.34) : grain == 2 ? vec3(1.0,0.94,0.77) : grain == 3 ? vec3(0.79,0.90,0.96) : grain == 4 ? vec3(0.95,0.98,1.0) : grain == 5 ? vec3(0.86,0.9,0.8) : grain == 6 ? vec3(0.4,0.4,0.38) : grain == 7 ? vec3(0.85,0.82,0.65) : grain == 8 ? vec3(0.68,0.34,0.13) : grain == 9 ? vec3(0.65,0.86,0.89) : grain == 10 ? vec3(0.17,0.18,0.2) : vec3(0.83,0.88,0.75);
+            color = g * (0.81 + world_hash(pixel) * 0.19);
+            alpha = 1.0;
+        }
+    }
+    if (lit) { color *= light_at(vec2(pixel), (back_at(tile) & 15) != 0); }
+    if (has_fire && in_world(tile)) {
+        // flames give their own light
+        int heat = int(round(texelFetch(fire_data, tile, 0).r * 255.0));
+        ivec2 local = pixel - tile * 8;
+        if (heat > 200) {
+            float flick = world_hash(ivec2(pixel.x, pixel.y + int(animation_time * 14.0) * 53 + heat));
+            float b = float(local.y) / 7.0;
+            float a = 0.45 + 0.45 * flick * b;
+            color = mix(color, mix(PAL_GLOW[0], PAL_GLOW[3], flick * b), a);
+            alpha = max(alpha, a);
+        } else if (heat > 0) {
+            float glow = float(heat) / 200.0;
+            color = mix(color, vec3(1.0, 0.35 + 0.4 * glow, 0.1 * glow), 0.25 + 0.5 * glow);
+        }
+        if (heat == 0 && tile.y + 1 < world_size.y && cell_at(tile).b == 0) {
+            int below = int(round(texelFetch(fire_data, tile + ivec2(0, 1), 0).r * 255.0));
+            if (below > 200) {
+                float tongue = world_hash(ivec2(pixel.x, int(animation_time * 12.0) * 71 + below));
+                if (float(7 - local.y) < tongue * 6.0 - 1.0) { color = mix(color, PAL_GLOW[1], 0.7); alpha = max(alpha, 0.7); }
+            }
+        }
+    }
+    return vec4(color, alpha);
+}
+void fragment() {
+    ivec2 pixel = ivec2(floor(UV*vec2(world_size)*8.0));
+    ivec2 tile = pixel/8;
+    if (styled) {
+        COLOR = styled_fragment(pixel, tile);
+    } else {
+        COLOR = vec4(sandbox_fragment(pixel, tile), 1.0);
+    }
 }

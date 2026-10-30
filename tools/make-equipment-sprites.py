@@ -11,6 +11,8 @@ Usage: python3 tools/make-equipment-sprites.py
 from pathlib import Path
 from PIL import Image
 
+from palette import snap
+
 OUTLINE = (30, 32, 38)
 STEEL, STEEL_LIGHT, STEEL_DARK = (168, 178, 186), (214, 222, 226), (104, 114, 122)
 ENAMEL, ENAMEL_DARK, ENAMEL_LIGHT = (226, 220, 204), (178, 170, 152), (244, 240, 228)
@@ -280,11 +282,11 @@ def main():
     kettle(img, 96, 32)
     centrifuge(img, 144, 32)
     art = Path(__file__).resolve().parent.parent / "godot" / "art"
-    img.save(art / "equipment.png")
+    snap(img).save(art / "equipment.png")
     trucks = Image.new("RGBA", (192, 128), (0, 0, 0, 0))
     van(trucks, 0, 0)
     tanker(trucks, 0, 64)
-    trucks.save(art / "vehicles.png")
+    snap(trucks).save(art / "vehicles.png")
     print(f"wrote {art / 'equipment.png'} and {art / 'vehicles.png'}")
 
 

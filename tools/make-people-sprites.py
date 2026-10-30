@@ -10,6 +10,8 @@ Usage: python3 tools/make-people-sprites.py
 from pathlib import Path
 from PIL import Image
 
+from palette import snap
+
 W, H, FRAMES = 32, 48, 7
 EYE, OUTLINE = (34, 30, 36), (24, 22, 30)
 
@@ -249,7 +251,7 @@ def main():
             dog(frame, coat, step)
             sheet.paste(outline(frame), ((d * 3 + i) * 24, H * len(LOOKS)))
     path = Path(__file__).resolve().parent.parent / "godot" / "art" / "people.png"
-    sheet.save(path)
+    snap(sheet).save(path)
     print("wrote", path)
 
 

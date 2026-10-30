@@ -1,25 +1,18 @@
-extends Node2D
+extends Node
 # Day and night on the campaign plot. The light of the hour follows the game clock: full day from 07:00 to 19:00,
-# dawn and dusk over two hours with a warm tint, dark from 21:00 to 05:00. This node multiplies everything drawn in
-# the world (the cells, equipment, trucks and the player) by that light, and keeps rooms (cells with a background
-# wall) lit by a lamp after dark. The sky darkens with it and the shader shows stars. main.gd places it over the
-# world and calls update_light every frame; the sandbox does not use it.
+# dawn and dusk over two hours with a warm tint, dark from 21:00 to 05:00. The world shader and the sprite shader
+# multiply what they draw by it (lighting.gdshaderinc): the outdoor light, the light in rooms (cells with a
+# background wall), which a lamp keeps warm after dark, and up to 16 point lights from the lamps, which come on at
+# dusk. main.gd calls update_light every frame and apply() when it changed; the sandbox does not use it.
 
-const CELL := 8.0
 const NIGHT := Color(0.26, 0.31, 0.5)
 const LAMP := Color(1.0, 0.86, 0.66)
+const MAX_LIGHTS := 16
 
 var level := 1.0
-var width := 0
-var height := 0
-# Per row, the start and end columns of each run of indoor cells.
-var rooms: Array = []
-
-func _ready() -> void:
-    var blend := CanvasItemMaterial.new()
-    blend.blend_mode = CanvasItemMaterial.BLEND_MODE_MUL
-    material = blend
-    z_index = 50
+# Point lights: {x, y, radius (world pixels), strength, color}.
+var lamps: Array = []
+var dirty := true
 
 # 1 in full day, 0 at night.
 static func daylight(minute: float) -> float:
@@ -41,45 +34,54 @@ static func ambient(light: float) -> Color:
 static func indoor(light: float) -> Color:
     return ambient(light).lerp(LAMP, 1.0 - light)
 
-# Rooms are the cells with a background wall (bits 0-3 of the building layer).
-func set_rooms(back: PackedByteArray, w: int, h: int) -> void:
-    width = w
-    height = h
-    rooms.clear()
-    for y in h:
-        var runs: Array[int] = []
-        var x := 0
-        while x < w:
-            if back[y * w + x] & 0x0F:
-                var start := x
-                while x < w and back[y * w + x] & 0x0F:
-                    x += 1
-                runs.append_array([start, x])
-            else:
-                x += 1
-        rooms.append(runs)
-    queue_redraw()
+# Lamps are off by day and come up through dusk.
+static func lamp_power(light: float) -> float:
+    return clampf((0.85 - light) / 0.5, 0.0, 1.0)
 
 func update_light(minute: float) -> void:
     var light := daylight(minute)
-    visible = light < 0.999
     if absf(light - level) > 0.002:
         level = light
-        queue_redraw()
+        dirty = true
 
-# Multiplied over the world without overlaps: the outdoor light, and the lamp light over each run of room cells.
-func _draw() -> void:
-    if level >= 0.999 or width == 0:
-        return
+func set_lamps(list: Array) -> void:
+    lamps = list
+    dirty = true
+
+# The lamps burning now, as the shader's arrays.
+func spots() -> Array:
+    var power := lamp_power(level)
+    var lit: Array = []
+    if power <= 0.0:
+        return lit
+    for lamp in lamps:
+        if lit.size() < MAX_LIGHTS:
+            lit.append(lamp)
+    return lit
+
+func apply(materials: Array) -> void:
+    var power := lamp_power(level)
+    var burning := spots()
+    var positions := PackedVector4Array()
+    var colors := PackedVector3Array()
+    positions.resize(MAX_LIGHTS)
+    colors.resize(MAX_LIGHTS)
+    for i in burning.size():
+        var lamp: Dictionary = burning[i]
+        positions[i] = Vector4(lamp.x, lamp.y, lamp.radius, lamp.strength * power)
+        var color: Color = lamp.color
+        colors[i] = Vector3(color.r, color.g, color.b)
     var outside := ambient(level)
     var inside := indoor(level)
-    for y in height:
-        var runs: Array = rooms[y]
-        var x := 0
-        for i in range(0, runs.size(), 2):
-            if runs[i] > x:
-                draw_rect(Rect2(x * CELL, y * CELL, (runs[i] - x) * CELL, CELL), outside)
-            draw_rect(Rect2(runs[i] * CELL, y * CELL, (runs[i + 1] - runs[i]) * CELL, CELL), inside)
-            x = runs[i + 1]
-        if x < width:
-            draw_rect(Rect2(x * CELL, y * CELL, (width - x) * CELL, CELL), outside)
+    for material in materials:
+        material.set_shader_parameter("lit", true)
+        material.set_shader_parameter("ambient_light", Vector3(outside.r, outside.g, outside.b))
+        material.set_shader_parameter("room_light", Vector3(inside.r, inside.g, inside.b))
+        material.set_shader_parameter("light_count", burning.size())
+        material.set_shader_parameter("light_spots", positions)
+        material.set_shader_parameter("light_colors", colors)
+    dirty = false
+
+static func off(materials: Array) -> void:
+    for material in materials:
+        material.set_shader_parameter("lit", false)

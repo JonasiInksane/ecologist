@@ -71,9 +71,9 @@ installs CMake/Ninja with pip unless they are already on the PATH. It needs the 
 
 ## Art
 
-`godot/art/player.png` is a placeholder sheet drawn by `tools/make-placeholder-sprites.py`: eight 32 × 48 frames
-(idle, four walking, jump, two climbing) in the Terraria-like palette, to be replaced by PixelLab or hand-drawn
-art with the same frame layout. Background walls, ladders and doors are drawn by `godot/liquid.gdshader`.
+`godot/art/player.png` is drawn by `tools/make-player-sprites.py`: eight 32 × 48 frames (idle, four walking,
+jump, two climbing). Since the art pass it is the mad scientist, in the palette of `docs/design/art.md`, which
+also covers the walls, ladders and doors that `godot/liquid.gdshader` draws.
 
 ## Not in M0
 

@@ -234,22 +234,37 @@ func run() -> void:
         check(game.hud.menu.visible and game.paused, "Esc opens the menu and pauses")
         game.hud.toggle_menu()
         check(not game.hud.menu.visible and game.paused == was_paused, "Closing the menu resumes")
-        # Day and night follow the game clock; rooms stay lit by a lamp after dark.
+        # Day and night follow the game clock: the world and the sprites are lit by the hour over the town backdrop,
+        # rooms stay lamp-lit after dark and the lamps come on.
         check(game.lighting.daylight(480.0) == 1.0 and game.lighting.daylight(0.0) == 0.0 and absf(game.lighting.daylight(360.0) - 0.5) < 0.01 and absf(game.lighting.daylight(1200.0) - 0.5) < 0.01, "Daylight: full from 07:00, dark from 21:00, half at 06:00 and 20:00")
         var morning: float = game.shop.model.minute
         game._follow_sun()
-        check(not game.lighting.visible and game.liquid_material.get_shader_parameter("stars") == 0.0, "No night overlay or stars by day")
+        var day_light: Vector3 = game.liquid_material.get_shader_parameter("ambient_light")
+        check(game.liquid_material.get_shader_parameter("styled") and game.liquid_material.get_shader_parameter("lit") and day_light.x > 0.99 and game.material == game.sprite_material and game.backdrop.visible and game.backdrop.window_light() == 0.0, "By day the plot is in full light, in front of the town")
         game.shop.model.minute = 23.0 * 60.0
         game._refresh_texture()
         game._follow_sun()
-        var rooms := 0
-        for runs in game.lighting.rooms:
-            rooms += runs.size() / 2
-        check(game.lighting.visible and game.lighting.level == 0.0 and rooms > 0 and game.liquid_material.get_shader_parameter("stars") == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, with stars, and the shack's rooms are lamp-lit")
+        var night_light: Vector3 = game.liquid_material.get_shader_parameter("ambient_light")
+        var room_light: Vector3 = game.sprite_material.get_shader_parameter("room_light")
+        check(game.lighting.level == 0.0 and night_light.x < 0.4 and room_light.x > 0.9 and game.backdrop.window_light() == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, the town's windows are lit and the shack is lamp-lit")
+        check(int(game.liquid_material.get_shader_parameter("light_count")) == 2 and game.decor.lamps().size() == 2, "The street lamp and the shack's hanging lamp are burning")
         check(game.lighting.indoor(0.0).v > game.lighting.ambient(0.0).v * 1.5, "A room at night is much brighter than outdoors")
         game.shop.model.minute = morning
         game._follow_sun()
-        check(not game.lighting.visible, "Morning again")
+        check(int(game.liquid_material.get_shader_parameter("light_count")) == 0 and game.backdrop.window_light() == 0.0, "Morning again: the lamps are off")
+        # Props stand on what holds them up: dig out the ground under a fence panel and it goes.
+        var fence := -1
+        for i in game.decor.data.placements.size():
+            if game.decor.data.placements[i].sprite == "fence":
+                fence = i
+                break
+        check(fence >= 0 and game.decor.shown[fence], "The fence stands on the plot")
+        game.world.build(215, 100, game.REMOVE_CODE)
+        game._refresh_texture()
+        check(not game.decor.shown[fence] and game.decor.shown[fence + 1], "Dig out its ground and that panel is gone")
+        game.world.build(215, 100, -1)
+        game._refresh_texture()
+        check(game.decor.shown[fence], "Fill it in and it stands again")
         game.workshop.hide()
         game._toggle_workshop()
         check(game.workshop.visible and game.workshop.tabs.is_tab_hidden(1) and not game.workshop.saves.visible, "The stock window shows only the stock in the campaign")
