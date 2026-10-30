@@ -76,7 +76,8 @@ func lamps() -> Array:
             var light: Dictionary = placement.light
             var top := float(placement.y) - _region(placement).size.y
             list.append({"x": float(placement.x) + float(light.dx), "y": top + float(light.dy), "radius": float(light.radius),
-                "strength": float(light.strength), "color": Color(String(light.color))})
+                "strength": float(light.strength), "color": Color(String(light.color)), "pool": bool(light.get("pool", false)),
+                "indoor_day": float(light.get("indoor_day", 0.0))})
     return list
 
 func _draw() -> void:

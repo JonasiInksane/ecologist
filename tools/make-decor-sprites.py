@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Draws the props (godot/art/decor.png): the things that make the plot a place without being machines. A picket
-fence, a street lamp and a hanging lamp, shelves of jars, a chalkboard of sugar chemistry, potted plants, sacks,
-a mailbox, a for-sale sign, a bush, a tree and the neighbourhood cat.
+"""Makes the props (godot/art/decor.png): the things that make the plot a place without being machines.
 
-Each prop is drawn on its own canvas, outlined in ink where it meets the air, snapped to the palette and packed into
-the sheet; the regions are written to godot/data/decor.json's "sprites" (the placements there are kept).
+Most of the shack's are cut straight from the dusk workshop reference (CUTS, through tools/reference.py): the
+fridge, the pendant lamps, the shelves of jars and pans, the stove pipe, the plants, the shelf of glassware, the
+botanical prints and the fuse box. They keep the reference's own shades. The rest are drawn here: a picket fence, a
+street lamp, a chalkboard of sugar chemistry, a potted plant, sacks, a mailbox, a for-sale sign, a bush, a tree,
+the neighbourhood cat and the kitchen chairs, outlined in ink where they meet the air and snapped to the palette.
+
+Everything is packed into one sheet; the regions are written to godot/data/decor.json's "sprites" (the placements
+there are kept).
 Usage: python3 tools/make-decor-sprites.py
 """
 import json
@@ -69,56 +73,60 @@ def fence():
 
 
 def street_lamp():
-    c = Canvas(14, 68)
-    c.rect(6, 14, 7, 64, INK[2])
-    c.rect(6, 14, 6, 64, GREY[1])
-    c.rect(4, 62, 9, 67, INK[2])
-    c.rect(4, 62, 4, 66, GREY[1])
-    c.rect(5, 30, 8, 31, INK[2])
-    # the lantern: a cap, glass panes with the lamp and a base
-    c.rect(3, 1, 10, 2, INK[2])
-    c.rect(5, 0, 8, 0, INK[2])
-    c.rect(3, 3, 10, 11, INK[2])
-    c.rect(4, 4, 9, 10, GLOW[3])
-    c.rect(4, 4, 5, 10, GLOW[4])
-    c.rect(6, 4, 7, 10, GLOW[2])
-    c.rect(4, 12, 9, 13, INK[2])
+    """A tall iron lamp post with a glass lantern, as in the reference's street."""
+    c = Canvas(15, 100)
+    c.rect(6, 18, 8, 95, INK[2])
+    c.rect(6, 18, 6, 95, GREY[1])
+    for y in (30, 60, 84):
+        c.rect(5, y, 9, y + 1, INK[2])
+        c.put(5, y, GREY[1])
+    c.rect(3, 93, 11, 99, INK[2])
+    c.rect(4, 91, 10, 92, INK[2])
+    c.rect(3, 93, 3, 98, GREY[1])
+    # the lantern: a finial, a cap, four glass panes round the flame, a base
+    c.rect(7, 0, 7, 1, INK[2])
+    c.rect(5, 2, 9, 3, INK[2])
+    c.rect(2, 4, 12, 5, INK[2])
+    c.rect(3, 4, 11, 4, GREY[1])
+    c.rect(3, 6, 11, 14, INK[2])
+    c.rect(4, 6, 10, 14, GLOW[3])
+    c.rect(4, 6, 5, 14, GLOW[4])
+    c.rect(9, 6, 10, 14, GLOW[2])
+    c.rect(6, 9, 8, 12, GLOW[4])
+    c.rect(7, 6, 7, 14, INK[2])
+    c.rect(2, 15, 12, 16, INK[2])
+    c.rect(5, 17, 9, 17, INK[2])
     return c
 
 
-def hanging_lamp():
-    c = Canvas(14, 20)
-    c.rect(6, 0, 7, 9, INK[2])
-    c.rect(4, 9, 9, 10, GREY[1])
-    c.rect(2, 11, 11, 13, LEAF[1])
-    c.rect(2, 11, 11, 11, LEAF[2])
-    c.rect(1, 14, 12, 14, LEAF[0])
-    c.rect(5, 15, 8, 17, GLOW[4])
-    c.rect(5, 15, 5, 17, GLOW[3])
-    return c
+# Props cut straight from the dusk workshop reference at the game's scale (tools/reference.py): the box, the
+# flood-fill tolerance and any hand-placed erase or keep rectangles, in the native 640 x 360 picture. They keep the
+# reference's own shades and are not snapped to the palette.
+CUTS = {
+    "fridge": dict(box=(221, 152, 246, 205), tol=0.06, erase=((244, 152, 246, 170),)),
+    "ref_lamp": dict(box=(160, 125, 183, 143), tol=0.05),
+    "pan_shelf": dict(box=(133, 137, 167, 170), tol=0.05),
+    "jar_shelf": dict(box=(203, 136, 236, 167), tol=0.05, erase=((221, 152, 236, 167),)),
+    "stove_pipe": dict(box=(186, 137, 201, 172), tol=0.05),
+    "trailing_plant": dict(box=(236, 132, 259, 177), tol=0.05, erase=((236, 152, 246, 177),)),
+    "glass_shelf": dict(box=(358, 60, 416, 86), tol=0.05),
+    "table_plant": dict(box=(161, 171, 178, 187), tol=0.05, erase=((166, 171, 178, 175),)),
+    "kettle": dict(box=(204, 168, 216, 179), tol=0.05, keep=((206, 170, 214, 178),)),
+    "prints": dict(box=(427, 62, 471, 89), tol=0.05, keep=((430, 64, 450, 88), (452, 64, 471, 87))),
+    "fuse_box": dict(box=(467, 65, 487, 92), tol=0.05),
+}
 
 
-def jars():
-    c = Canvas(44, 22)
-    rng = random.Random(3)
-    c.rect(0, 16, 43, 17, WOOD[4])
-    c.rect(0, 18, 43, 18, WOOD[2])
-    for bx in (3, 38):
-        c.rect(bx, 19, bx + 2, 21, WOOD[2])
-    x = 2
-    fills = [CHEM, GOLD, RED, COPPER, PURPLE, CHEM, GOLD]
-    while x < 40:
-        w = rng.choice([5, 6, 7])
-        h = rng.choice([7, 9, 11])
-        fill = fills[rng.randrange(len(fills))]
-        top = 16 - h
-        c.rect(x, top + 2, x + w - 1, 15, WHITE[2])
-        c.rect(x + 1, top + 4, x + w - 2, 15, fill[2])
-        c.rect(x + 1, top + 4, x + w - 2, top + 4, fill[3])
-        c.rect(x + 1, top + 6, x + 1, 14, fill[4])
-        c.rect(x + 1, top, x + w - 2, top + 1, rng.choice([WOOD[2], RED[2], STEEL[2]]))
-        x += w + 1
-    return c.outline(INK[1])
+def cut_prop(name):
+    def draw():
+        from reference import piece
+        img = piece(**CUTS[name])
+        c = Canvas(img.width, img.height)
+        c.img.paste(img, (0, 0))
+        c.px = c.img.load()
+        c.cut = True
+        return c
+    return draw
 
 
 def chalkboard():
@@ -303,26 +311,39 @@ def cat():
     return c.outline(INK[1])
 
 
-def picture():
-    c = Canvas(16, 18)
-    c.rect(0, 0, 15, 17, WOOD[3])
-    c.rect(0, 0, 15, 0, WOOD[4])
-    c.rect(2, 2, 13, 15, PLASTER[5])
-    c.rect(7, 6, 8, 14, LEAF[2])
-    for x, y in ((5, 5), (4, 6), (10, 7), (11, 8), (5, 10), (10, 11), (6, 4), (9, 4)):
-        c.put(x, y, LEAF[4])
-        c.put(x + (1 if x < 8 else -1), y + 1, LEAF[3])
-    return c.outline(INK[1])
+def chair(mirror=False):
+    """A ladder-back kitchen chair in side view, its back to the left (mirror: to the right)."""
+    def draw():
+        c = Canvas(15, 28)
+        c.rect(1, 0, 3, 27, WOOD[2])  # the back post running down into the rear leg
+        c.rect(1, 0, 1, 27, WOOD[4])
+        c.rect(1, 0, 3, 1, WOOD[5])
+        for y in (4, 8):  # the ladder's rails, seen end on
+            c.rect(2, y, 4, y + 1, WOOD[3])
+            c.put(2, y, WOOD[5])
+        c.rect(1, 14, 13, 15, WOOD[4])  # the seat, lit on top, its edge in shade
+        c.rect(1, 14, 13, 14, WOOD[6])
+        c.rect(1, 16, 13, 16, WOOD[1])
+        c.rect(11, 17, 12, 27, WOOD[3])  # the front leg
+        c.rect(11, 17, 11, 27, WOOD[5])
+        c.rect(4, 22, 10, 22, WOOD[2])  # a stretcher between the legs
+        c.rect(1, 26, 3, 27, WOOD[1]); c.rect(11, 26, 12, 27, WOOD[1])
+        c.outline(INK[1])
+        if mirror:
+            c.img = c.img.transpose(Image.FLIP_LEFT_RIGHT)
+            c.px = c.img.load()
+        return c
+    return draw
 
 
-PROPS = [("fence", fence), ("street_lamp", street_lamp), ("hanging_lamp", hanging_lamp), ("jars", jars),
-         ("chalkboard", chalkboard), ("plant", plant), ("sacks", sacks), ("mailbox", mailbox), ("sale_sign", sale_sign),
-         ("bush", bush), ("tree", tree), ("cat", cat), ("picture", picture)]
+PROPS = [("fence", fence), ("street_lamp", street_lamp), ("chalkboard", chalkboard), ("plant", plant),
+         ("sacks", sacks), ("mailbox", mailbox), ("sale_sign", sale_sign), ("bush", bush), ("tree", tree),
+         ("cat", cat), ("chair", chair()), ("chair_r", chair(True))] + [(name, cut_prop(name)) for name in CUTS]
 
 
 def main():
     drawn = [(name, draw()) for name, draw in PROPS]
-    sheet = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+    sheet = Image.new("RGBA", (320, 320), (0, 0, 0, 0))
     regions = {}
     x = y = row_h = 0
     for name, canvas in sorted(drawn, key=lambda d: -d[1].h):
@@ -333,7 +354,19 @@ def main():
         x += canvas.w + 1
         row_h = max(row_h, canvas.h)
     used = max(r[1] + r[3] for r in regions.values())
-    sheet = snap(sheet.crop((0, 0, sheet.width, (used + 7) // 8 * 8)))
+    sheet = sheet.crop((0, 0, sheet.width, (used + 7) // 8 * 8))
+    # drawn props are snapped to the palette; the cut ones keep the reference's shades
+    drawn_only = sheet.copy()
+    for name, canvas in drawn:
+        if getattr(canvas, "cut", False):
+            x, y, w, h = regions[name]
+            drawn_only.paste((0, 0, 0, 0), (x, y, x + w, y + h))
+    snapped = snap(drawn_only)
+    for name, canvas in drawn:
+        if getattr(canvas, "cut", False):
+            x, y, w, h = regions[name]
+            snapped.paste(canvas.img, (x, y))
+    sheet = snapped
     sheet.save(ROOT / "godot" / "art" / "decor.png")
     data_path = ROOT / "godot" / "data" / "decor.json"
     data = json.loads(data_path.read_text()) if data_path.exists() else {"placements": []}

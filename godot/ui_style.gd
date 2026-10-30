@@ -7,7 +7,7 @@ extends RefCounted
 const FONT := "res://art/fonts/Jersey10-Regular.ttf"
 const SHEET := "res://art/ui.png"
 const ICON_SHEET := "res://art/icons.png"
-const ICONS := ["heart", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
+const ICONS := ["heart", "heart_half", "heart_empty", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
     "wood", "brick", "stone", "glass", "steel", "dirt", "wood_wall", "brick_wall", "ladder", "door",
     "pipe", "valve", "pump", "thermometer", "drop", "flask", "flame", "laptop", "save", "load", "sandbox",
     "sack", "beet", "close", "person", "roof", "plaster_wall"]

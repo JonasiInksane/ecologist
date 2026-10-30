@@ -1,13 +1,15 @@
 extends Control
-# The campaign HUD: health, breath and credits top left; the clock and the next delivery top right with the stock
+# The campaign HUD: credits, hearts and breath top left; the clock and the next delivery top right with the stock
 # and menu buttons; the hotbar at the bottom for building and the kitchen kit; toasts above it; a tooltip at the
 # pointer; and the pause menu. main.gd owns the game state and passes itself in; this only shows it.
 
 const SLOT := Vector2(56, 56)
 const TOAST_SECONDS := 3.0
 
+const HEARTS := 5
+
 var main: Node
-var health := ProgressBar.new()
+var hearts: Array = []
 var breath := ProgressBar.new()
 var breath_row := HBoxContainer.new()
 var cash := UiStyle.label("", "HudLabel")
@@ -56,24 +58,28 @@ func _bar(progress: ProgressBar, fill: String) -> void:
     progress.size_flags_vertical = Control.SIZE_SHRINK_CENTER
     progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+# Top left, straight on the picture as in the dusk workshop reference: the coin and credits, then five hearts (and
+# the breath bar while under water).
 func _build_status() -> void:
-    var panel := _panel()
-    panel.position = Vector2(12, 12)
-    add_child(panel)
     var row := HBoxContainer.new()
-    row.add_theme_constant_override("separation", 8)
-    panel.add_child(row)
-    row.add_child(UiStyle.icon_rect(UiStyle.icon("heart"), 28))
-    _bar(health, "red")
-    row.add_child(health)
+    row.position = Vector2(16, 12)
+    row.add_theme_constant_override("separation", 6)
+    add_child(row)
+    row.add_child(UiStyle.icon_rect(UiStyle.icon("coin"), 32))
+    cash.custom_minimum_size.x = 104
+    row.add_child(cash)
+    var heart_row := HBoxContainer.new()
+    heart_row.add_theme_constant_override("separation", 2)
+    for i in HEARTS:
+        var heart := UiStyle.icon_rect(UiStyle.icon("heart"), 32)
+        hearts.append(heart)
+        heart_row.add_child(heart)
+    row.add_child(heart_row)
     breath_row.add_theme_constant_override("separation", 8)
     breath_row.add_child(UiStyle.icon_rect(UiStyle.icon("bubble"), 28))
     _bar(breath, "blue")
     breath_row.add_child(breath)
     row.add_child(breath_row)
-    row.add_child(UiStyle.icon_rect(UiStyle.icon("coin"), 28))
-    cash.custom_minimum_size.x = 96
-    row.add_child(cash)
 
 func _icon_button(icon: String, tooltip: String, action: Callable) -> Button:
     var button := Button.new()
@@ -93,12 +99,10 @@ func _build_clock() -> void:
     corner.offset_top = 12
     corner.offset_right = -12
     add_child(corner)
-    var panel := _panel()
-    panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-    corner.add_child(panel)
     var column := VBoxContainer.new()
     column.add_theme_constant_override("separation", 0)
-    panel.add_child(column)
+    column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+    corner.add_child(column)
     var row := HBoxContainer.new()
     row.add_theme_constant_override("separation", 8)
     clock_icon = UiStyle.icon_rect(UiStyle.icon("sun"), 28)
@@ -132,8 +136,9 @@ func _slot(texture: Texture2D, key: String, mode: String, index: int) -> Button:
     for side in [SIDE_RIGHT, SIDE_BOTTOM]:
         picture.set_offset(side, -10)
     button.add_child(picture)
+    # the key under the slot, as on the reference's hotbar
     var number := UiStyle.label(key, "HudLabel")
-    number.position = Vector2(6, 0)
+    number.position = Vector2(SLOT.x / 2.0 - 5.0, SLOT.y - 2.0)
     button.add_child(number)
     var count := UiStyle.label("", "HudLabel")
     count.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -152,16 +157,14 @@ func _build_hotbar() -> void:
     bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
     bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
     bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
-    bar.offset_bottom = -10
+    bar.offset_bottom = -30
     bar.alignment = BoxContainer.ALIGNMENT_END
     add_child(bar)
     item_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     bar.add_child(item_label)
-    var panel := _panel()
-    bar.add_child(panel)
     var row := HBoxContainer.new()
-    row.add_theme_constant_override("separation", 4)
-    panel.add_child(row)
+    row.add_theme_constant_override("separation", 6)
+    bar.add_child(row)
     var tabs := VBoxContainer.new()
     tabs.add_theme_constant_override("separation", 2)
     build_tab = _icon_button("hammer", "Building · K", main._set_kit_mode.bind(false))
@@ -296,7 +299,11 @@ func set_count(index: int, crates: int) -> void:
     slots.kit[index].modulate = Color.WHITE if crates > 0 else Color(1, 1, 1, 0.5)
 
 func refresh(player: Dictionary, credits: float, minute: float, status: String, item: String, paused: bool) -> void:
-    health.value = float(player.get("health", 100.0))
+    var health := float(player.get("health", 100.0))
+    var per := 100.0 / HEARTS
+    for i in HEARTS:
+        var left := health - i * per
+        hearts[i].texture = UiStyle.icon("heart" if left >= per * 0.75 else "heart_half" if left >= per * 0.25 else "heart_empty")
     breath.value = float(player.get("breath", 100.0))
     breath_row.visible = breath.value < 99.5
     cash.text = "%.2f" % credits

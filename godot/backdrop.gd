@@ -76,7 +76,8 @@ func window_light() -> float:
 
 # The layers darken with the light; the far ones stay a little paler, like the haze at night.
 func layer_tint(depth: int) -> Color:
-    var light := preload("res://lighting.gd").ambient(level)
+    # the town goes to dark blue silhouettes ahead of the plot, so the lit windows carry it at dusk
+    var light := preload("res://lighting.gd").ambient(pow(level, 1.4))
     var lift := (1.0 - level) * (0.1 - depth * 0.05)
     return Color(minf(light.r + lift, 1.0), minf(light.g + lift, 1.0), minf(light.b + lift * 1.6, 1.0))
 

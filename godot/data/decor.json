@@ -68,44 +68,6 @@
       "anchor": "ground"
     },
     {
-      "sprite": "jars",
-      "x": 1940,
-      "y": 758,
-      "anchor": "wall"
-    },
-    {
-      "sprite": "picture",
-      "x": 1990,
-      "y": 750,
-      "anchor": "wall"
-    },
-    {
-      "sprite": "hanging_lamp",
-      "x": 2017,
-      "y": 740,
-      "anchor": "ceiling",
-      "light": {
-        "dx": 7,
-        "dy": 16,
-        "radius": 96,
-        "strength": 0.55,
-        "color": "ffcc5c"
-      },
-      "glow": 7
-    },
-    {
-      "sprite": "chalkboard",
-      "x": 2104,
-      "y": 760,
-      "anchor": "wall"
-    },
-    {
-      "sprite": "sacks",
-      "x": 2122,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
       "sprite": "bush",
       "x": 2940,
       "y": 800,
@@ -124,71 +86,169 @@
       "anchor": "ground",
       "light": {
         "dx": 7,
-        "dy": 7,
+        "dy": 10,
         "radius": 84,
         "strength": 0.8,
         "color": "ffcc5c"
       },
       "glow": 9
+    },
+    {
+      "sprite": "fridge",
+      "x": 2133,
+      "y": 800,
+      "anchor": "ground"
+    },
+    {
+      "sprite": "sacks",
+      "x": 2180,
+      "y": 800,
+      "anchor": "ground"
+    },
+    {
+      "sprite": "trailing_plant",
+      "x": 1936,
+      "y": 757,
+      "anchor": "ceiling"
+    },
+    {
+      "sprite": "pan_shelf",
+      "x": 1953,
+      "y": 752,
+      "anchor": "wall"
+    },
+    {
+      "sprite": "ref_lamp",
+      "x": 1986,
+      "y": 736,
+      "anchor": "ceiling",
+      "light": {
+        "dx": 7,
+        "dy": 14,
+        "radius": 70,
+        "strength": 0.75,
+        "color": "ffcc5c",
+        "pool": true,
+        "indoor_day": 0.3
+      },
+      "glow": 6
+    },
+    {
+      "sprite": "fuse_box",
+      "x": 1984,
+      "y": 766,
+      "anchor": "wall"
+    },
+    {
+      "sprite": "chalkboard",
+      "x": 2005,
+      "y": 757,
+      "anchor": "wall"
+    },
+    {
+      "sprite": "table_plant",
+      "x": 2000,
+      "y": 768,
+      "anchor": "ground"
+    },
+    {
+      "sprite": "chair",
+      "x": 1987,
+      "y": 800,
+      "anchor": "ground"
+    },
+    {
+      "sprite": "chair_r",
+      "x": 2047,
+      "y": 800,
+      "anchor": "ground"
+    },
+    {
+      "sprite": "ref_lamp",
+      "x": 2049,
+      "y": 736,
+      "anchor": "ceiling",
+      "light": {
+        "dx": 7,
+        "dy": 14,
+        "radius": 70,
+        "strength": 0.75,
+        "color": "ffcc5c",
+        "pool": true,
+        "indoor_day": 0.3
+      },
+      "glow": 6
+    },
+    {
+      "sprite": "jar_shelf",
+      "x": 2062,
+      "y": 750,
+      "anchor": "wall"
+    },
+    {
+      "sprite": "stove_pipe",
+      "x": 2084,
+      "y": 768,
+      "anchor": "wall"
+    },
+    {
+      "sprite": "kettle",
+      "x": 2084,
+      "y": 768,
+      "anchor": "ground"
+    },
+    {
+      "sprite": "glass_shelf",
+      "x": 2099,
+      "y": 744,
+      "anchor": "wall"
     }
   ],
   "sprites": {
     "fence": [
-      175,
-      0,
+      75,
+      113,
       32,
       22
     ],
     "street_lamp": [
       77,
       0,
-      14,
-      68
-    ],
-    "hanging_lamp": [
-      17,
-      113,
-      14,
-      20
-    ],
-    "jars": [
-      208,
-      0,
-      44,
-      22
+      15,
+      100
     ],
     "chalkboard": [
-      92,
+      153,
       0,
       44,
       30
     ],
     "plant": [
-      0,
+      108,
       113,
       16,
       22
     ],
     "sacks": [
-      69,
+      217,
       113,
       28,
       18
     ],
     "mailbox": [
-      162,
       0,
+      113,
       12,
       26
     ],
     "sale_sign": [
-      137,
+      198,
       0,
       24,
       30
     ],
     "bush": [
-      32,
+      125,
       113,
       36,
       20
@@ -200,16 +260,88 @@
       112
     ],
     "cat": [
-      115,
+      261,
       113,
       18,
       14
     ],
-    "picture": [
-      98,
+    "chair": [
+      254,
+      0,
+      15,
+      28
+    ],
+    "chair_r": [
+      270,
+      0,
+      15,
+      28
+    ],
+    "fridge": [
+      93,
+      0,
+      23,
+      50
+    ],
+    "ref_lamp": [
+      246,
       113,
-      16,
-      18
+      14,
+      16
+    ],
+    "pan_shelf": [
+      223,
+      0,
+      30,
+      29
+    ],
+    "jar_shelf": [
+      286,
+      0,
+      29,
+      28
+    ],
+    "stove_pipe": [
+      139,
+      0,
+      13,
+      33
+    ],
+    "trailing_plant": [
+      117,
+      0,
+      21,
+      37
+    ],
+    "glass_shelf": [
+      162,
+      113,
+      54,
+      19
+    ],
+    "table_plant": [
+      280,
+      113,
+      15,
+      13
+    ],
+    "kettle": [
+      296,
+      113,
+      9,
+      8
+    ],
+    "prints": [
+      31,
+      113,
+      43,
+      24
+    ],
+    "fuse_box": [
+      13,
+      113,
+      17,
+      25
     ]
   }
 }

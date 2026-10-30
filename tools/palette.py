@@ -16,8 +16,10 @@ def hex_color(text):
 RAMPS = {
     # outlines and the deepest shadows: a warm near-black, never pure black
     "ink": ["#120d14", "#1e1520", "#2b1f26"],
-    # wood, from beams in shadow to sunlit planks
-    "wood": ["#2a160f", "#45261a", "#653a22", "#8a5530", "#ad7442", "#cf9a5e", "#e8bf84"],
+    # wood, from beams in shadow to sunlit planks: the reference's warm orange timber
+    "wood": ["#22120c", "#3f1f12", "#63321a", "#8c4a20", "#b5622a", "#d27d38", "#e9a35a"],
+    # a room's plaster as the reference paints it, in lamplight: amber, darker toward the corners
+    "room": ["#4a2210", "#7e4423", "#a8612f", "#c77c3c", "#db9148", "#eaa560", "#f4bd7c"],
     # soil, darker with depth
     "soil": ["#1a110e", "#271913", "#38241a", "#4c3122", "#62402b", "#7a5236"],
     # roots and dry stems in the soil
@@ -32,6 +34,8 @@ RAMPS = {
     "leaf": ["#14241c", "#1f3a26", "#2e5530", "#43723a", "#5f8f3e", "#86ad45", "#b5cc5c", "#dde488"],
     # far foliage, cooler and greyer
     "pine": ["#1b2b32", "#27403f", "#355648", "#4a6d52"],
+    # weathered roof shingles (the dusk workshop reference)
+    "shingle": ["#24120e", "#3a1d14", "#54301f", "#6e4329", "#8a5a38"],
     # roof tiles and terracotta
     "terracotta": ["#4a1d17", "#7a2f1e", "#a8462a", "#cc6a3a", "#e89a5c"],
     # brick

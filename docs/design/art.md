@@ -1,9 +1,42 @@
 # Art direction
 
-The campaign should look like one painting: a cosy side-view cross-section of a small town, in the spirit of the two
-reference images the direction was set from (`docs/design/art-reference-day.jpg` and `art-reference-dusk.jpg`).
-Warm wood and plaster, red tile roofs, a dark slice of soil under a band of grass, lamplight against a blue dusk.
-The humour lives in the people and the props; the world itself is played straight and pretty.
+The campaign should look like one painting: a cosy side-view cross-section of a workshop in a small town at dusk.
+The master reference is the dusk workshop (`docs/design/art-reference-workshop.png`): a three-storey building cut
+open, with a greenhouse, a kitchen, a copper still and steel tanks, a basement of mushroom racks and a sump, a van
+unloading on the left and customers on the right. Warm amber rooms full of things against a cool blue-purple dusk,
+heavy dark timbers, floorboards on slate slabs, dark earth with big soft stones. The earlier town references
+(`art-reference-day.jpg` and `art-reference-dusk.jpg`) set the backdrop. The humour lives in the people and the
+props; the world itself is played straight and pretty.
+
+`docs/design/art-asset-manifest.json` catalogues everything in the workshop reference (273 asset families, 289
+connector variants, render layers and eight build phases). Work follows its phases: a sample at play zoom first,
+then the building shell, large objects, small contents, the town, the HUD, construction variants and motion.
+
+## The reference at game scale
+
+The reference's art pixels are about 2.6 of its pixels: brought down to 640 × 360 it matches the game's grid, with
+people 42 px tall, rooms 80 px high and 16 px tiles. `tools/reference.py` makes that picture
+(`art-reference-native.png`) and cuts objects out of it: a flood fill from the box's edge that stops at the dark
+outlines, hand-placed erase and keep rectangles, then `tidy()`, which drops stray specks and darkens the cut edge to
+ink. Drawing in code alone came out flat (about 800 shades on screen against the reference's 5,700), so the shack's
+props are cut straight from the reference and keep its own shades: the fridge, both pendant lamps, the shelves of
+pans and jars, the stove pipe, the trailing and table plants, the kettle, the shelf of glassware, the botanical
+prints, the fuse box and the cooker on the stove (`CUTS` in `tools/make-decor-sprites.py`,
+`tools/make-equipment-sprites.py`). Cut sprites are not snapped to the palette; everything drawn still is.
+
+Phase 1 (the shack sample) brought the world onto the reference:
+
+- Darker earth with big soft stones, the deep ground as packed stony earth, a mossy grass band.
+- Floorboards over a slate slab, heavy timber posts and a ceiling beam, brown roof shingles, framed windows with
+  glazing bars.
+- Rooms painted in the reference's lamplit amber (the `room` ramp), with brick courses faintly under the plaster,
+  shaded toward the corners. The room light itself is nearly white, so the amber is the wall's own colour, as in the
+  reference; the floor, the ceiling beam and the inner posts take the room's light too.
+- Pendant lamps throw a cone of light downward in twelve smooth steps, and glow faintly by day.
+- The kitchen: the cut props above, the cut cooker, a sink cabinet and an oak table drawn with long grain and
+  bevels, and two ladder-back chairs.
+- The reference's HUD: coin and credits, five hearts and a frameless clock top left and right, dark navy hotbar
+  slots with the keys underneath.
 
 ![The palette](art-palette.png)
 
@@ -11,7 +44,7 @@ The humour lives in the people and the props; the world itself is played straigh
 
 1. **One pixel grid.** One art pixel is one world unit; a cell is 8 × 8 pixels; people and the player are 32 × 48
    frames. Nothing is drawn at a different scale or smoothed.
-2. **One palette.** Every colour comes from the ramps in `tools/palette.py` (147 colours in 29 ramps). Scripts draw
+2. **One palette.** Every colour comes from the ramps in `tools/palette.py` (159 colours in 30 ramps). Scripts draw
    with ramp names (`ramp("wood")[3]`) and pass the finished sheet through `snap()`, which moves any stray colour to
    the nearest palette colour. The world shader uses the same ramps from `godot/generated/campaign_palette.gdshaderinc`,
    which `tools/palette.py` writes. The interface keeps its own slate panels for now.
@@ -23,8 +56,8 @@ The humour lives in the people and the props; the world itself is played straigh
    timber `wood[0]`), with the corners rounded off.
 6. **Distance is haze.** The backdrop's layers are blended toward the horizon colour: far 42 %, mid 18 %, near 6 %.
    Only the foreground is fully saturated.
-7. **Light is warm, dark is blue.** By day everything is lit white; at night the outdoors goes blue and rooms and lamps
-   go warm (`lighting.gd`). Windows in the town light up through dusk.
+7. **Light is warm, dark is blue.** By day everything is lit white; at night the outdoors goes blue while rooms keep
+   their own amber under a nearly white room light, and lamps throw warm cones (`lighting.gd`). Windows in the town light up through dusk.
 
 ## How the picture is built
 
@@ -32,10 +65,10 @@ The humour lives in the people and the props; the world itself is played straigh
 |---|---|---|
 | Sky, sun, moon, stars, clouds | `godot/backdrop.gd` | sky colours by hour: night, dawn, day, dusk; the sun crosses east to west |
 | Town in three layers | `tools/make-backdrop.py` → `art/backdrop/` | forest ridges and the church (far), houses and trees (mid), big trees and hedge (near); parallax 0.12, 0.3, 0.55; window lights as separate sheets |
-| Cells | `godot/liquid.gdshader` (`styled`) | grass band with hanging blades, soil darker with depth with pebbles and roots, cobbled rock, asphalt with a curb, timber posts and plank floors, brick, clay roof tiles, steel, glass panes; plaster back walls with timber framing; open sky left clear |
-| Props | `tools/make-decor-sprites.py` → `art/decor.png`, placed by `data/decor.json`, drawn by `godot/decor.gd` | fence, street lamp, hanging lamp, shelf of jars, plant, chalkboard, sacks, mailbox, for-sale sign, bush, tree, cat |
-| Machines, people, the player | `make-equipment-sprites.py`, `make-people-sprites.py`, `make-player-sprites.py` | snapped to the palette |
-| Light | `godot/lighting.gd`, `lighting.gdshaderinc`, `sprite_light.gdshader` | outdoor and room light, up to 16 lamps in soft bands; flames give their own light |
+| Cells | `godot/liquid.gdshader` (`styled`) | grass band with hanging blades, soil darker with depth with pebbles and roots, cobbled rock, asphalt with a curb, timber posts and plank floors over slate, brick, shingle roofs, steel, framed windows; amber plaster back walls with timber framing (equipment stands in front of them and doesn't frame them); open sky left clear |
+| Props | `tools/make-decor-sprites.py` → `art/decor.png`, placed by `data/decor.json`, drawn by `godot/decor.gd` | cut from the reference: fridge, pendant lamps, pan and jar shelves, stove pipe, plants, kettle, glassware, prints, fuse box; drawn: fence, street lamp, chalkboard, plant, sacks, mailbox, for-sale sign, bush, tree, cat, chairs |
+| Machines, people, the player | `make-equipment-sprites.py`, `make-people-sprites.py`, `make-player-sprites.py` | snapped to the palette, except the cooker cut from the reference |
+| Light | `godot/lighting.gd`, `lighting.gdshaderinc`, `sprite_light.gdshader` | outdoor and room light, up to 16 lamps in twelve smooth steps, pendant lamps as downward cones; flames give their own light |
 
 Roof tiles (block 82, "Roof" on the hotbar) are laid in courses of four pixels. A roof tile with open air above it
 and on one side, standing on a tile that reaches further out, has its top corner cut on the diagonal, so a roof
@@ -56,7 +89,11 @@ and a green chemical splash at the hem, yellow rubber gloves, dark trousers and 
 
 ## Next
 
-- Window frames with sills and shutters, so buildings can look like the references' houses.
-- The delivery van and the tanker redrawn in the cosy style (rounded, shaded, with the supplier's logo).
-- The interface panels moved onto the palette.
-- PixelLab concept passes for the people and the player, redrawn on this grid and palette.
+Following the manifest's phases:
+
+- The mad scientist and the townspeople in the reference's character style (bigger heads, softer three-tone shading).
+- The town behind the plot as dark silhouettes with lit windows, closer to the reference's dusk street.
+- Large objects cut or drawn from the reference: the copper still and steel tanks for the process kit, the delivery
+  van, crates, the blue water tank, mushroom racks.
+- Pipes in the reference's copper and blue, wall-mounted, with their joints and valves.
+- The remaining interface panels moved onto the reference's navy and steel.

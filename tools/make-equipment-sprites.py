@@ -11,7 +11,7 @@ Usage: python3 tools/make-equipment-sprites.py
 from pathlib import Path
 from PIL import Image
 
-from palette import snap
+from palette import ramp, snap
 
 OUTLINE = (30, 32, 38)
 STEEL, STEEL_LIGHT, STEEL_DARK = (168, 178, 186), (214, 222, 226), (104, 114, 122)
@@ -34,49 +34,102 @@ def rect(img, x0, y0, x1, y1, color):
                 img.putpixel((x, y), color + (255,))
 
 
+# The kitchen pieces are drawn after the dusk workshop reference (docs/design/art-reference-workshop.png): ink outlines,
+# light from the top left, an iron range with brass knobs, a wooden cabinet under a stone counter, a sturdy table.
+INK_, IRON, BRASS, OAK, STONE_TOP = ramp("ink"), ramp("grey"), ramp("gold"), ramp("wood"), ramp("plaster")
+STEELR = ramp("steel")
+
+
 def stove(img, ox):
-    rect(img, ox, 3, ox + 31, 31, OUTLINE)
-    rect(img, ox + 1, 4, ox + 30, 30, ENAMEL)
-    rect(img, ox + 1, 4, ox + 30, 4, ENAMEL_LIGHT)
-    rect(img, ox + 29, 5, ox + 30, 30, ENAMEL_DARK)
-    rect(img, ox, 0, ox + 31, 2, GRATE)  # the burner grate the pans stand on
-    for x in range(ox + 2, ox + 30, 4):
-        rect(img, x, 1, x + 1, 1, (70, 70, 78))
-    for i, x in enumerate((ox + 5, ox + 12, ox + 19, ox + 26)):  # knobs
-        rect(img, x - 1, 6, x + 1, 8, KNOB)
-        rect(img, x, 6, x, 6, (150, 150, 158))
-    rect(img, ox + 3, 11, ox + 28, 27, OUTLINE)  # oven door
-    rect(img, ox + 4, 12, ox + 27, 26, ENAMEL_DARK)
-    rect(img, ox + 6, 15, ox + 25, 24, GLASS)
-    rect(img, ox + 7, 16, ox + 10, 16, GLASS_LIGHT)
-    rect(img, ox + 7, 13, ox + 24, 13, STEEL)  # handle
-    rect(img, ox + 2, 29, ox + 4, 31, OUTLINE)
-    rect(img, ox + 27, 29, ox + 29, 31, OUTLINE)
+    """The range, cut from the reference (an iron cooker with its oven window glowing), under a burner grate the pans
+    stand on."""
+    from reference import piece
+    cooker = piece((202, 174, 224, 205), tol=0.05)
+    left = ox + (32 - cooker.width) // 2
+    img.alpha_composite(cooker, (left, 32 - cooker.height))
+    rect(img, left - 1, 0, left + cooker.width, 2, INK_[1])
+    for x in range(left + 1, left + cooker.width - 1, 4):
+        rect(img, x, 1, x + 1, 1, IRON[1])
+    rect(img, left + 1, 3, left + cooker.width - 2, 32 - cooker.height - 1, INK_[2])
+
+
+def grain(img, x0, y0, x1, y1, base, seed):
+    """Wood with a long grain: streaks one tone either side of base, a knot now and then."""
+    import random
+    rng = random.Random(seed)
+    for x in range(x0, x1 + 1):
+        streak = rng.random()
+        for y in range(y0, y1 + 1):
+            tone = base + (1 if streak > 0.82 else -1 if streak < 0.18 else 0)
+            if rng.random() < 0.04:
+                tone -= 1
+            put_rgb(img, x, y, OAK[max(0, min(6, tone))])
+    if (x1 - x0) > 6 and (y1 - y0) > 8:
+        kx, ky = rng.randrange(x0 + 2, x1 - 1), rng.randrange(y0 + 3, y1 - 2)
+        put_rgb(img, kx, ky, OAK[base - 2]); put_rgb(img, kx + 1, ky, OAK[base - 1])
+
+
+def put_rgb(img, x, y, color):
+    if 0 <= x < img.width and 0 <= y < img.height:
+        img.putpixel((x, y), tuple(color) + (255,))
 
 
 def sink(img, ox):
-    rect(img, ox, 0, ox + 31, 3, STEEL_DARK)  # counter with the basin set into it
-    rect(img, ox, 0, ox + 31, 0, STEEL_LIGHT)
-    rect(img, ox + 6, 1, ox + 25, 3, (70, 80, 88))
-    rect(img, ox + 1, 4, ox + 30, 31, OUTLINE)
-    rect(img, ox + 2, 5, ox + 29, 30, WOOD)
-    rect(img, ox + 2, 5, ox + 29, 5, WOOD_LIGHT)
-    rect(img, ox + 15, 6, ox + 16, 30, WOOD_DARK)  # two cupboard doors
-    rect(img, ox + 12, 15, ox + 13, 18, STEEL)
-    rect(img, ox + 18, 15, ox + 19, 18, STEEL)
-    for y in (10, 22):
-        rect(img, ox + 4, y, ox + 13, y, WOOD_DARK)
-        rect(img, ox + 18, y, ox + 27, y, WOOD_DARK)
+    # a stone counter with the basin set into it, its front lip lit and a shadow under it
+    rect(img, ox, 0, ox + 31, 4, INK_[1])
+    rect(img, ox + 1, 1, ox + 30, 2, STONE_TOP[4])
+    rect(img, ox + 1, 1, ox + 30, 1, STONE_TOP[5])
+    rect(img, ox + 1, 3, ox + 30, 3, STONE_TOP[2])
+    rect(img, ox + 7, 1, ox + 24, 2, STEELR[1])
+    rect(img, ox + 7, 1, ox + 24, 1, STEELR[0])
+    rect(img, ox + 8, 2, ox + 23, 2, STEELR[2])
+    rect(img, ox + 1, 5, ox + 30, 31, INK_[1])
+    grain(img, ox + 2, 5, ox + 29, 30, 3, 11)
+    rect(img, ox + 2, 5, ox + 29, 6, OAK[1])  # the shadow under the counter
+    for x0, x1, seed in ((ox + 3, ox + 14, 12), (ox + 17, ox + 28, 13)):  # two panelled doors
+        rect(img, x0, 8, x1, 28, INK_[2])
+        grain(img, x0 + 1, 9, x1 - 1, 27, 4, seed)
+        rect(img, x0 + 1, 9, x1 - 1, 9, OAK[5])
+        rect(img, x0 + 1, 9, x0 + 1, 27, OAK[5])
+        rect(img, x0 + 3, 12, x1 - 3, 24, OAK[2])
+        grain(img, x0 + 4, 13, x1 - 3, 24, 3, seed + 7)
+        rect(img, x0 + 4, 13, x1 - 3, 13, OAK[1])
+        rect(img, x0 + 4, 13, x0 + 4, 24, OAK[1])
+        rect(img, x0 + 3, 25, x1 - 3, 25, OAK[5])
+    rect(img, ox + 15, 8, ox + 16, 30, OAK[1])
+    for hx in (ox + 12, ox + 19):  # brass pulls
+        rect(img, hx, 15, hx, 19, BRASS[2])
+        put_rgb(img, hx, 15, BRASS[4])
+        put_rgb(img, hx, 19, BRASS[1])
+    rect(img, ox + 2, 29, ox + 29, 30, OAK[1])
+    rect(img, ox + 2, 30, ox + 29, 30, INK_[2])
 
 
 def table(img, ox):
-    rect(img, ox, 0, ox + 47, 3, OUTLINE)
-    rect(img, ox + 1, 0, ox + 46, 2, WOOD)
-    rect(img, ox + 1, 0, ox + 46, 0, WOOD_LIGHT)
-    for x in (ox + 3, ox + 41):
-        rect(img, x, 4, x + 3, 31, OUTLINE)
-        rect(img, x + 1, 4, x + 2, 31, WOOD_DARK)
-    rect(img, ox + 7, 20, ox + 40, 21, WOOD_DARK)
+    rect(img, ox, 0, ox + 47, 5, INK_[1])  # a thick oak top, lit along its front edge
+    grain(img, ox + 1, 0, ox + 46, 3, 4, 21)
+    rect(img, ox + 1, 0, ox + 46, 0, OAK[6])
+    rect(img, ox + 1, 3, ox + 46, 4, OAK[2])
+    rect(img, ox + 1, 4, ox + 46, 4, OAK[1])
+    rect(img, ox + 4, 5, ox + 43, 9, INK_[1])  # the apron with a drawer
+    grain(img, ox + 5, 5, ox + 42, 8, 3, 22)
+    rect(img, ox + 5, 5, ox + 42, 5, OAK[1])
+    rect(img, ox + 18, 6, ox + 29, 8, INK_[2])
+    rect(img, ox + 19, 6, ox + 28, 7, OAK[4])
+    put_rgb(img, ox + 23, 7, BRASS[3]); put_rgb(img, ox + 24, 7, BRASS[4])
+    for x in (ox + 3, ox + 40):  # turned legs and a stretcher
+        rect(img, x, 9, x + 4, 31, INK_[1])
+        rect(img, x + 1, 9, x + 3, 31, OAK[3])
+        rect(img, x + 1, 9, x + 1, 31, OAK[5])
+        rect(img, x + 3, 9, x + 3, 31, OAK[2])
+        for y in (13, 21):
+            rect(img, x, y, x + 4, y + 1, OAK[4])
+            rect(img, x, y, x + 4, y, OAK[5])
+            put_rgb(img, x + 4, y + 1, OAK[2])
+        rect(img, x + 1, 30, x + 3, 31, OAK[1])
+    rect(img, ox + 8, 23, ox + 39, 25, INK_[1])
+    rect(img, ox + 8, 24, ox + 39, 24, OAK[3])
+    rect(img, ox + 8, 23, ox + 39, 23, OAK[2])
 
 
 def saucepan(img, ox, oy):
@@ -282,7 +335,10 @@ def main():
     kettle(img, 96, 32)
     centrifuge(img, 144, 32)
     art = Path(__file__).resolve().parent.parent / "godot" / "art"
-    snap(img).save(art / "equipment.png")
+    cooker = img.crop((0, 0, 32, 32))
+    img = snap(img)
+    img.paste(cooker, (0, 0))
+    img.save(art / "equipment.png")
     trucks = Image.new("RGBA", (192, 128), (0, 0, 0, 0))
     van(trucks, 0, 0)
     tanker(trucks, 0, 64)

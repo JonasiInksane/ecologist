@@ -71,12 +71,25 @@ def button(img, ox, oy, face, lip, down=False):
         rect(img, ox + 14, oy + 2, ox + 14, oy + 14, SHADE)
 
 
+# The hotbar slot after the dusk workshop reference: a dark navy well in a pale steel rim, lit from the top left, with
+# the corners rounded off; the selected slot's rim is amber.
+SLOT_RIM, SLOT_RIM_LIGHT, SLOT_RIM_DARK = (90, 100, 122), (128, 138, 158), (58, 66, 84)
+SLOT_WELL, SLOT_WELL_DARK = (27, 33, 50), (19, 23, 36)
+
+
 def slot(img, ox, oy, border):
-    rect(img, ox, oy, ox + 19, oy + 19, border)
-    rect(img, ox + 1, oy + 1, ox + 18, oy + 18, OUTLINE)
-    rect(img, ox + 2, oy + 2, ox + 17, oy + 17, SLOT)
-    rect(img, ox + 2, oy + 2, ox + 17, oy + 2, SLOT_DARK)
-    rect(img, ox + 2, oy + 2, ox + 2, oy + 17, SLOT_DARK)
+    rim, light, dark = (AMBER, (255, 226, 130), AMBER_DARK) if border == AMBER else (SLOT_RIM, SLOT_RIM_LIGHT, SLOT_RIM_DARK)
+    rect(img, ox + 1, oy, ox + 18, oy + 19, OUTLINE)
+    rect(img, ox, oy + 1, ox + 19, oy + 18, OUTLINE)
+    rect(img, ox + 1, oy + 1, ox + 18, oy + 18, rim)
+    rect(img, ox + 1, oy + 1, ox + 18, oy + 1, light)
+    rect(img, ox + 1, oy + 1, ox + 1, oy + 17, light)
+    rect(img, ox + 18, oy + 2, ox + 18, oy + 18, dark)
+    rect(img, ox + 2, oy + 18, ox + 18, oy + 18, dark)
+    rect(img, ox + 2, oy + 2, ox + 17, oy + 17, OUTLINE)
+    rect(img, ox + 3, oy + 3, ox + 16, oy + 16, SLOT_WELL)
+    rect(img, ox + 3, oy + 3, ox + 16, oy + 4, SLOT_WELL_DARK)
+    rect(img, ox + 3, oy + 3, ox + 3, oy + 16, SLOT_WELL_DARK)
 
 
 def small_panel(img, ox, oy):
@@ -137,7 +150,7 @@ def ui_sheet():
 
 
 # Icons, 16 x 16 each, in a 16-wide grid; ui_style.gd keeps the same order.
-ICONS = ["heart", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
+ICONS = ["heart", "heart_half", "heart_empty", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
          "wood", "brick", "stone", "glass", "steel", "dirt", "wood_wall", "brick_wall", "ladder", "door",
          "pipe", "valve", "pump", "thermometer", "drop", "flask", "flame", "laptop", "save", "load", "sandbox",
          "sack", "beet", "close", "person", "roof", "plaster_wall"]
@@ -146,14 +159,28 @@ ICONS = ["heart", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pa
 def icon(name, img, ox, oy):
     p = lambda x, y, c: put(img, ox + x, oy + y, c)
     r = lambda x0, y0, x1, y1, c: rect(img, ox + x0, oy + y0, ox + x1, oy + y1, c)
-    if name == "heart":
-        for y, (a, b) in enumerate([(2, 5), (1, 6), (1, 13), (1, 14), (1, 14), (2, 13), (3, 12), (4, 11), (5, 10), (6, 9), (7, 8)]):
-            r(a, y + 3, b, y + 3, RED)
-        r(9, 3, 12, 3, RED)
-        r(8, 4, 13, 4, RED)
-        r(3, 4, 4, 5, (250, 170, 170))
-        for x, y in ((2, 2), (5, 2), (10, 2), (13, 2)):
-            p(x, y + 1, RED_DARK)
+    if name in ("heart", "heart_half", "heart_empty"):
+        # the reference's hearts: bright red with a pink glint, shaded to the bottom right, outlined in ink; an empty
+        # heart is a dark husk, a half heart is full on the left
+        rows = [(3, 6, 9, 12), (2, 7, 8, 13), (1, 14), (1, 14), (1, 14), (2, 13), (3, 12), (4, 11), (5, 10), (6, 9), (7, 8)]
+        for y, span in enumerate(rows):
+            for a, b in zip(span[::2], span[1::2]):
+                for x in range(a - 1, b + 2):
+                    p(x, y + 2, OUTLINE)
+        for y, span in enumerate(rows):
+            if y == 0:
+                p(4, 1, OUTLINE); p(5, 1, OUTLINE); p(10, 1, OUTLINE); p(11, 1, OUTLINE)
+            for a, b in zip(span[::2], span[1::2]):
+                for x in range(a, b + 1):
+                    full = name == "heart" or (name == "heart_half" and x <= 7)
+                    if full:
+                        c = RED_DARK if x >= 12 - y // 3 or y >= 8 else RED
+                    else:
+                        c = (78, 30, 36) if x < 12 - y // 3 and y < 8 else (58, 22, 28)
+                    p(x, y + 3, c)
+        if name != "heart_empty":
+            r(3, 4, 4, 5, (250, 170, 170))
+            p(5, 4, (240, 120, 120))
     elif name == "bubble":
         for y in range(3, 14):
             for x in range(3, 14):

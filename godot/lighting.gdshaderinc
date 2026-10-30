@@ -15,12 +15,16 @@ vec3 light_at(vec2 world, bool indoor) {
     for (int i = 0; i < 16; i++) {
         if (i >= light_count) { break; }
         vec4 spot = light_spots[i];
-        float d = length(p - spot.xy);
+        vec2 off = p - spot.xy;
+        // a negative strength is a pendant lamp: a pool spreading down to the floor, dim above the shade
+        bool pool = spot.w < 0.0;
+        if (pool) { off = off.y < 0.0 ? off * vec2(1.0, 2.6) : off * vec2(0.85, 0.62); }
+        float d = length(off);
         if (d < spot.z) {
             float f = 1.0 - d / spot.z;
-            // five bands, like the pools of light in the reference paintings
-            f = floor(f * f * 5.0 + 0.5) / 5.0;
-            light += light_colors[i] * spot.w * f;
+            // a smooth falloff in fine steps, so a lamp's pool fades into the wall as in the reference
+            f = floor(f * f * 12.0 + 0.5) / 12.0;
+            light += light_colors[i] * abs(spot.w) * f;
         }
     }
     return min(light, vec3(1.3));

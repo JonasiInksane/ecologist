@@ -6,7 +6,10 @@ extends Node
 # dusk. main.gd calls update_light every frame and apply() when it changed; the sandbox does not use it.
 
 const NIGHT := Color(0.26, 0.31, 0.5)
-const LAMP := Color(1.0, 0.86, 0.66)
+# Rooms are painted in the reference's lamplit colours (the "room" plaster, the props cut from it), so their light is
+# near white: full by day, a little dimmer after dark, where the lamps' pools carry them.
+const LAMP := Color(0.84, 0.8, 0.78)
+const ROOM_DAY_WARMTH := 0.0
 const MAX_LIGHTS := 16
 
 var level := 1.0
@@ -27,12 +30,13 @@ static func daylight(minute: float) -> float:
 
 # The outdoor light: white by day, a cool blue at night, warmer around dawn and dusk.
 static func ambient(light: float) -> Color:
-    var color := NIGHT.lerp(Color.WHITE, light)
+    # the light falls off quickly once the sun is low, so dusk is already blue and moody, as in the reference
+    var color := NIGHT.lerp(Color.WHITE, pow(light, 1.6))
     var warm := clampf(1.0 - absf(light - 0.6) / 0.4, 0.0, 1.0)
     return Color(color.r, color.g * (1.0 - 0.16 * warm), color.b * (1.0 - 0.32 * warm))
 
 static func indoor(light: float) -> Color:
-    return ambient(light).lerp(LAMP, 1.0 - light)
+    return ambient(light).lerp(LAMP, ROOM_DAY_WARMTH + (1.0 - ROOM_DAY_WARMTH) * clampf((1.0 - light) / 0.6, 0.0, 1.0))
 
 # Lamps are off by day and come up through dusk.
 static func lamp_power(light: float) -> float:
@@ -52,10 +56,8 @@ func set_lamps(list: Array) -> void:
 func spots() -> Array:
     var power := lamp_power(level)
     var lit: Array = []
-    if power <= 0.0:
-        return lit
     for lamp in lamps:
-        if lit.size() < MAX_LIGHTS:
+        if lit.size() < MAX_LIGHTS and (power > 0.0 or float(lamp.get("indoor_day", 0.0)) > 0.0):
             lit.append(lamp)
     return lit
 
@@ -68,7 +70,10 @@ func apply(materials: Array) -> void:
     colors.resize(MAX_LIGHTS)
     for i in burning.size():
         var lamp: Dictionary = burning[i]
-        positions[i] = Vector4(lamp.x, lamp.y, lamp.radius, lamp.strength * power)
+        # a pendant lamp lights the floor under it more than the ceiling above it: the shader reads a negative
+        # strength as a downward pool
+        var strength: float = lamp.strength * maxf(power, float(lamp.get("indoor_day", 0.0)))
+        positions[i] = Vector4(lamp.x, lamp.y, lamp.radius, -strength if lamp.get("pool", false) else strength)
         var color: Color = lamp.color
         colors[i] = Vector3(color.r, color.g, color.b)
     var outside := ambient(level)

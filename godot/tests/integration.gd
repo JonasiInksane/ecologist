@@ -257,12 +257,12 @@ func run() -> void:
         game._follow_sun()
         var night_light: Vector3 = game.liquid_material.get_shader_parameter("ambient_light")
         var room_light: Vector3 = game.sprite_material.get_shader_parameter("room_light")
-        check(game.lighting.level == 0.0 and night_light.x < 0.4 and room_light.x > 0.9 and game.backdrop.window_light() == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, the town's windows are lit and the shack is lamp-lit")
-        check(int(game.liquid_material.get_shader_parameter("light_count")) == 2 and game.decor.lamps().size() == 2, "The street lamp and the shack's hanging lamp are burning")
+        check(game.lighting.level == 0.0 and night_light.x < 0.4 and room_light.x > 0.8 and game.backdrop.window_light() == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, the town's windows are lit and the shack is lamp-lit")
+        check(int(game.liquid_material.get_shader_parameter("light_count")) == 3 and game.decor.lamps().size() == 3, "The street lamp and the shack's two pendant lamps are burning")
         check(game.lighting.indoor(0.0).v > game.lighting.ambient(0.0).v * 1.5, "A room at night is much brighter than outdoors")
         game.shop.model.minute = morning
         game._follow_sun()
-        check(int(game.liquid_material.get_shader_parameter("light_count")) == 0 and game.backdrop.window_light() == 0.0, "Morning again: the lamps are off")
+        check(int(game.liquid_material.get_shader_parameter("light_count")) == 2 and game.backdrop.window_light() == 0.0, "Morning again: the street lamp is off and only the shack's pendants glow")
         # Props stand on what holds them up: dig out the ground under a fence panel and it goes.
         var fence := -1
         for i in game.decor.data.placements.size():
