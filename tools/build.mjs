@@ -1,4 +1,4 @@
-// Bundles the ES modules and stylesheet into one self-contained page: dist/tidepool.html.
+// Bundles the ES modules and stylesheet into one self-contained page: dist/ecologist.html.
 // Modules are concatenated in the order the browser would evaluate them, inside one closure.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve, relative } from 'node:path';
@@ -78,11 +78,14 @@ if (leftovers.length) {
   process.exit(1);
 }
 
-const css = readFileSync(join(root, 'css', 'tidepool.css'), 'utf8');
-let html = readFileSync(join(root, 'tidepool.html'), 'utf8');
-html = html.replace('<link rel="stylesheet" href="css/tidepool.css">', () => `<style>\n${css}</style>`);
+const css = readFileSync(join(root, 'css', 'ecologist.css'), 'utf8');
+let html = readFileSync(join(root, 'ecologist.html'), 'utf8');
+html = html.replace('<link rel="stylesheet" href="css/ecologist.css">', () => `<style>\n${css}</style>`);
 html = html.replace('<script type="module" src="js/main.js"></script>', () => `<script>\n(() => {\n'use strict';\n${bundle}\n})();\n</script>`);
 
 mkdirSync(join(root, 'dist'), { recursive: true });
-writeFileSync(join(root, 'dist', 'tidepool.html'), html);
-console.log(`dist/tidepool.html: ${order.length} modules, ${(html.length / 1024).toFixed(1)} KB`);
+writeFileSync(join(root, 'dist', 'ecologist.html'), html);
+console.log(`dist/ecologist.html: ${order.length} modules, ${(html.length / 1024).toFixed(1)} KB`);
+
+// Legacy share-file name remains available while the product moves to Ecologist.
+writeFileSync(join(root, "dist", "tidepool.html"), html);

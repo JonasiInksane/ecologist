@@ -6,3 +6,8 @@ dist/
 .DS_Store
 node_modules/
 .test-artifacts/
+.tools/
+native/build/
+godot/.godot/
+godot/bin/*
+!godot/bin/.gitkeep

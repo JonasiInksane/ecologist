@@ -1,0 +1,50 @@
+{
+  "version":1,
+  "balance":{"starting_cash":500,"tick_rate":60,"vessel_capacity_g":2000,"energy_price_per_kj":0.002,"distill_parcel_g":50,"inspection_seconds":180,"closure_seconds":30,"fine":80,"suspicion_per_second":0.3,"suspicion_per_sale":12,"suspicion_decay_per_second":0.02},
+  "initial_stock":{"sugar_juice":2000,"water":1000,"sugar":250,"salt":100,"vinegar":250,"bicarbonate":50,"blood":1000,"packaging":20},
+  "materials":{
+    "water":{"name":"Water","formula":"H₂O","phase":"liquid","buy":0.001,"sell":0.0004,"components":{"water":1}},
+    "sugar":{"name":"Sugar · sucrose","formula":"C₁₂H₂₂O₁₁","phase":"powder","buy":0.025,"sell":0.018,"components":{"sugar":1}},
+    "salt":{"name":"Sodium chloride","formula":"NaCl","phase":"powder","buy":0.012,"sell":0.008,"components":{"salt":1}},
+    "sand":{"name":"Sand · silica model","formula":"SiO₂","phase":"powder","buy":0.003,"sell":0.001,"components":{"sand":1}},
+    "ethanol":{"name":"Ethanol","formula":"C₂H₅OH","phase":"liquid","buy":0.03,"sell":0.02,"components":{"ethanol":1}},
+    "acetic_acid":{"name":"Acetic acid","formula":"CH₃COOH","phase":"liquid","buy":0.04,"sell":0.025,"components":{"acetic_acid":1}},
+    "bicarbonate":{"name":"Sodium bicarbonate","formula":"NaHCO₃","phase":"powder","buy":0.02,"sell":0.013,"components":{"bicarbonate":1}},
+    "acetate":{"name":"Sodium acetate","formula":"CH₃COONa","phase":"powder","buy":0.05,"sell":0.035,"components":{"acetate":1}},
+    "co2":{"name":"Carbon dioxide","formula":"CO₂","phase":"gas","buy":0.015,"sell":0.008,"components":{"co2":1}},
+    "vinegar":{"name":"Vinegar · 5% acid model","phase":"liquid","buy":0.008,"sell":0.005,"components":{"water":0.95,"acetic_acid":0.05}},
+    "brine":{"name":"Brine · 3.5% salt model","phase":"liquid","buy":0.006,"sell":0.004,"components":{"water":0.965,"salt":0.035}},
+    "sugar_juice":{"name":"Raw sugar juice","phase":"liquid","buy":0.005,"sell":0.003,"components":{"water":0.784,"sugar":0.196,"silt":0.02}},
+    "sugar_solution":{"name":"Sugar solution · 20%","phase":"liquid","buy":0.013,"sell":0.008,"components":{"water":0.8,"sugar":0.2}},
+    "syrup":{"name":"Sugar syrup · 50%","phase":"liquid","buy":0.03,"sell":0.02,"components":{"water":0.5,"sugar":0.5}},
+    "silt":{"name":"Filter sediment","phase":"powder","buy":0.001,"sell":0,"components":{"silt":1}},
+    "blood":{"name":"Blood · mixture model","phase":"liquid","buy":0.015,"sell":0.009,"components":{"plasma":0.55,"blood_cells":0.45}},
+    "plasma":{"name":"Blood plasma · mixture","phase":"liquid","buy":0.035,"sell":0.026,"components":{"plasma":1}},
+    "blood_cells":{"name":"Blood cell fraction","phase":"mixture","buy":0.018,"sell":0.012,"components":{"blood_cells":1}},
+    "packaging":{"name":"Paper packaging","phase":"packaging","buy":0.03,"sell":0.01,"components":{"packaging":1}},
+    "packed_sugar":{"name":"Packaged sugar · 200 g + 5 g paper","phase":"package","buy":0.08,"sell":0.065,"components":{"sugar":0.975609756097561,"packaging":0.024390243902439}},
+    "fictional_feedstock":{"name":"Fictional black-market feedstock","phase":"fictional","buy":0.15,"sell":0.06,"illegal":true,"components":{"fictional_feedstock":1}},
+    "cocaine":{"name":"Cocaine · game commodity","phase":"fictional","buy":0,"sell":0.9,"illegal":true,"components":{"cocaine":1}},
+    "fictional_waste":{"name":"Fictional process waste","phase":"fictional","buy":0,"sell":0,"illegal":true,"components":{"fictional_waste":1}}
+  },
+  "equipment":{
+    "filter":{"name":"Filter press","cost":35},
+    "evaporator":{"name":"Evaporator + condenser","cost":60},
+    "crystallizer":{"name":"Crystallizer","cost":70},
+    "packer":{"name":"Packing machine","cost":35},
+    "centrifuge":{"name":"Centrifuge","cost":75},
+    "underground":{"name":"Underground operation · abstract","cost":150,"illegal":true}
+  },
+  "recipes":{
+    "filter_juice":{"name":"Clarify sugar juice","machine":"filter","seconds":5,"cost":0.2,"inputs":{"sugar_juice":1000},"outputs":{"sugar_solution":980,"silt":20}},
+    "concentrate":{"name":"Concentrate sugar solution","machine":"evaporator","seconds":8,"cost":0.5,"inputs":{"sugar_solution":1000},"outputs":{"syrup":400,"water":600}},
+    "crystallize":{"name":"Crystallize and dry sugar","machine":"crystallizer","seconds":10,"cost":0.5,"inputs":{"syrup":400},"outputs":{"sugar":200,"water":200}},
+    "pack_sugar":{"name":"Package 200 g sugar","machine":"packer","seconds":4,"cost":0.1,"inputs":{"sugar":200,"packaging":5},"outputs":{"packed_sugar":205}},
+    "recover_salt":{"name":"Recover salt and water","machine":"evaporator","seconds":8,"cost":0.4,"inputs":{"brine":1000},"outputs":{"salt":35,"water":965}},
+    "separate_blood":{"name":"Separate blood components","machine":"centrifuge","seconds":8,"cost":0.5,"inputs":{"blood":1000},"outputs":{"plasma":550,"blood_cells":450}},
+    "fictional_batch":{"name":"Fictional illicit batch","machine":"underground","seconds":45,"cost":5,"illegal":true,"inputs":{"fictional_feedstock":100},"outputs":{"cocaine":60,"fictional_waste":40},"note":"Invented game conversion only. No real ingredients, synthesis or conditions."}
+  },
+  "reaction":{"reactants":{"acetic_acid":60.052,"bicarbonate":84.0066},"products":{"acetate":82.0343,"water":18.0153,"co2":44.009}},
+  "sources":["https://www.acs.org/middleschoolchemistry/lessonplans/chapter6/lesson2.html","https://www.redcrossblood.org/donate-blood/how-to-donate/types-of-blood-donations/blood-components.html"],
+  "limits":"Prototype prices/times. Solubility curves and thermal capacities are simplified. Blood 55/45 mass split is a game approximation of a volume observation. Plasma remains an unresolved biological mixture. No medical model. Illicit production is entirely fictional."
+}

@@ -54,8 +54,8 @@ function carryHeat(src, dst, mv, had, available = liq[src]) {
   const energy = latent[src] * mv / available;
   latent[src] -= energy; latent[dst] += energy;
 }
-function step() {
-  S.tick++;
+// Separately callable transport pass for native-port comparisons. Ordinary step() retains all hooks.
+function liquidTick(withReactions = true, withEffects = true) {
   for (let y = H - 1; y >= 0; y--) {
     const ltr = ((S.tick + y) & 1) === 0;
     const crow = ((y / CHUNK) | 0) * CW;
@@ -67,8 +67,8 @@ function step() {
       if (!liq[k] || stamp[k] === S.tick) continue;
       const t = typ[k], L = LIQ[t];
       if (S.tick % (VISC_TEMP[t] ? viscAt(t, temp[k]) : L.visc)) continue;
-      if (reactAll(x, y, k, t)) continue;
-      let a = blockEffects(x, y, k, t, liq[k]);
+      if (withReactions && reactAll(x, y, k, t)) continue;
+      let a = withReactions ? blockEffects(x, y, k, t, liq[k]) : liq[k];
       if (a < 0) continue;
       if (a !== liq[k]) wake(k);
       if (a === 0) { liq[k] = 0; typ[k] = 0; continue; }
@@ -88,7 +88,7 @@ function step() {
               if (mv >= 8) flux[b] = S.tick;
               drop[b] = Math.max(ba ? drop[b] : 0, Math.min(255, drop[k] + 1)); fell = true;
               if (g < 0) stamp[b] = S.tick;   // rows above run later this tick; don't move it twice
-              else if (ba > 0 && mv > 24 && (y + 2 >= H || solid[b + W] || liq[b + W] >= 250) && Math.random() < 0.04) splash(x, y + 1, t, ba + mv);
+              else if (ba > 0 && mv > 24 && (y + 2 >= H || solid[b + W] || liq[b + W] >= 250) && Math.random() < 0.04) { if (withEffects) splash(x, y + 1, t, ba + mv); }
             } else if (g > 0 && stamp[b] !== S.tick && Math.random() < 0.5 && densityOf(k) > densityOf(b) + LAYER) {
               // denser liquid sinks through lighter liquid of the same kind under it: saltier or sweeter water, and
               // water nearer 4° (convection; a cooling lake turns over)
@@ -106,7 +106,7 @@ function step() {
             stamp[k] = S.tick; stamp[b] = S.tick;
             continue;
           } else if (REACT[t * NLIQ + bt] === SWAP && (g < 0 ? L.dens < LIQ[bt].dens : L.dens > LIQ[bt].dens)) {
-            if (g < 0 && L.gas && !LIQ[bt].gas && Math.random() < 0.2) puff(b, 'bubble');   // gas rising through liquid
+            if (g < 0 && L.gas && !LIQ[bt].gas && Math.random() < 0.2) { if (withEffects) puff(b, 'bubble'); }   // gas rising through liquid
             liq[k] = ba; typ[k] = bt; liq[b] = a; typ[b] = t;
             const tk = temp[k]; temp[k] = temp[b]; temp[b] = tk;
             const vk = vel[k]; vel[k] = vel[b]; vel[b] = vk;
@@ -147,6 +147,10 @@ function step() {
       liq[k] = a;
     }
   }
+}
+function step() {
+  S.tick++;
+  liquidTick();
   momentumTick();
   devicesTick();
   pumpTick();
@@ -171,4 +175,4 @@ function step() {
   for (let i = 0; i < awake.length; i++) if (awake[i]) awake[i]--;
 }
 
-export { CONVECT, carryHeat, step };
+export { CONVECT, carryHeat, liquidTick, step };

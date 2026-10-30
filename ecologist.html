@@ -1,0 +1,428 @@
+<meta charset="utf-8">
+<title>Ecologist</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/ecologist.css">
+
+<div class="wrap">
+  <header class="top">
+    <h1>Eco<span>logist</span></h1>
+    <p>Per-tile liquid levels from 0 to 255 that fall, spread and pool, drawn as pixel art. Hold the mouse to pour; right-click digs, soaks up and removes objects. Arrow keys walk and swim the explorer; Enter uses the bucket and D digs or places blocks; Shift-drag pans and the wheel zooms. Press / to find a tool, and Ctrl+Z to undo.</p>
+  </header>
+
+  <div class="toolbar" aria-label="Tools and controls">
+    <div class="bar" id="toolBar">
+      <button id="paletteToggle" class="picker" aria-expanded="false" aria-controls="palette"><span class="label">Tool</span><span class="current"></span><span aria-hidden="true">▾</span></button>
+      <input id="toolSearch" type="search" placeholder="Find a tool  /" aria-label="Find a tool" aria-controls="palette" autocomplete="off">
+      <div class="recent" id="recentTools" aria-label="Recent tools"></div>
+    </div>
+    <div class="palette" id="palette" hidden>
+      <div class="tabs" id="toolTabs" role="tablist" aria-label="Tool categories"></div>
+      <div class="grid" id="toolGrid"></div>
+      <p class="empty" id="toolEmpty" hidden></p>
+    </div>
+    <div class="bar">
+      <div class="group">
+        <label class="label" for="level">Mode</label>
+        <select id="level"><option value="-1">Sandbox</option><option value="terrarium">Sealed terrarium</option><option value="edit">Level editor</option><option value="custom" hidden>Custom level</option></select>
+      </div>
+      <div class="group" id="brushGroup">
+        <label class="label" for="brush">Brush</label>
+        <input id="brush" type="range" min="0" max="5" value="1">
+      </div>
+      <div class="group">
+        <label class="label" for="speed">Speed</label>
+        <select id="speed">
+          <option value="0.25">&frac14;&times;</option>
+          <option value="0.5">&frac12;&times;</option>
+          <option value="1" selected>1&times;</option>
+          <option value="2">2&times;</option>
+          <option value="4">4&times;</option>
+        </select>
+        <button id="pause" aria-pressed="false">Pause <kbd>Space</kbd></button>
+        <button id="stepBtn">Step</button>
+      </div>
+      <details class="menu" id="saveMenu">
+        <summary>Save &amp; share</summary>
+        <div class="menu-panel save-panel">
+          <span class="label">Undo</span>
+          <div class="row"><button id="undoBtn">Undo <kbd>Ctrl Z</kbd></button><span class="note" id="historyInfo"></span></div>
+          <div id="saveSections" class="save-sections">
+            <span class="label">Save slots in this browser</span>
+            <div id="slotList" class="slots"></div>
+            <span class="label">World code and file</span>
+            <div class="row"><button id="copyCode">Copy world code</button><button id="exportFile">Export file</button><button id="importBtn">Import file</button><input type="file" id="importFile" accept=".ecologist,.tidepool,.txt,text/plain" hidden></div>
+            <div class="row"><input id="codeInput" type="text" placeholder="Paste a world code" aria-label="World code to load" autocomplete="off"><button id="loadCode">Load code</button></div>
+            <div id="seedSharing" class="save-sections">
+            <span class="label">Seed</span>
+            <div class="row"><span class="note" id="seedText"></span><button id="copySeed">Copy seed</button></div>
+            <div class="row"><input id="seedInput" type="text" inputmode="numeric" placeholder="Seed number" aria-label="Seed to build a world from" autocomplete="off"><button id="buildSeed">Build world</button></div>
+            </div>
+          </div>
+          <p class="note" id="saveMsg" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+      <details class="menu" id="viewMenu">
+        <summary>Display &amp; world</summary>
+        <div class="menu-panel">
+          <span class="label">Display</span>
+          <button id="light" aria-pressed="true">Lighting <kbd>L</kbd></button>
+          <button id="heatview" aria-pressed="false">Heat view <kbd>H</kbd></button>
+          <button id="follow" aria-pressed="true">Follow explorer <kbd>J</kbd></button>
+          <button id="zoom" aria-pressed="false">Zoom 2&times; <kbd>Z</kbd></button>
+          <button id="chunks" aria-pressed="false">Active chunks <kbd>B</kbd></button>
+          <button id="hudToggle" aria-pressed="true">Explorer panel</button>
+          <button id="sound" aria-pressed="false">Sound <kbd>M</kbd></button>
+          <button id="music" aria-pressed="false">Music</button>
+          <span class="label">Simulation</span>
+          <button id="pressure" aria-pressed="true">Pressure <kbd>O</kbd></button>
+          <button id="weather" aria-pressed="true">Weather <kbd>I</kbd></button>
+          <button id="momentum" aria-pressed="true">Momentum</button>
+          <label class="label" for="timeMode">Time of day</label>
+          <select id="timeMode" class="wide">
+            <option value="cycle">Day and night</option>
+            <option value="day">Always day</option>
+            <option value="night">Always night</option>
+            <option value="stop">Stopped</option>
+          </select>
+          <span class="label" id="worldLabel">World</span>
+          <button id="rainNow">Rain now</button>
+          <button id="drain">Drain liquids</button>
+          <button id="regen">New world</button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="goal" id="goal" hidden>
+    <span id="goalText" role="status" aria-live="polite"></span>
+    <span class="actions"><button id="levelRestart">Restart</button><button id="levelNext" hidden>Next level</button><button id="levelEdit" hidden>Back to editor</button></span>
+  </div>
+
+  <section class="terrarium" id="terrariumPanel" hidden aria-label="Sealed terrarium">
+    <div class="row"><b>Sealed terrarium</b><span class="note">Finite matter · daylight supplies energy</span><button id="terrariumLight">Switch to darkness</button><button id="terrariumRestart">Restart jar</button></div>
+    <p class="note">Watch the fish, plants and algae share oxygen and nutrients. Change the light schedule, pause or speed up time, and save the jar to return later. Lighting in Display only changes the picture.</p>
+    <p id="terrariumReading" class="jar-reading"></p>
+  </section>
+
+  <details class="fantasy-summary" id="fantasyPanel" hidden>
+    <summary>Magical effects in this world</summary>
+    <p id="fantasyReading"></p>
+    <p class="note">These named sources and sinks are separate from ordinary ecosystem transfers. Older saves begin measuring when loaded. Magical illumination and electrical power have no joule model.</p>
+  </details>
+
+  <section class="editor" id="editor" hidden aria-label="Level editor">
+    <p class="note">Build the level with any tool, then set it up here. Play test starts it from the world as it is now.</p>
+    <div class="row">
+      <label class="label" for="edName">Name</label><input id="edName" type="text" placeholder="A custom level" autocomplete="off">
+      <label class="label" for="edGoal">Goal text</label><input id="edGoal" class="grow" type="text" placeholder="Written from the goal below" autocomplete="off">
+    </div>
+    <div class="row">
+      <span class="label">Goal</span>
+      <select id="edKind" aria-label="Kind of goal">
+        <option value="liquid">Fill the area with liquid</option>
+        <option value="block">Make blocks in the area</option>
+        <option value="creature">Get creatures into the area</option>
+        <option value="explorer">Bring the explorer to the area</option>
+        <option value="lit">Light lamps or pixels in the area</option>
+      </select>
+      <input id="edAmount" type="number" min="1" max="999" value="10" aria-label="How many">
+      <select id="edWhat" aria-label="Which"></select>
+      <button id="edRegion">Mark the goal area</button><span class="note" id="edRegionText">no area yet</span>
+    </div>
+    <div class="row">
+      <span class="label">Lose if</span>
+      <select id="edLose" aria-label="Way to lose">
+        <option value="none">only the explorer faints</option>
+        <option value="liquid">this liquid gets into the area</option>
+        <option value="creatures">fewer than this many are left</option>
+      </select>
+      <input id="edLoseAmount" type="number" min="1" max="99" value="3" aria-label="How many must be left">
+      <select id="edLoseWhat" aria-label="Which liquid or creature"></select>
+    </div>
+    <details class="tool-picks"><summary>Allowed tools (<span id="edToolCount">0</span>)</summary><div id="edTools" class="tool-checks"></div></details>
+    <div class="row"><button id="edPlay">Play test</button><button id="edCopy">Copy level code</button><span class="note" id="edMsg" role="status" aria-live="polite"></span></div>
+    <textarea id="edCode" rows="2" readonly hidden aria-label="Level code"></textarea>
+  </section>
+
+  <div class="stage"><canvas id="c" width="1024" height="576" aria-label="Liquid sandbox playfield"></canvas><div class="hud" id="hud" hidden></div></div>
+
+  <div class="status">
+    <span id="hover">Point at a tile to read its level</span>
+    <span id="stats"></span>
+  </div>
+
+  <section class="notes">
+    <div>
+      <h2>Materials</h2>
+      <ul>
+        <li><b>Sponge</b> soaks up water and gives it back when a weight stands on it, or as steam when heated. <b>Dirt</b> soaks up a little water as wet soil, drips it into caves and supports planted seeds. <b>Porous rock</b> lets liquid seep through.</li>
+        <li><b>Wool</b> barely takes up heat (and burns); <b>copper</b> takes it up fast and carries power. A <b>membrane</b> lets only its chosen liquid through. <b>Coral</b> grows in warm salt water and bleaches when it's too hot. <b>Fuse cord</b> burns along its length, round corners, and sets off nitro.</li>
+        <li><b>Void ink</b> deletes liquid; <b>mimic</b> becomes the first liquid it touches; <b>coolant</b> never freezes or boils and quenches lava; a <b>magnet</b> pulls <b>ferrofluid</b> into spikes; <b>liquid light</b> glows; <b>fertiliser</b> speeds plants up, greens stone with moss, and feeds algae. A ✦ marks fantasy tools; hover for their rules. The Magical effects panel records biological sources, sinks and modeled heat separately. Magical light and electrical power are unmetered.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Chemistry</h2>
+      <ul>
+        <li><b>Acid and alkali.</b> Acid and lye poured into water dissolve into it and spread, weakening as they go. Hover over water to read its pH. Where acid and alkali meet they cancel out, warming the water and leaving salt.</li>
+        <li><b>Strength matters.</b> Strong acid in water still eats dirt, stone and other blocks it touches, more slowly the weaker it is, and is used up doing it. Weak acid is harmless. Lye turns oil into soapy foam and kills slime.</li>
+        <li><b>Fizz.</b> Acid on baking soda fizzes into carbon dioxide. It's heavier than air, so it sinks and pools in low places, puts out fires, and the explorer can't breathe in it. A little dissolves into water, making it faintly acidic.</li>
+        <li><b>Crystals.</b> Still, saturated brine slowly grows glowing salt crystals on any surface, and fresh water dissolves them again.</li>
+        <li><b>Electrolysis.</b> Power through brine, or a live metal or copper rod dipped in fresh water, splits the water into <b>hydrogen</b> and <b>oxygen</b>, two bubbles of hydrogen to one of oxygen. No water is made or lost, and the salt stays behind, so split brine gets saltier. Strong brine gives <b>chlorine</b> instead of oxygen and turns to lye as it goes (the chlor-alkali process).</li>
+        <li><b>Smelting.</b> <b>Ore</b> (red iron oxide, found in veins deep underground) gives up its iron only to carbon: ore touching <b>charcoal</b> above 900° becomes molten, carbon-rich iron (it stays runny down to 1150°) and the charcoal goes off as carbon dioxide; a third comes out as <b>molten slag</b>, which floats on the iron and sets into <b>slag</b>. Burning charcoal (1300°) does it, as does charcoal in lava. Ore on its own only melts into slag above 1565°.</li>
+        <li><b>Real chemistry.</b> Reactions follow real chemistry, each written as one rule (js/chem.js): what reacts, how fast, what it makes and the heat it gives or takes.
+          <ul>
+            <li><b>Acid</b> fizzes carbon dioxide off <b>limestone</b>, coral, baking soda and ash, leaving salt; dissolves <b>zinc</b> briskly, iron steadily and <b>aluminium</b> slowly, giving <b>hydrogen</b> and metal salts; dissolves rust and ore; eats soil, wood, plants, wax and wool; and chars sugar into black carbon. <b>Copper</b>, <b>gold</b>, glass, sand and stone resist it. Lye eats aluminium and zinc too.</li>
+            <li><b>The lime cycle.</b> Limestone or coral above 825° burns into <b>quicklime</b>, giving off CO₂. Water on quicklime slakes it into <b>lime mortar</b>, hot enough to boil the water. Mortar hardens back into limestone in CO₂, quickly, or slowly in open air: build with it.</li>
+            <li><b>Charcoal and ash.</b> Wood heated shut off from air chars into charcoal, which lights at 350° and burns hotter and longer. Burnt wood leaves <b>ash</b>, which fizzes in acid and melts sand into glass.</li>
+            <li><b>Glass.</b> Sand with baking soda or ash melts into glass above 1000°; on its own it needs 1700°.</li>
+            <li><b>Thermite.</b> Aluminium touching rust or ore, held above 1500°, burns into 2500° molten iron and slag, with no air needed.</li>
+            <li><b>Chlorine</b> is a heavy, choking gas that pools low. It dissolves into fresh water as acid, makes <b>bleach</b> with lye, and explodes with hydrogen when lit. Bleach and acid give chlorine back; bleach kills algae.</li>
+            <li><b>Soap.</b> Lye turns oil into a soapy foam that settles into soapy water. Soapy water takes oil in as cloudy <b>oily water</b> that stays mixed; oil and water churned hard together mix the same way but separate again within a minute or so, oil on top.</li>
+            <li><b>Iron rusts</b> where water and air both reach it (deep under water, much more slowly), several times faster in brine; heated, rust dries into ore. <b>Copper</b> slowly goes green in wet air and still conducts. Gold never changes. Aluminium, zinc and gold carry power; so does quicksilver.</li>
+          </ul></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Fantasy liquids</h2>
+      <ul class="liquids">
+        <li><span class="sw" style="background:#b98cf5"></span><div><b>Aether.</b> Falls upward and pools on ceilings. It is lighter than every other liquid, so it bubbles up through them. It glows violet, sheds drifting motes, and crystallises lava into glowing crystal.</div></li>
+        <li><span class="sw" style="background:#c4ccd8"></span><div><b>Quicksilver.</b> Heavy, fast and opaque. It sinks through any other liquid and pushes it up instead of reacting, and it beads up rather than spreading thin. Pour it into a lake to watch the water lift.</div></li>
+        <li><span class="sw" style="background:#7dec4a"></span><div><b>Acid.</b> Eats through dirt, wood, ice and honey blocks it touches, fizzes limestone and dissolves most metals, using itself up as it goes (stone, glass, sand, copper and gold resist it). Water dilutes it back to water. It fizzes and gives off a green glow.</div></li>
+        <li><span class="sw" style="background:#a8e4ff"></span><div><b>Frost.</b> A slow, glittering liquid that freezes fresh water it touches into ice; strong brine resists it. Its inexhaustible magical cooling is a recorded external heat sink. Thin puddles freeze solid on their own. Lava melts ice back into water.</div></li>
+      </ul>
+      <p>Underground is dark. Sky light seeps in through openings, and lava, aether, acid, frost and crystal light the caves around them. Toggle it with <kbd>L</kbd>.</p>
+    </div>
+    <div>
+      <h2>World, time and sound</h2>
+      <ul>
+        <li>The world is 512 × 128 tiles. The camera follows the explorer. <kbd>Shift</kbd>- or middle-drag pans it and stops following (<kbd>J</kbd> resumes), and the mouse wheel or <kbd>Z</kbd> zooms between 1× and 2×.</li>
+        <li><b>Sleeping chunks.</b> The map is split into 16 × 16 tile chunks. The liquid update skips a chunk once nothing in or next to it has changed for a second, and anything that touches it wakes it again. <b>Active chunks</b> (<kbd>B</kbd>) outlines the awake ones. Once things settle, most of the world sleeps.</li>
+        <li><b>Day and night</b> take three minutes. The sky is a smooth gradient; its light dims and turns blue at night, warms at dawn and dusk, and stars and the moon come out. Glowing liquids, fire and the explorer's lantern matter more after dark. The clock is in the status line.</li>
+        <li><b>Time of day</b> (in Display &amp; world) can hold the world at noon or midnight, or stop the clock where it is; back on day and night it carries on from there. Seasons keep turning either way.</li>
+        <li><b>Sound</b> (<kbd>M</kbd>) is synthesized in the browser: splashes, sizzling steam, crackling fire, acid fizz, a chime when crystal forms, switch clicks and a pump hum. Sounds are quieter the further they are from the middle of the view, and pan left or right.</li>
+        <li>Each liquid sounds like itself when it splashes or is poured: water splashes, lava blorps, honey and mud gloop, acid hisses, quicksilver pings. Liquids in view make their own sounds too (lava pops, acid fizzes), and bubbles blub.</li>
+        <li><b>Music</b> is a soft score made up as it plays: a slow pad and a sparse melody, in a major key by day and a quieter minor one at night, darker in the rain.</li>
+        <li><b>Looks.</b> Distant hills and the cave walls scroll slower than the world. Clear water reflects what's above it and throws moving light on its bottom in sunlit shallows, and bubbles rise from gas, fizzing, boiling water, fish and the explorer underwater.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Fire and living liquids</h2>
+      <ul>
+        <li><b>Sealed terrarium.</b> Choose it in Mode to watch a finite jar with two fish, two plants and a starting algae population. Glass holds matter inside while daylight supplies energy. Darkness and overfeeding can exhaust oxygen; this is an experiment, with no promise of indefinite survival. Save &amp; share keeps the actual jar, including its age and remaining food.</li>
+        <li><b>Oil</b> floats on water and shows a rainbow sheen. Above 150° it ignites, as long as it touches open air. Fire heats everything around it, so it spreads to more oil, wood, honeycomb and crates. Water puts out burning wood, but it sinks under burning oil instead of covering it, so an oil fire keeps burning on top of a lake. Smother it with dirt or stone, or let it burn out.</li>
+        <li><b>Wood</b> (<kbd>Y</kbd>) burns away after a few seconds. Fire lights up the caves.</li>
+        <li><b>Slime</b> creeps slowly and eats the dirt it touches, turning it into more slime, up to a limit. Heat, lava and acid kill it, frost freezes it, and bloomwater calms it into moss.</li>
+        <li><b>Bloomwater</b> turns stone into glowing moss and sprouts glowcap mushrooms on dirt, using itself up as it goes. It also neutralises acid.</li>
+        <li><b>Pressure</b> (<kbd>O</kbd>) is on: liquid pressing down on a full body comes out at that body's lowest open edge, so both arms of a U-bend, or two shafts joined by a tunnel, level out. Turn it off to save a little time.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Mixing</h2>
+      <ul>
+        <li><b>Dissolved contents.</b> Water can carry salt, sugar, essence and ink. They flow with it and slowly spread into the water around them. Point at a tile to read what it holds.</li>
+        <li><b>Salt</b> (<kbd>S</kbd>) is a powder that dissolves into water as brine. Brine is heavier, so it sinks under fresh water and lakes form layers. It freezes far colder than fresh water, frost can't freeze it, and boiling it away leaves salt behind.</li>
+        <li><b>Inks</b> tint water red, yellow or blue. Where two colours meet they mix like paint: red and blue swirl into purple, blue and yellow into green.</li>
+        <li><b>Water</b> dissolves honey into sugar; icy water (below 10°) sets it into honeycomb instead. <b>Bloomwater</b> dissolves into water as essence.</li>
+        <li><b>Brewing.</b> Water with sugar and essence, heated past 80°, brews into glowing <b>tonic</b>. Tonic grows moss and glowcaps fast, and a dip wards the explorer against lava, acid and heat for ten seconds. Salt and essence chilled below 0° brew into frost.</li>
+        <li><b>Foam.</b> A pump forcing oil into water (or water into oil), or water crashing onto oil, churns the two into foam. Foam floats on water and slowly separates back into oil on top of water.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Powders</h2>
+      <ul>
+        <li><b>Sand</b> (<kbd>A</kbd>) and salt fall, slide off each other into slopes, and sink through liquids lighter than themselves. Sand floats on quicksilver.</li>
+        <li><b>Fine amounts.</b> A powder tile holds an amount, like a liquid: boiling or drying brine leaves just the salt that was in it (a pinch from weak brine, nearly a tile from strong), syrup leaves <b>sugar</b>, and snow falls in thin layers. Layers settle onto each other into piles; only heaped powder slides into slopes; thin layers don't stop the explorer, and water dissolves powder a little at a time. Sugar caramelises above 180°.</li>
+        <li>Sand soaks up water into slow, sticky <b>mud</b>, which sinks under water. Heat dries mud into dirt; lava fires it into <b>clay brick</b>.</li>
+        <li>Sand touching lava melts into <b>glass</b>: a see-through block that lets light into caves. Acid can't eat it. The Glass tool places it directly.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Momentum</h2>
+      <ul>
+        <li>Moving liquid keeps moving. A broken dam surges across a tank, climbs the far wall and sloshes back before it settles. Thick liquids like honey and mud hardly slosh.</li>
+        <li>Pump outlets and springs jet their liquid sideways, falls splash outward where they land, blasts throw liquid out, and anything dropped into a pool sends out a wave. Fast water shows whitecaps.</li>
+        <li>Currents carry floating objects, waterfalls shove them under, and a drain at the bottom of a pool becomes a <b>whirlpool</b> that drags them round. Turn <b>Momentum</b> off for the old, calmer flow.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Weather and erosion</h2>
+      <ul>
+        <li><b>Weather</b> (<kbd>I</kbd>). Open water evaporates into the air, more in warm, sunny, windy, dry weather. Rising or cooling air condenses into <b>clouds</b>, which drift on the wind and rain on what's under them, or <b>snow</b> where it's below freezing. <b>Rain now</b> gathers the air's moisture into clouds over the view, so in dry air it brings little rain.</li>
+        <li>Air gets colder with height, so wind pushed up a mountain rains on that side and the far side stays dry. Calm, cold nights leave <b>fog</b> in the valleys. Tall storm clouds over warm ground throw <b>lightning</b>, which sets wood alight, powers metal and sets off nitro.</li>
+        <li>The <b>wind</b> shifts every few minutes. It carries clouds, smoke and gas, ruffles open water, fans fires downwind and turns <b>windmills</b>. The status line shows the season, day and wind.</li>
+        <li>The open air is warm by day and freezing at night, and the year turns through four seasons over eight days. Lakes under the open sky freeze over on cold nights. Caves keep a steadier temperature that rises the deeper you go. Turn Weather off for still, mild skies.</li>
+        <li><b>Seasons show.</b> Leaves go from fresh green in spring to deep green in summer, yellow, orange and red in autumn, and fall away to bare branches in winter, when the grass turns frosty. Puzzles stay in summer.</li>
+        <li><b>Weather extremes.</b> Storm clouds in freezing air throw <b>hail</b>: stones that knock leaves off trees and hurt the explorer. Deserts and badlands now and then get a <b>cloudburst</b>: a sudden storm that gathers the air's moisture over the region and dumps it at once, sending flash floods down the dry gullies.</li>
+        <li><b>Erosion.</b> Fast water wears away dirt and sand and carries them off as brown silt, most of all where a waterfall lands. Where the water settles, the silt sinks and drops out as mud, and buried mud slowly packs back into damp soil, so streams dig their own channels and pools.</li>
+        <li><b>Valleys and deltas.</b> A river wears away the soil over it as well as beside and under it, and a bank it undercuts slumps in as mud and is washed away, so over time its channel opens into a valley. Where it reaches still water the silt sinks and settles, and a delta builds out from its mouth.</li>
+        <li><b>Groundwater.</b> Rain and puddles soak into soil, which holds up to about a third of its volume in water. The water sinks and spreads until it gathers over the rock as a water table. Soaked soil seeps water out wherever it meets open space, so hillsides grow springs and a pit dug down into soaked ground fills up like a well.</li>
+        <li><b>Lake ice floats.</b> Ice that freezes on water drops as the water under it drains, comes back up through water poured over it, and pieces break off a sheet's edge and drift with the current and the wind.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Biomes</h2>
+      <ul>
+        <li>Every world starts in <b>grassland</b> and runs through three to five other biomes, each with its own climate, ground and features: <b>forest</b> and <b>jungle</b> with trees, a <b>swamp</b> of silty pools and mud, <b>desert</b> dunes with the odd oasis, <b>salt flats</b> round a brine lake, <b>badland</b> mesas of clay and brick, <b>tundra</b> snow over permafrost, <b>glacier</b> peaks of ice, a <b>coast</b> with a tidal sea, and a <b>volcano</b> with a lava crater, a geyser and a gas vent.</li>
+        <li>Biomes have dry and wet spells: a drought warms the air so clouds dissolve and puddles dry fast; a wet spell cools it and draws moist air in. Humid biomes such as jungle and swamp gather moisture from the rest of the world's air, and dry ones lose theirs. The status line names the biome you're looking at.</li>
+        <li><b>Nothing comes from nowhere.</b> Every drop of rain and flake of snow evaporated from somewhere first: lakes and puddles, drying mud and soil, and plants, which breathe out the water they drink. The tide fills the coast from the open sea beyond the edge and drains back into it.</li>
+        <li><b>Rivers.</b> Forests, jungles and grasslands away from the start often have a river: it rises at the highest ground, runs down a channel on a clay bed and ends in a clay-lined pond with fish and a pike. Water that brims over the pond seeps back underground to the source, so a river flows without making or losing water; the sun evaporates some, and rain gives it back. Forests and jungles have moths, and trees slowly regrow the leaves they eat.</li>
+        <li>Deep down every world has water-filled <b>aquifers</b> (dig carefully), pockets of oil and quicksilver, and a <b>magma sea</b> at the very bottom.</li>
+        <li><b>Deep caverns.</b> Just above the magma, in every fifth of the world, is a wide, warm hall lit by glowing <b>crystals</b> that hang from its roof and stand on its floor. Each has a pool: quicksilver or oil on the floor, or <b>aether</b> gathered under the roof, since aether rises.</li>
+        <li>New blocks: <b>snow</b> (melts into water, packs into ice), <b>permafrost</b> (thaws into mud), <b>clay</b> (bakes into brick); new machines: <b>windmill</b>, <b>geyser</b> and <b>gas vent</b>.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Creatures, plants and puzzles</h2>
+      <ul>
+        <li><b>Fish</b> swim in water and breed in a pool together. Stranded, they flop towards water they can see and soon die; acid, toxic gases, power, lava and hot water kill them. A new world has some in the cave lake.</li>
+        <li><b>Salamanders</b> live in lava and glow. Out of it they wander, setting what they walk on alight, but water kills them and they can't stay cool for long.</li>
+        <li><b>Pike</b> are big fish that hunt the small ones, which flee them. A pike breeds only after a good meal and starves without prey, then rots and feeds the algae the small fish eat, so a lake swings between them instead of filling up.</li>
+        <li><b>Moths</b> flutter low over the ground and eat leaves. They breed while fed and die of hunger, frost, fire or a soaking, so winter thins them out. Fish leap out of the water to snap up moths flying low over it.</li>
+        <li><b>Birds</b> live in forests and jungles. By day they wander well above the ground and swoop on the nearest moth; a bird that has eaten a few breeds with another nearby. At night they roost. Water, fire, heat, hunger and a hard frost kill them.</li>
+        <li><b>Slimelings</b> hop about and bite the explorer. They soak up slime and split in two. Salt, acid, lava and power kill them.</li>
+        <li><b>Plants</b> grow from a <b>Seed</b> on soil, drinking water from around their roots (tonic makes them shoot up), and wilt in a drought. Roots take finite nutrients from connected soil; light, water, nitrogen and phosphate fund new growth. A grown plant regrows leaves and can drop seeds on nearby open soil.</li>
+        <li><b>Algae</b> grows where water receives light and has carbon, nitrogen and phosphate. A thick <b>bloom</b> can use up oxygen at night and suffocate fish. Cold water slows algae activity and fish food use; algae stops growing below 8° and can die back. Clear ice admits daylight; snow blocks it. <b>Fish</b> graze algae and pay for offspring from their food reserves. Keep deep water available as a refuge from hot shallows and drying banks. Dead organisms and wilted plants <b>rot</b>, returning their stored nutrients.</li>
+        <li><b>Plants live on sunlight.</b> In daylight, with water, a plant takes carbon dioxide from the air round its top and gives back oxygen, storing the sugar it makes (photosynthesis); day and night it burns some of that sugar to live (respiration). Growing costs sugar, so a plant in the dark, or in air with no CO₂ left, stops growing and in time wilts. Roots drink from damp soil as well as water; a plant begins wilting after about a day of drought. Under a roof, the water a plant breathes out runs back down instead of escaping.</li>
+        <li><b>Flowers and bees.</b> A grown plant with sugar to spare flowers, and its flower fills with nectar. <b>Bees</b> carry nectar home as honey and can build more comb. In cold weather they return to their hive and spend stored honey and oxygen to warm the air beside it. Keep a clear flight path and fresh air available. Empty hives cannot supply heat, and unventilated hives can run out of oxygen. Forests have wild nests. Melt the comb for its honey.</li>
+        <li><b>The nitrogen cycle.</b> Things that die in water rot into <b>ammonium</b>, using the water's oxygen; fish give it off too, and too much poisons them. With oxygen, bacteria turn it into nitrate (fertiliser), which feeds algae and plants; in airless water other bacteria turn nitrate into nitrogen gas. Soil under water uses a little oxygen as its organic matter rots.</li>
+        <li><b>Carbon dioxide in water.</b> Whatever breathes in water (fish, rot, algae at night) gives off CO₂ into it, and the water trades it with the air above, so a sealed jar's fish feed its plant. Algae need it to make oxygen.</li>
+        <li><b>Yeast.</b> Sugar water (or honey dissolved in water) left open catches wild yeast. With oxygen, yeast multiplies on the sugar; shut away from air it ferments the sugar into <b>alcohol</b> and carbon dioxide until the alcohol builds up enough to stop it. Between 10° and 40° only. Left in the air, alcohol slowly turns to vinegar (weak acid).</li>
+        <li><b>Alcohol and stills.</b> Strong spirit can burn where oxygen reaches it. Heating fermented water sends alcohol-rich vapor upward; cool it in a separate chamber to collect stronger spirit. Distillation needs heat and space for vapor, and salt and sugar stay behind. If the solid residue has nowhere to go, the last drop waits.</li>
+        <li><b>Puzzles.</b> Pick a level from the <b>Mode</b> menu. Each one has a goal, a dashed goal region and only the tools it needs; some can be lost, so watch the goal bar. Sandbox brings back the open world. The first five are about flows, heat and steam; the next four about pressure (Two shafts), gas mixtures (Thunder dome), sensors (Depth gauge) and smelting (Furnace). Puzzles run with still weather and with pressure on.</li>
+        <li><b>Level editor</b> (in the <b>Mode</b> menu). Build a level in the world with any tool, then give it a name, a goal (fill the goal area with a liquid, make blocks in it, get creatures or the explorer into it, or light lamps there), a way to lose if you like, and the tools players may use. Mark the goal area by dragging over it. <b>Play test</b> starts it from the world as it is; <b>Back to editor</b> returns. <b>Copy level code</b> gives a code anyone can play with Save &amp; share › Load code.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Gases and nitro</h2>
+      <ul>
+        <li><b>Gases</b> flow like thin liquids. <b>Smoke</b> rises from fires and thins out. <b>Methane</b> bubbles up from slime and collects under ceilings; it drifts away in open sky. <b>Toxic fumes</b> (sulfur dioxide from gas vents, mercury vapour from boiling quicksilver) and <b>chlorine</b> are heavier than air and pool in hollows and on water. They hurt the explorer; fumes wither moss.</li>
+        <li>Methane catches above 537° or from a flame where oxygen is available. Fire spreads through exposed gas and leaves unburned fuel when oxygen or room for its products runs out.</li>
+        <li><b>Hydrogen</b> is the lightest gas: it rises and escapes from the open sky. Above 500°, or from a flame, it burns into steam if oxygen and product space are available. A sealed chamber of pure hydrogen cannot burn by itself. <b>Oxygen</b> is a little heavier than air: it pools in hollows and mixes into the surrounding air. The explorer can breathe it, and fires use it up.</li>
+        <li>Gases don't carry, lift or shove the explorer or other bodies; they only matter where they hurt (poison gas, scalding steam). Oxygen sinks slowly, like the heavier gases.</li>
+        <li><b>Warm and cold liquids.</b> Honey runs when warm and stiffens in the cold, oil thickens in the cold, and lava, molten metal and slag slow down as they cool towards setting.</li>
+        <li>Different gases diffuse into each other where they meet, so a rising and a sinking gas leave a mixed band between them.</li>
+        <li><b>Mixtures explode.</b> Hydrogen or methane touching oxygen doesn't just burn when lit: it explodes like nitro, and the blast sets off the rest of the mixture.</li>
+        <li><b>Nitro</b> (<kbd>U</kbd>) explodes above 150°, after a fall of six rows or more, or when live power touches it, so a lever and a metal line make a detonator. It sinks through water, where it's safe. A blast breaks blocks (not obsidian, metal or machines), throws liquid and objects outward, leaves smoke, and heats everything nearby, so one charge sets off the next.</li>
+        <li><b>Frozen nitro.</b> Below 12° nitro freezes into a pale block that's safe: it can't fall, and the pickaxe can dig it and carry it in the bag. Above 14° it thaws back into nitro, and heat or a nearby blast still sets it off.</li>
+        <li><b>Rust.</b> Iron rusts where water and air both reach it, several times faster in brine or acid, and only slowly deep under water. Rust is crumbly, doesn't carry power, and acid eats it; heated above 200° it dries into ore, which charcoal smelts back into iron. Metal in the built-in puzzles doesn't rust.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Power</h2>
+      <ul>
+        <li><b>Conductors.</b> Metal, <b>stormwater</b> and brine carry power from any switch or generator touching them to every machine they touch, so a pool can be wiring. Fresh water doesn't conduct. Live liquid crackles and glows, kills slime, and throws the explorer out.</li>
+        <li><b>Long lines lose power.</b> Power fades as it travels: it reaches about 120 tiles of copper, 60 of metal or 40 of brine or stormwater from its source, and machines further out get none. Hover over a conductor to see how much is left. Wires made with the Wire tool don't fade.</li>
+        <li><b>Molten metal</b> is heavy and white-hot. It sets into metal as it cools, or at once where water hits it, so you can pour your own wires.</li>
+        <li><b>Generators.</b> A <b>turbine</b> spins while steam presses on it, and cools that steam back into rain. A <b>water wheel</b> turns while liquid flows past it. A <b>boiler</b> heats to 200° while powered, and heats the liquid touching it, so a pot over boilers boils: put one under a tank, a turbine above, and the turbine powers whatever it's wired to.</li>
+        <li><b>Solar panels</b> make power in daylight under open sky (not under heavy cloud or at night), or underground beside a pool of <b>liquid light</b>.</li>
+        <li><b>Batteries</b> charge while a powered line or a wire feeds them (a full charge lasts 20 s), and give the power back to the line and their wires once nothing else does, so a solar panel's lamp stays lit after dark.</li>
+        <li><b>Lamps</b> light up only while powered. <b>Motors</b> run only while powered: a running motor drives every machine it touches, as if wired to it, and pushes liquid through itself towards its marked side (click it to turn it round). An <b>electromagnet</b> pulls ferrofluid and iron weights like a magnet block, but only while powered.</li>
+        <li><b>Coolant-fed boilers.</b> A boiler touching coolant runs on the coolant's heat instead of its own: it boils while the coolant is above 200° and draws that heat off. Heat coolant on lava and pipe it to a boiler somewhere else.</li>
+        <li><b>Logic.</b> <b>AND</b>, <b>OR</b> and <b>NOT</b> gates and <b>counters</b> take their inputs from wires and touching conductors, and switch whatever they're wired to. A counter turns on at every Nth pulse; click it to change N. Click a <b>liquid sensor</b> with a liquid picked to make it sense only that liquid.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Pipes</h2>
+      <ul>
+        <li><b>Pipes</b> (<kbd>N</kbd>) are closed except at their ends. Liquid flows from the end with the higher surface to the lower end, and climbs into a tank that's already filling, so two tanks joined by a pipe level out.</li>
+        <li>A <b>valve</b> is a pipe tile that passes liquid only while it's powered, or after you click it open. A <b>filter</b> passes only the liquid that was picked when you placed or clicked it.</li>
+        <li>A <b>separator</b> splits foam back into oil and water and extracts dissolved salt. Sugar, essence and ink stay in the liquid. Leave space beside it for salt grains: once its storage fills, it waits for an outlet.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Switches and machines</h2>
+      <ul>
+        <li><b>Switches</b>: a <b>lever</b> flips when clicked with the Lever tool, or when the explorer stands by it and presses Down. A <b>pressure plate</b> is on while an object or deep liquid rests on it. A <b>liquid sensor</b> is on while any side touches liquid at least half a tile deep. A <b>timer</b> is on for half of its cycle; click it to change the cycle. A <b>temperature sensor</b> is on while it's hotter than its setting, and a <b>depth sensor</b> while at least its setting's depth of liquid stands over it (gas doesn't count); click either to change the setting.</li>
+        <li><b>Pixels</b> light up in their colour while powered (click one to change it), and don't pass power on, so a row of them wired one by one makes a sign or a counter.</li>
+        <li><b>Targets</b>: a <b>floodgate</b> is solid when closed and passable when open. A <b>spring</b> pours its liquid without end (click it to switch to the liquid you last picked). A <b>drain</b> swallows liquid on all sides. Pumps can be targets too.</li>
+        <li><b>Wiring</b>: with the Wire tool (<kbd>K</kbd>), click a switch, generator or logic gate, then click each target to link or unlink it. A linked target runs while any of its switches is on. Targets with no wire and no live conductor keep their own setting: springs, drains, boilers and separators always run, gates and valves toggle when clicked, and lamps, motors and electromagnets stay off.</li>
+        <li>The lever next to the explorer switches the lake pump. The pump starts off, leaving the lake undisturbed until you use it.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Heat</h2>
+      <ul>
+        <li><b>Air.</b> Every pocket of air has its own oxygen and carbon dioxide. Air open to the sky is always fresh; a cave or a room with a doorway is topped up from outside, hot air rising draws fresh air in, and a sealed room is not. Fires use oxygen and give off CO₂, and below 15% oxygen nothing burns, so a fire in a sealed room goes out. Below 12% oxygen, or above 5% CO₂, the explorer runs out of breath; moths and birds choke too. CO₂ and oxygen gas that thin out join the air around them. Hover over air to read it.</li>
+        <li><b>Oxygen in water.</b> Water holds a little dissolved oxygen: 14.6 mg/L ice-cold, 9 at 20°, less when warm or salty. It takes oxygen in at its surface, faster where it's moving; below, only mixing brings it down. Fish use it and can suffocate below 3 mg/L (pike below 1.5). Algae make oxygen in daylight and also use it for respiration, so a thick bloom can cause a nighttime oxygen shortage. Decaying organic matter uses oxygen too; a still pond with that substrate can become oxygen-poor and release methane. Hover over water to read its oxygen.</li>
+        <li><b>Layers.</b> Water of different density stacks: brine and syrup sink under fresh water, warm water floats on cold, and water is densest at 4°, so a lake freezes from the top and turns over when its surface cools in autumn.</li>
+        <li><b>Heat.</b> Materials differ in density, heat capacity and conductivity. Heat flows from tile to tile, so a hot iron block dropped in a lake warms the lake only a little (water holds about as much heat per tile as iron, and there's far more of it). Copper and metal carry heat fast, water and rock slowly, wool and snow hardly at all; flowing liquid carries its heat along.</li>
+        <li><b>Melting and boiling take heat.</b> Ice sits at 0° until it has taken in enough heat to melt, so ice keeps a drink near 0°; a pot holds at 100° while it boils away; and steam gives that heat back as it condenses, which is why it scalds. Water freezes at 0° (salt water colder), lava sets at 1000°, iron at 1538°, all once they've given up their heat. Falling water, lava or metal doesn't set in mid-air.</li>
+        <li><b>Lava</b> comes out at 1150° and pools are kept hot from below, so a lava lake crusts over at its rim and stays molten inside. Thin films can't keep hot and set into basalt. The rock round the magma sea is as hot as the magma and glows.</li>
+        <li><b>Real temperatures:</b> clay fires into brick at 900°, iron melts at 1538° (the Heat brush reaches 1800°), honey caramelises at 160° and sugar at 170°, oil smokes at 200° and catches at 250°, wood at 260°, methane at 537°, hydrogen at 500° (or at once from a flame), nitro goes off at 218°, acid boils off at 300°, and mud dries into dirt at 100°. Frost holds itself at −40°.</li>
+        <li>The <b>Heat</b> and <b>Chill</b> brushes change temperature directly. <b>Heat view</b> (<kbd>H</kbd>) colours every tile by temperature.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>When liquids meet</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Pair</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td>water + lava</td><td>obsidian, steam</td></tr>
+            <tr><td>icy water + honey</td><td>honeycomb</td></tr>
+            <tr><td>lava + honey</td><td>crisp honey</td></tr>
+            <tr><td>aether + lava</td><td>glowing crystal</td></tr>
+            <tr><td>aether + anything</td><td>swaps places and rises</td></tr>
+            <tr><td>quicksilver + anything</td><td>swaps places and sinks</td></tr>
+            <tr><td>acid + water</td><td>acid dilutes into water</td></tr>
+            <tr><td>acid + lava</td><td>acid boils off as smoke</td></tr>
+            <tr><td>acid + honey</td><td>acid eats the honey</td></tr>
+            <tr><td>frost + water</td><td>water freezes to ice</td></tr>
+            <tr><td>frost + lava</td><td>obsidian, steam</td></tr>
+            <tr><td>frost + acid / honey</td><td>ice / honeycomb</td></tr>
+            <tr><td>water + honey</td><td>sugar dissolved in the water</td></tr>
+            <tr><td>water + bloomwater</td><td>essence dissolved in the water</td></tr>
+            <tr><td>oil + water, churned</td><td>foam</td></tr>
+            <tr><td>mud + lava</td><td>clay brick</td></tr>
+            <tr><td>sand + water / lava</td><td>mud / glass</td></tr>
+            <tr><td>molten metal + water</td><td>metal, steam</td></tr>
+            <tr><td>stormwater + lava / frost</td><td>obsidian / ice</td></tr>
+            <tr><td>methane + lava or heat</td><td>a flash fire</td></tr>
+            <tr><td>acid + iron, zinc, aluminium</td><td>hydrogen</td></tr>
+            <tr><td>acid + limestone, coral, baking soda</td><td>carbon dioxide</td></tr>
+            <tr><td>chlorine + lye</td><td>bleach</td></tr>
+            <tr><td>bleach + acid</td><td>chlorine</td></tr>
+            <tr><td>nitro + heat, a fall or power</td><td>explosion</td></tr>
+            <tr><td>quicksilver above 357°</td><td>toxic vapour</td></tr>
+            <tr><td>hot foam</td><td>oil (its water boils off)</td></tr>
+            <tr><td>water + smoke / toxic fumes / chlorine</td><td>the water soaks it up (chlorine as acid)</td></tr>
+            <tr><td>water + crisp honey</td><td>sugar dissolved in the water</td></tr>
+            <tr><td>salt + ice</td><td>brine</td></tr>
+            <tr><td>mud under still water</td><td>swamp gas (methane)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Pumps and floaters</h2>
+      <ul>
+        <li><b>Pumps.</b> With the Pump tool, click once to place an inlet and again to place its outlet. A wire links the pair. The inlet drinks from its four neighbours and the outlet releases the same liquid on its top and sides, at up to 48/255 per tick. It only releases downward when its top and sides are walled in. Click either end to switch the pair on or off. The status light shows the colour of the liquid it's moving. Digging out one end removes both.</li>
+        <li><b>Buoyancy.</b> Each tick a body measures how much of its box is under liquid, tile by tile, using the drawn height of each tile's liquid. It sinks with gravity <code>g</code> and is pushed up by <code>g × Σ(area × liquid density) / (box area × body density)</code>. Drag depends on the liquid, and a small sine term makes floating bodies bob.</li>
+        <li><b>Currents.</b> Level differences across a body push it sideways, so a pump outlet or a spill carries crates along.</li>
+      </ul>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Object</th><th>Density</th><th>Floats on</th></tr></thead>
+          <tbody>
+            <tr><td>crate</td><td>0.6</td><td>everything but aether. Burns in lava, rots in acid.</td></tr>
+            <tr><td>explorer</td><td>0.85</td><td>everything but aether, floating low with the head out. Swims with Up and hops out of lava and acid.</td></tr>
+            <tr><td>weight</td><td>7</td><td>quicksilver only (13.5). Sinks through lava (3.1), honey (1.4) and water (1.0).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Flow rules, in update order</h2>
+      <ol>
+        <li>Each tile stores one liquid and an amount from <code>0</code> to <code>255</code>. The grid updates bottom row first, alternating row direction each tick.</li>
+        <li><b>React</b> with touching liquids, then with touching blocks (lava melts ice, thin frost freezes); every 4 ticks the chemistry rules in js/chem.js run.</li>
+        <li><b>Fall</b> one tile in the liquid's gravity direction: down for most, up for aether. A denser liquid falling onto a lighter one swaps with it.</li>
+        <li><b>Spread</b> by averaging with lower side neighbours. Each liquid has its own minimum puddle size and its own tick rate, which sets how thick and slow it is.</li>
+      </ol>
+      <p>Each liquid is one row in a property table: gravity, tick rate, puddle thresholds, density, glow and palette. A new liquid is mostly a new row plus its reactions.</p>
+    </div>
+  </section>
+</div>
+
+<script type="module" src="js/main.js"></script>

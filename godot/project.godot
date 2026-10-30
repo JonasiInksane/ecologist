@@ -1,0 +1,27 @@
+; Ecologist's native material and machine sandbox. The browser remains the full simulation.
+config_version=5
+
+[application]
+config/name="Ecologist"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+run/max_fps=60
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=800
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+; The tested Windows OpenGL driver throttles windowed runs with vsync enabled.
+; Rendering is capped at 60 fps above; simulation keeps its independent fixed clock.
+window/vsync/vsync_mode=0
+
+[physics]
+common/physics_ticks_per_second=60
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+environment/defaults/default_clear_color=Color(0.055, 0.085, 0.10, 1)

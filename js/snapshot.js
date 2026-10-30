@@ -33,8 +33,8 @@ function capture() {
   return { format: FORMAT, version: VERSION, W, H, NSOL, arrays, lists, devices: structuredClone([...devices]), tide: structuredClone(tideState()), state };
 }
 function restore(snap) {
-  if (!snap || snap.format !== FORMAT) throw new Error('That isn\'t a Tidepool world.');
-  if (snap.W !== W || snap.H !== H) throw new Error(`That world is ${snap.W} × ${snap.H} tiles, made by a different version of Tidepool; this one is ${W} × ${H}.`);
+  if (!snap || snap.format !== FORMAT) throw new Error('That isn\'t an Ecologist world.');
+  if (snap.W !== W || snap.H !== H) throw new Error(`That world is ${snap.W} × ${snap.H} tiles, made by a different version of Ecologist; this one is ${W} × ${H}.`);
   if (snap.NSOL !== NSOL && snap.arrays.sol) {   // an older save with fewer dissolved channels: copy the ones it has
     const old = snap.arrays.sol, n = Math.min(snap.NSOL, NSOL), fresh = new Float64Array(W * H * NSOL);
     for (let k = 0; k < W * H; k++) for (let i = 0; i < n; i++) fresh[k * NSOL + i] = old[k * snap.NSOL + i];
@@ -180,7 +180,7 @@ async function packWorld(snap) {
 }
 async function unpackWorld(code) {
   const text = String(code).trim(), prefix = [CODE_PREFIX, OLD_PREFIX].find(p => text.startsWith(p));   // version 1 codes still load
-  if (!prefix) throw new Error('That isn\'t a Tidepool world code; it should start with ' + CODE_PREFIX);
+  if (!prefix) throw new Error('That isn\'t an Ecologist world code; it should start with ' + CODE_PREFIX);
   let bytes;
   try { bytes = await pipeBytes(fromBase64(text.slice(prefix.length).replace(/\s+/g, '')), new DecompressionStream('gzip')); }
   catch { throw new Error('That world code is damaged or cut short; copy the whole code and try again.'); }

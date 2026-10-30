@@ -83,7 +83,7 @@ function buildWorldMenu({ afterLoad }) {
   $('exportFile').addEventListener('click', async () => {
     try {
       const url = URL.createObjectURL(new Blob([await packWorld(capture())], { type: 'text/plain' }));
-      const a = Object.assign(document.createElement('a'), { href: url, download: `tidepool-seed-${S.seed}.tidepool` });
+      const a = Object.assign(document.createElement('a'), { href: url, download: `ecologist-seed-${S.seed}.ecologist` });
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       say('Exported the world file. If nothing downloaded, this view blocks downloads: use Copy world code instead.');

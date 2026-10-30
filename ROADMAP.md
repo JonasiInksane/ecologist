@@ -1,4 +1,96 @@
-# Tidepool roadmap
+# Ecologist roadmap
+
+## Current priority: preserve the sandbox in Godot + C++
+
+The engine migration preserves the existing sandbox while supporting the chemistry-game direction below.
+The browser remains the full behavioral reference.
+See [the native foundation specification](docs/design/godot-foundation.md) and README launch instructions.
+
+- [x] Rename the project to Ecologist while retaining old browser saves, codes and entry links.
+- [x] First playable native slice: liquid transport, terrain editing, camera, pause and step.
+- [x] Compare native transport with the actual JavaScript pass and measure it at two grid sizes.
+- [x] Restore the HTML liquid appearance in Godot and compare matched GPU/HTML scenes.
+- [x] First fine-grain layer: sand, sugar and salt with independent one-pixel collision, piling,
+  dissolution and precipitation. Physics benchmark covers 100,000 grains; prototype cap 150,000.
+- [x] Restore the full original liquid/material catalog and placeable sandbox machines: pumps,
+  pipes/valves/filters, wiring/logic/sensors, gates, sources/drains, boilers, separators,
+  generators, motors/magnets, geysers and vents; add native heat, pore storage, phase transitions,
+  exported block reactions and expanded fine powders with regression checks.
+- [ ] Finish physical parity: fire/combustion and explosions with finite atmosphere, remaining
+  solute/gas reactions, pressure/momentum, erosion and complete light behavior.
+- [ ] Port atmosphere and cloud-sourced weather, then plants, creatures and finite ecosystem budgets.
+- [ ] Bring over world generation, browser save import and the existing presentation.
+- [ ] Profile the complete simulation, then optimize chunk scheduling, memory and parallel work.
+
+The first slice is not full-game parity. One million grid cells in a transport benchmark is not
+one million moving particles with all systems and rendering enabled. The direction below is recorded;
+detailed mechanics, progression and balance still need their own designs.
+
+## Game direction: chemistry, manufacturing and trade
+
+User direction: after fine-grain materials, grow Ecologist into a chemistry game with more fluids,
+materials and products made by mixing and processing substances. Support legitimate businesses,
+such as selling sugar, and an optional underground factory/crime layer with police inspections.
+The user approved all five sequences on 2026-10-30. A first playable slice of each is now implemented:
+
+| Sequence | Implemented now | Larger work still ahead |
+| --- | --- | --- |
+| Fine grains | Sand, sucrose, salt, snow, soda, ash and quicklime; individual movement, piles, soluble ingredients and selected transformations | Sediment/liquid displacement, complete reaction parity, larger-scale scheduling |
+| Chemistry | Weighed vessel components, a mass-balanced acid/base reaction, concentration, approximate solubility, heat/cool, separation, preserved ungraded mixtures; native water/sugar/salt chemistry | General equilibria, pressure, pH/rates, broader reactions and full native/browser parity |
+| More substances | Five additional native fluid choices; 23 workshop materials/products; blood/plasma separation | Detailed biological composition, coagulation and broader fluid families |
+| Production/trade | Timed workshop equipment, repeat batches, sugar chain, sales and save/load; separate placeable sandbox machines/pipes | Connecting physical machines to finite stock, demand and quality-sensitive buyers, unified finite physical world |
+| Underground industry | Optional fictional commodity route, suspicion, scheduled inspections, confiscation, fines and temporary closure | Excavated factories, characters and richer game AI |
+
+See [the implementation specification](docs/design/chemistry-workshop.md). Workshop inventory is finite
+and separate from unlimited sandbox brushes. Remaining checkboxes below describe the broader design,
+not a claim that the first slice completes all chemistry or factory gameplay.
+
+### Chemistry foundation
+
+- [x] Use real, recognizable names for implemented ordinary substances and standalone products. A material
+  keeps the same identity and properties across storage, machinery, recipes and trade; avoid
+  generic ingredient labels where an actual substance is modeled.
+- [ ] Extend the shared material/reaction data rather than adding unrelated scripted recipes.
+  Use researched properties and documented approximations at the game's simulation scale.
+- [ ] Model amounts, concentration, temperature, pressure, solubility, acidity and reaction rates
+  consistently. Track inputs, products, residues and heat so production cannot create free matter.
+- [ ] Distinguish mixing/dissolving, separating materials and actual chemical reactions. Product
+  composition and purity should follow the modeled process rather than an arbitrary item unlock.
+- [ ] Expand safe chemistry and fluid families in tested batches, including solutions, oils,
+  suspensions, gases and powders. Keep the existing fantasy materials explicitly separate from
+  claims of real chemistry.
+- [x] Add blood and blood plasma as explicit mixture models and separable workshop products.
+  The current 55/45 mass split is documented as a game approximation of a volume observation;
+  detailed plasma chemistry and biological behavior remain unmodeled.
+- [x] For each implemented process, document its evidence, supported conditions and approximation
+  limits. "Realistic" means consistent and validated within those limits, not a claim to simulate
+  every chemical process exactly.
+
+### Production and economy
+
+- [x] Treat implemented intermediate materials as products in their own right: independently producible,
+  storable, usable and sellable, with composition and purity carried between production chains.
+  Players can specialize in supplying materials without manufacturing the downstream product.
+- [x] Build a first end-to-end workshop business around sugar: raw materials, composition-defined
+  products, processing, storage, packaging and sales. Physical world integration remains above.
+- [ ] Add equipment and automation as the physical systems are ported, with material/energy
+  costs, capacity and waste linked to the chemistry rather than separate economy-only counters.
+- [ ] Design buyers, demand, costs and quality-sensitive prices after the first production chain
+  works. The precise progression and business rules remain open for the user's fuller game plan.
+
+### Optional underground industry
+
+- [ ] Allow underground factories and illegal commodities as game content, including a cocaine
+  inventory/economy item. Illicit-drug production uses fictional, non-instructional recipes;
+  real manufacturing routes, precursors and operating instructions are outside this feature.
+- [x] Implement initial police inspections, an abstract suspicion system and consequences such as confiscation,
+  fines or factory closure as mechanics of a fictional jurisdiction. This is game AI and balance,
+  not a model of real-world evasion tactics.
+- [ ] Keep both legitimate trade and the optional crime route compatible with the same physical
+  world, inventory and production systems. Both routes already share the finite workshop ledger;
+  integration with placed physical machinery remains future work.
+
+## Existing simulation roadmap
 
 Ideas for more liquid interactions and mixing. Today two liquids can only swap places, harden into a block, or
 destroy each other; they can't blend. Phase 1 adds blending, and much of the rest builds on it.

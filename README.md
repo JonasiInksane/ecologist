@@ -1,14 +1,127 @@
-# Tidepool
+# Ecologist
 
-A pixel-art sandbox for tile-based liquids: every tile holds one liquid and an amount from 0 to 255 that falls, spreads,
-reacts, carries heat and burns. Plain JavaScript ES modules with no dependencies.
+A pixel-art sandbox for liquids, fine grains, chemistry and manufacturing. The Godot + C++
+prototype now includes a chemistry workshop and a first production/trade loop. The browser
+remains the reference for the larger weather, ecology and physics simulation.
 
-## Run
+## Native prototype (Windows)
+
+Double-click **`run-ecologist.cmd`** to build and open the Godot sandbox. The local tools are already
+installed in this checkout. On a fresh checkout, install Python 3.11+ and Node.js, then run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action setup
+powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action run
+```
+
+Setup downloads pinned Godot 4.7.2, LLVM-MinGW and godot-cpp into `.tools/`, verifies archive hashes,
+and installs local CMake/Ninja. It does not change system settings. The extension targets Godot's
+4.5 API. Windows x64 is the tested platform; other platforms need their own toolchain/build.
+
+Paint with left drag; select a material with **1–8** or the toolbar. **Space** pauses, **N** advances
+one tick and **R** resets the sandbox (not the workshop ledger). Pan with middle drag or Shift + left drag, zoom with the wheel,
+and adjust brush size with **[ ]** or the toolbar.
+
+The native slice includes falling/spreading liquids, temperature-dependent viscosity, density swaps,
+21 transported dissolved channels, heat/latent-energy transport and sleeping chunks. It uses the
+existing 512 × 128 grid at 60 fixed ticks per second, displayed through one cell texture.
+Liquid rendering now uses the original palettes, depth/transparency, surface ripples, falling
+streams, reflections, caustics and material patterns, with the original sky/dirt/stone treatment.
+
+Sand, sugar and salt now move as individual display-pixel grains on a 4096 × 1024 collision
+field. Sugar and salt dissolve, diffuse and precipitate; the heat/cool brushes drive a limited
+water evaporation/condensation model. Ingredients and their sensible heat are retained through
+these transitions. The grain limit is 150,000 in this prototype; coarse liquid cells remain
+porous to sediment. This is a real fine-grain simulation, not a grain texture over large tiles.
+
+The searchable palette now includes all 34 original liquids plus ethanol, blood, blood plasma,
+vinegar and brine, and the original terrain/machine catalog. Brine uses the same water/salt
+channels as manually dissolved salt. Ink and dissolved ingredients tint the liquid and diffuse.
+Biological materials remain unresolved mixture models.
+
+**Machines are now placeable world objects.** Use the Machines category, then click an empty
+cell to place a device; click with the matching tool to change its setting. Choose a liquid
+first to configure sources, filters or membranes. A pump takes two clicks: inlet, then outlet.
+Wire starts on a switch/sensor/generator; click targets to connect them, then the source to finish.
+Pipes are painted like terrain. Visible wires appear while using Wire.
+
+The native physical pass includes pumps, pipes, valves, filters, gates, levers, timers, sensors,
+logic, springs/drains, boilers, separators, membranes, generators, batteries, motors and magnets.
+Pumps retain blocked output and its ingredients/heat; gates wait for space to displace water.
+Separators recover physical salt grains and split foam. Geysers transfer heated pocket water;
+vents emit the original poison/smoke gases. Day/night and wind controls drive native generators.
+Powered conductors can split water into game-scale gas bubbles while retaining dissolved contents.
+
+Terrain uses the original palettes, transparent glass, wood/brick patterns and metal highlights.
+Heat conduction, freezing/thawing, selected melting transitions, pore storage, porous rock and
+48 exported block-contact/heat rules now run natively. Snow, soda, ash and quicklime also use
+fine grains, with explicit melt/contact bridges; fractional snow melt is retained in a buffer.
+These preserve the browser's simplified reactions and fantasy materials, not exact real chemistry.
+
+Click **Workshop** to open four tabs:
+
+- **Stock:** buy ingredients, sell intermediates and finished products, and weigh ingredients
+  into the laboratory vessel. The initial endowment is 500 credits and a small supply inventory.
+- **Vessel:** mix ingredients, explore concentration and temperature, react vinegar with sodium
+  bicarbonate, recover water, filter crystals, and store catalog grades or ungraded mixtures.
+  All products, including collected carbon dioxide, remain accounted for.
+- **Machines:** buy equipment and run or repeat batches. The first sugar chain is raw juice →
+  clarified solution → syrup → crystals → packaged sugar. Salt recovery and blood component
+  separation are also available. Outputs and residues remain independently stored.
+- **Underground:** opt into a fictional illicit commodity business. Its invented feedstock and
+  conversion have no real drug-production instructions. Scheduled game inspections can seize
+  stock, issue fines and temporarily close the operation.
+
+The workshop and unlimited sandbox are separate: free painted material cannot be sold.
+**Save workshop / Load workshop** persist the finite ledger, vessel, stored mixtures and running
+jobs in Godot's user-data folder. They do not save the sandbox world. Pause/step also control
+workshop time. Prices, times and enforcement rules are prototype defaults, not real markets or laws.
+Purchased production equipment is still operated through the workshop panel. The new sandbox
+machines move physical material, but are not yet connected to the finite workshop economy.
+See [the five-sequence specification and model limits](docs/design/chemistry-workshop.md).
+
+Full browser parity is **not yet complete**. Fire/combustion and explosions, atmospheric gas budgets,
+the remaining solute/ecological reactions, pressure/momentum, living plants/creatures, cloud-sourced
+weather, world generation, browser save import and complete lighting remain to be ported.
+Organic terrain is placeable but does not grow. The sandbox world still has no save/load.
+Use the browser version for those complete systems. See [this pass's scope](docs/design/native-sandbox-port.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action build
+powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action test
+powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action benchmark
+powershell -ExecutionPolicy Bypass -File tools/native.ps1 -Action visuals
+```
+
+`test` compares every native cell array and RNG continuation with the actual JavaScript transport
+pass in 32 cases, then runs fine-grain/chemistry conservation checks, physical machine/material
+regressions, workshop business/reaction/save checks, and Godot integration checks. Reaction/block hooks and cosmetic callbacks
+are excluded from this isolated comparison. `benchmark` measures transport only at 65,536 and
+1,048,576 grid cells, initially one-quarter full of water, and compares the smaller case with
+JavaScript. It does not measure full-game frame rate. Results go to `.test-artifacts/native-benchmark.json`.
+
+`visuals` requires a graphics-capable Windows session. It compares actual GPU screenshots with
+the HTML renderer for 14 liquid types at two animation times, including liquid-only error
+measurements. Images and results go to `.test-artifacts/liquid-*`.
+
+The pure simulation lives in `native/core/`, the thin Godot adapter in `native/godot/`, and the
+playable scene in `godot/`. Existing material properties are generated from the browser tables;
+change `js/liquids.js`/`js/matter.js`, then rebuild. Native-only fluid rows are authored in
+`godot/data/native_fluids.json`; workshop substances, recipes and balance are in
+`godot/data/workshop.json`. See [the port specification](docs/design/godot-foundation.md).
+
+## Full browser version
+
+Every tile holds one liquid and an amount from 0 to 255 that falls, spreads, reacts, carries heat
+and burns. The browser version uses plain JavaScript ES modules with no dependencies.
 
 ES modules need a web server, not `file://`:
 
+The canonical page is `ecologist.html`; `tidepool.html` redirects to it. Existing save slots,
+world codes and `.tidepool` files remain compatible. New exports use `.ecologist`.
+
 ```
-npm run serve        # then open http://localhost:8765/tidepool.html
+npm run serve        # then open http://localhost:8765/ecologist.html
 npm test             # quick headless checks (about a minute), one or two per system: run after every change
 npm test -- pipes    # only the scenes whose name contains a word, e.g. while working on pipes
 npm run test:full    # every regression scene and focused check; run the two long gates below too
@@ -23,10 +136,11 @@ npm run test:erosion  # retained water, ingredients and heat in wet banks and mu
 npm run test:habitats # finite initial producers, water retention and bank plants
 npm run test:woodland # finite woodland soil moisture and real flower/bee forage controls
 npm run test:plant-air # owned canopy access to finite air, sealed and anoxic controls
+npm run test:precipitation # cloud-sourced rain/snow visuals, camera independence and lightning controls
 npm run test:bundle  # build and execute its first frame under DOM/canvas stubs
 npm run test:showcase # terrarium, fantasy budgets, two chemistry puzzles, input events and bundle
 npm test -- --list   # list the scenes; the quick ones are marked
-npm run build        # bundle everything into dist/tidepool.html, one self-contained page for sharing
+npm run build        # bundle everything into dist/ecologist.html, one self-contained page for sharing
 node tools/check-accounting.mjs  # fractional transfers, pumps, gas quantities and legacy saves
 node tools/check-oxygen.mjs      # finite air/water exchange, roots, porewater and evaporation
 node tools/check-thermal.mjs     # distillation, combustion and retained residues
@@ -42,7 +156,7 @@ node tools/shot.mjs jar.png --terrarium --seed 7 --ticks 64 # frame the shared s
 
 | File | What it does |
 | --- | --- |
-| `tidepool.html`, `css/tidepool.css` | Page, toolbar and notes |
+| `ecologist.html`, `css/ecologist.css` | Page, toolbar and notes |
 | `js/config.js` | World size, tile size, block and liquid ids |
 | `js/world.js` | Tile arrays (`solid`, `liq`, `typ`, `temp`, `fire`, `sol`, `vel`, …), shared state `S`, the camera `VIEW`, chunk sleep (`wake` for liquids, `heatWake` for heat) |
 | `js/oxygen.js` | Oxygen and carbon dioxide in each pocket of air (topped up from the open sky, mixing between tiles, used by fire and breathing) and dissolved oxygen in water (saturation by temperature and salt, taken in at the surface) |

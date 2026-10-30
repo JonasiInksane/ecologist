@@ -1,0 +1,752 @@
+[
+  {
+    "code": 1,
+    "name": "Water",
+    "category": "Liquids",
+    "color": "#3c8ae0"
+  },
+  {
+    "code": 2,
+    "name": "Lava",
+    "category": "Liquids",
+    "color": "#ff6a1a"
+  },
+  {
+    "code": 3,
+    "name": "Honey",
+    "category": "Liquids",
+    "color": "#eca42a"
+  },
+  {
+    "code": 4,
+    "name": "Aether",
+    "category": "Liquids",
+    "color": "#b98cf5"
+  },
+  {
+    "code": 5,
+    "name": "Quicksilver",
+    "category": "Liquids",
+    "color": "#c4ccd8"
+  },
+  {
+    "code": 6,
+    "name": "Acid",
+    "category": "Liquids",
+    "color": "#7dec4a"
+  },
+  {
+    "code": 7,
+    "name": "Frost",
+    "category": "Liquids",
+    "color": "#a8e4ff"
+  },
+  {
+    "code": 8,
+    "name": "Steam",
+    "category": "Liquids",
+    "color": "#dfe6ee"
+  },
+  {
+    "code": 9,
+    "name": "Oil",
+    "category": "Liquids",
+    "color": "#3a2e1e"
+  },
+  {
+    "code": 10,
+    "name": "Slime",
+    "category": "Liquids",
+    "color": "#4fc46a"
+  },
+  {
+    "code": 11,
+    "name": "Bloomwater",
+    "category": "Liquids",
+    "color": "#e486c8"
+  },
+  {
+    "code": 12,
+    "name": "Mud",
+    "category": "Liquids",
+    "color": "#6b4a2c"
+  },
+  {
+    "code": 13,
+    "name": "Tonic",
+    "category": "Liquids",
+    "color": "#c8d84a"
+  },
+  {
+    "code": 14,
+    "name": "Foam",
+    "category": "Liquids",
+    "color": "#e8e2d0"
+  },
+  {
+    "code": 15,
+    "name": "Stormwater",
+    "category": "Liquids",
+    "color": "#3a5ccf"
+  },
+  {
+    "code": 16,
+    "name": "Molten metal",
+    "category": "Liquids",
+    "color": "#ffb040"
+  },
+  {
+    "code": 17,
+    "name": "Smoke",
+    "category": "Liquids",
+    "color": "#8d8792"
+  },
+  {
+    "code": 18,
+    "name": "Methane",
+    "category": "Liquids",
+    "color": "#c9e6a0"
+  },
+  {
+    "code": 19,
+    "name": "Toxic fumes",
+    "category": "Liquids",
+    "color": "#9ccf3a"
+  },
+  {
+    "code": 20,
+    "name": "Nitro",
+    "category": "Liquids",
+    "color": "#e8d070"
+  },
+  {
+    "code": 21,
+    "name": "Lye",
+    "category": "Liquids",
+    "color": "#b4c4e6"
+  },
+  {
+    "code": 22,
+    "name": "Carbon dioxide",
+    "category": "Liquids",
+    "color": "#c8d2d8"
+  },
+  {
+    "code": 23,
+    "name": "Void ink",
+    "category": "Liquids",
+    "color": "#140c1e"
+  },
+  {
+    "code": 24,
+    "name": "Mimic",
+    "category": "Liquids",
+    "color": "#c8c8d0"
+  },
+  {
+    "code": 25,
+    "name": "Coolant",
+    "category": "Liquids",
+    "color": "#38c8b0"
+  },
+  {
+    "code": 26,
+    "name": "Ferrofluid",
+    "category": "Liquids",
+    "color": "#1a1c22"
+  },
+  {
+    "code": 27,
+    "name": "Liquid light",
+    "category": "Liquids",
+    "color": "#fff4b0"
+  },
+  {
+    "code": 28,
+    "name": "Fertiliser",
+    "category": "Liquids",
+    "color": "#7a9a30"
+  },
+  {
+    "code": 29,
+    "name": "Hydrogen",
+    "category": "Liquids",
+    "color": "#e2eaff"
+  },
+  {
+    "code": 30,
+    "name": "Oxygen",
+    "category": "Liquids",
+    "color": "#c4e2ff"
+  },
+  {
+    "code": 31,
+    "name": "Molten slag",
+    "category": "Liquids",
+    "color": "#e07a30"
+  },
+  {
+    "code": 32,
+    "name": "Chlorine",
+    "category": "Liquids",
+    "color": "#d4e85a"
+  },
+  {
+    "code": 33,
+    "name": "Bleach",
+    "category": "Liquids",
+    "color": "#e4edd2"
+  },
+  {
+    "code": 34,
+    "name": "Emulsion",
+    "category": "Liquids",
+    "color": "#d8cfb4"
+  },
+  {
+    "code": 35,
+    "name": "Ethanol",
+    "category": "Liquids",
+    "color": "#b2d3dc"
+  },
+  {
+    "code": 36,
+    "name": "Blood",
+    "category": "Liquids",
+    "color": "#911726"
+  },
+  {
+    "code": 37,
+    "name": "Blood plasma",
+    "category": "Liquids",
+    "color": "#e4bf57"
+  },
+  {
+    "code": 38,
+    "name": "Vinegar",
+    "category": "Liquids",
+    "color": "#d1cc9e"
+  },
+  {
+    "code": 39,
+    "name": "Brine",
+    "category": "Liquids",
+    "color": "#70b6cd"
+  },
+  {
+    "code": -1,
+    "name": "Dirt",
+    "category": "Terrain",
+    "color": "#8a5a3b"
+  },
+  {
+    "code": -2,
+    "name": "Stone",
+    "category": "Terrain",
+    "color": "#7c7f8c"
+  },
+  {
+    "code": -3,
+    "name": "Obsidian",
+    "category": "Terrain",
+    "color": "#2b1d3d"
+  },
+  {
+    "code": -4,
+    "name": "Honeycomb",
+    "category": "Terrain",
+    "color": "#e0a530"
+  },
+  {
+    "code": -5,
+    "name": "Crisp honey",
+    "category": "Terrain",
+    "color": "#9c5a24"
+  },
+  {
+    "code": -6,
+    "name": "Ice",
+    "category": "Terrain",
+    "color": "#a9dcf2"
+  },
+  {
+    "code": -7,
+    "name": "Crystal",
+    "category": "Terrain",
+    "color": "#9a6be0"
+  },
+  {
+    "code": -10,
+    "name": "Basalt",
+    "category": "Terrain",
+    "color": "#3a3436"
+  },
+  {
+    "code": -11,
+    "name": "Lever",
+    "category": "Machines",
+    "color": "#d64545"
+  },
+  {
+    "code": -12,
+    "name": "Plate",
+    "category": "Machines",
+    "color": "#9aa5ba"
+  },
+  {
+    "code": -13,
+    "name": "Sensor",
+    "category": "Machines",
+    "color": "#7fe0ff"
+  },
+  {
+    "code": -14,
+    "name": "Timer",
+    "category": "Machines",
+    "color": "#e9e2c4"
+  },
+  {
+    "code": -15,
+    "name": "Gate",
+    "category": "Machines",
+    "color": "#232833"
+  },
+  {
+    "code": -16,
+    "name": "Spring",
+    "category": "Machines",
+    "color": "#3c8ae0"
+  },
+  {
+    "code": -17,
+    "name": "Drain",
+    "category": "Machines",
+    "color": "#0f1218"
+  },
+  {
+    "code": -18,
+    "name": "Wood",
+    "category": "Terrain",
+    "color": "#8a5a2e"
+  },
+  {
+    "code": -19,
+    "name": "Mossy stone",
+    "category": "Terrain",
+    "color": "#5f7d5a"
+  },
+  {
+    "code": -20,
+    "name": "Salt",
+    "category": "Powders",
+    "color": "#f2f0ea"
+  },
+  {
+    "code": -21,
+    "name": "Sand",
+    "category": "Powders",
+    "color": "#e2c98a"
+  },
+  {
+    "code": -22,
+    "name": "Glass",
+    "category": "Terrain",
+    "color": "#bfe6f0"
+  },
+  {
+    "code": -23,
+    "name": "Clay brick",
+    "category": "Terrain",
+    "color": "#b4573a"
+  },
+  {
+    "code": -24,
+    "name": "Metal",
+    "category": "Terrain",
+    "color": "#8d96a6"
+  },
+  {
+    "code": -25,
+    "name": "Pipe",
+    "category": "Machines",
+    "color": "#5f6a80"
+  },
+  {
+    "code": -26,
+    "name": "Valve",
+    "category": "Machines",
+    "color": "#d64545"
+  },
+  {
+    "code": -27,
+    "name": "Filter",
+    "category": "Machines",
+    "color": "#7fe0ff"
+  },
+  {
+    "code": -28,
+    "name": "Turbine",
+    "category": "Machines",
+    "color": "#c4ccd8"
+  },
+  {
+    "code": -29,
+    "name": "Water wheel",
+    "category": "Machines",
+    "color": "#8a5a2e"
+  },
+  {
+    "code": -30,
+    "name": "Boiler",
+    "category": "Machines",
+    "color": "#c85a1e"
+  },
+  {
+    "code": -31,
+    "name": "Separator",
+    "category": "Machines",
+    "color": "#9fdcf7"
+  },
+  {
+    "code": -32,
+    "name": "AND",
+    "category": "Machines",
+    "color": "#f2c94c"
+  },
+  {
+    "code": -33,
+    "name": "OR",
+    "category": "Machines",
+    "color": "#f2c94c"
+  },
+  {
+    "code": -34,
+    "name": "NOT",
+    "category": "Machines",
+    "color": "#f2c94c"
+  },
+  {
+    "code": -35,
+    "name": "Counter",
+    "category": "Machines",
+    "color": "#f2c94c"
+  },
+  {
+    "code": -36,
+    "name": "Plant",
+    "category": "Terrain",
+    "color": "#607080"
+  },
+  {
+    "code": -37,
+    "name": "Leaf",
+    "category": "Terrain",
+    "color": "#607080"
+  },
+  {
+    "code": -38,
+    "name": "Snow",
+    "category": "Powders",
+    "color": "#f4f8ff"
+  },
+  {
+    "code": -39,
+    "name": "Permafrost",
+    "category": "Terrain",
+    "color": "#6c7f8c"
+  },
+  {
+    "code": -40,
+    "name": "Clay",
+    "category": "Terrain",
+    "color": "#a8705a"
+  },
+  {
+    "code": -41,
+    "name": "Windmill",
+    "category": "Machines",
+    "color": "#efe8d8"
+  },
+  {
+    "code": -42,
+    "name": "Geyser",
+    "category": "Machines",
+    "color": "#5e5456"
+  },
+  {
+    "code": -43,
+    "name": "Gas vent",
+    "category": "Machines",
+    "color": "#d8d040"
+  },
+  {
+    "code": -44,
+    "name": "Baking soda",
+    "category": "Powders",
+    "color": "#eef2f6"
+  },
+  {
+    "code": -45,
+    "name": "Salt crystal",
+    "category": "Terrain",
+    "color": "#bff4ff"
+  },
+  {
+    "code": -46,
+    "name": "Sponge block",
+    "category": "Terrain",
+    "color": "#f0d060"
+  },
+  {
+    "code": -47,
+    "name": "Wet sponge",
+    "category": "Terrain",
+    "color": "#b89a3a"
+  },
+  {
+    "code": -48,
+    "name": "Wet soil",
+    "category": "Terrain",
+    "color": "#5e3c26"
+  },
+  {
+    "code": -49,
+    "name": "Porous rock",
+    "category": "Terrain",
+    "color": "#a89a84"
+  },
+  {
+    "code": -50,
+    "name": "Wool",
+    "category": "Terrain",
+    "color": "#ece6dc"
+  },
+  {
+    "code": -51,
+    "name": "Copper",
+    "category": "Terrain",
+    "color": "#c87a46"
+  },
+  {
+    "code": -52,
+    "name": "Membrane",
+    "category": "Machines",
+    "color": "#7a8aa0"
+  },
+  {
+    "code": -53,
+    "name": "Coral",
+    "category": "Terrain",
+    "color": "#ff7a8a"
+  },
+  {
+    "code": -54,
+    "name": "Bleached coral",
+    "category": "Terrain",
+    "color": "#f2eee6"
+  },
+  {
+    "code": -55,
+    "name": "Fuse cord",
+    "category": "Terrain",
+    "color": "#a03028"
+  },
+  {
+    "code": -56,
+    "name": "Magnet",
+    "category": "Terrain",
+    "color": "#c03030"
+  },
+  {
+    "code": -57,
+    "name": "Battery",
+    "category": "Machines",
+    "color": "#3a6a3e"
+  },
+  {
+    "code": -58,
+    "name": "Lamp",
+    "category": "Machines",
+    "color": "#fff2b0"
+  },
+  {
+    "code": -59,
+    "name": "Motor",
+    "category": "Machines",
+    "color": "#9aa5ba"
+  },
+  {
+    "code": -60,
+    "name": "Electromagnet",
+    "category": "Machines",
+    "color": "#c87a46"
+  },
+  {
+    "code": -61,
+    "name": "Solar panel",
+    "category": "Machines",
+    "color": "#1e3a6e"
+  },
+  {
+    "code": -62,
+    "name": "Ore",
+    "category": "Terrain",
+    "color": "#b0643a"
+  },
+  {
+    "code": -63,
+    "name": "Slag",
+    "category": "Terrain",
+    "color": "#4a4240"
+  },
+  {
+    "code": -64,
+    "name": "Temperature sensor",
+    "category": "Machines",
+    "color": "#d64545"
+  },
+  {
+    "code": -65,
+    "name": "Depth sensor",
+    "category": "Machines",
+    "color": "#2f7d99"
+  },
+  {
+    "code": -66,
+    "name": "Pixel",
+    "category": "Machines",
+    "color": "#ffb43c"
+  },
+  {
+    "code": -67,
+    "name": "Sugar",
+    "category": "Powders",
+    "color": "#fbf6e8"
+  },
+  {
+    "code": -68,
+    "name": "Rust",
+    "category": "Terrain",
+    "color": "#a0502a"
+  },
+  {
+    "code": -69,
+    "name": "Frozen nitro",
+    "category": "Terrain",
+    "color": "#f0e4b0"
+  },
+  {
+    "code": -70,
+    "name": "Limestone",
+    "category": "Terrain",
+    "color": "#cfc6ae"
+  },
+  {
+    "code": -71,
+    "name": "Quicklime",
+    "category": "Powders",
+    "color": "#f4f2ea"
+  },
+  {
+    "code": -72,
+    "name": "Lime mortar",
+    "category": "Terrain",
+    "color": "#e2ded2"
+  },
+  {
+    "code": -73,
+    "name": "Charcoal",
+    "category": "Terrain",
+    "color": "#2a2624"
+  },
+  {
+    "code": -74,
+    "name": "Ash",
+    "category": "Powders",
+    "color": "#b4b0aa"
+  },
+  {
+    "code": -75,
+    "name": "Aluminium",
+    "category": "Terrain",
+    "color": "#c8ccd2"
+  },
+  {
+    "code": -76,
+    "name": "Zinc",
+    "category": "Terrain",
+    "color": "#a4aab0"
+  },
+  {
+    "code": -77,
+    "name": "Gold",
+    "category": "Terrain",
+    "color": "#e8b830"
+  },
+  {
+    "code": -78,
+    "name": "Green copper",
+    "category": "Terrain",
+    "color": "#5aa88a"
+  },
+  {
+    "code": -79,
+    "name": "Flower",
+    "category": "Terrain",
+    "color": "#f4d84a"
+  },
+  {
+    "code": 301,
+    "name": "Pump · place inlet, then outlet",
+    "category": "Machines",
+    "color": "#8ca4be"
+  },
+  {
+    "code": 302,
+    "name": "Wire · switch, then targets",
+    "category": "Machines",
+    "color": "#f2c94c"
+  },
+  {
+    "code": 403,
+    "name": "Red ink",
+    "category": "Liquids",
+    "color": "#e61e28"
+  },
+  {
+    "code": 404,
+    "name": "Yellow ink",
+    "category": "Liquids",
+    "color": "#fad728"
+  },
+  {
+    "code": 405,
+    "name": "Blue ink",
+    "category": "Liquids",
+    "color": "#285fc8"
+  },
+  {
+    "code": 409,
+    "name": "Nitrogen nutrient",
+    "category": "Liquids",
+    "color": "#8f9852"
+  },
+  {
+    "code": 419,
+    "name": "Phosphate nutrient",
+    "category": "Liquids",
+    "color": "#aaa87c"
+  },
+  {
+    "code": 410,
+    "name": "Algae",
+    "category": "Liquids",
+    "color": "#398b37"
+  },
+  {
+    "code": 416,
+    "name": "Yeast",
+    "category": "Liquids",
+    "color": "#ded1a9"
+  }
+]

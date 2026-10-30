@@ -1,0 +1,9 @@
+[configuration]
+entry_symbol = "ecologist_library_init"
+compatibility_minimum = "4.5"
+reloadable = false
+
+[libraries]
+windows.x86_64 = "res://bin/ecologist.dll"
+linux.x86_64 = "res://bin/ecologist.so"
+macos = "res://bin/ecologist.dylib"

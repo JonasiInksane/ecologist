@@ -14,12 +14,12 @@ globalThis.document = stub(); globalThis.addEventListener = () => {};
 globalThis.Option = function () {}; globalThis.matchMedia = () => ({ matches: false });
 globalThis.location = { hash: '#seed-7' }; globalThis.setInterval = () => 0;
 const frames = []; globalThis.requestAnimationFrame = callback => frames.push(callback);
-const html = readFileSync('dist/tidepool.html', 'utf8');
+const html = readFileSync('dist/ecologist.html', 'utf8');
 const script = html.match(/<script>\s*([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script);
 const errors = [], report = console.error; console.error = (...args) => errors.push(args.map(String).join(' '));
 try {
-  runInThisContext(script, { filename: 'tidepool.bundle.js' });
+  runInThisContext(script, { filename: 'ecologist.bundle.js' });
   assert.equal(frames.length, 1);
   frames[0](performance.now() + 1000 / 60);
   assert.equal(frames.length, 2, 'first frame schedules its continuation');

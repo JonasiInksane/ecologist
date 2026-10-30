@@ -1,6 +1,6 @@
 // Stars, the sun and moon, clouds and fog, rain and snow, and lightning, drawn after lighting into open sky only
 // (never over terrain or liquid).
-import { AH, AW, CELL, bolts, cellT, cloud, open, rainAt, u } from '../air.js';
+import { AH, AW, CELL, RAIN_AT, bolts, cellT, cloud, open, u } from '../air.js';
 import { blend, frame } from '../canvas.js';
 import { PH, PW, T, W } from '../config.js';
 import { dayPhase, sunHeight } from '../daynight.js';
@@ -50,21 +50,48 @@ function drawSky(time) {
   }
 }
 
-// Rain under raining clouds: thin streaks slanted by the wind; where the air is below 0° it falls as slow snowflakes.
+// Visual spacing in world pixels; speeds in pixels per animation second. The camera only clips these streams.
+const PRECIP_VISUAL = { spacing: 64, densityRange: 200, rainSpeed: 260, rainVariation: 80,
+  snowSpeed: 40, snowVariation: 20, snowSway: 2, snowFrequency: 2, windOffset: 6,
+  rainLength: 4, rainSlant: 0.4, rainWind: 0.8, margin: CELL * T };
+function precipitationSky(x, y, sourceY, endY) {
+  return y >= sourceY && y < endY && x >= VIEW.x && x < VIEW.x + VIEW.w &&
+    y >= VIEW.y && y < VIEW.y + VIEW.h && openSky(x, y);
+}
+// Each raining cell supplies a world-anchored stream from the same underside as physical precipitation.
+// A lower raining cell supplies its own stream, with its own temperature and wind.
 function drawPrecipitation(time) {
-  if (S.rain <= 0) return;
-  for (let i = 0; i < 260; i++) {
-    const x0 = VIEW.x + ((hash(i, 71) * VIEW.w + time * 40) % VIEW.w), tx = Math.min(W - 1, (x0 / T) | 0), r = rainAt(tx);
-    if (r <= 0 || hash(i, 83) > r) continue;
-    const c = (x0 / (CELL * T)) | 0, snow = cellT[c + AW * Math.min(AH - 1, ((VIEW.y + VIEW.h / 2) / (CELL * T)) | 0)] < 0;
-    const fall = snow ? 40 + hash(i, 79) * 20 : 260 + hash(i, 79) * 80, w = u[c] || 0;
-    const y0 = VIEW.y + ((hash(i, 73) * VIEW.h + time * fall) % VIEW.h);
-    if (snow) {
-      const x = (x0 + Math.sin(time * 2 + i) * 2 + w * 6) | 0, y = y0 | 0;
-      if (openSky(x, y)) { blend(y * PW + x, 245, 248, 255, 0.8); if (openSky(x + 1, y)) blend(y * PW + x + 1, 245, 248, 255, 0.5); }
-    } else for (let j = 0; j < 4; j++) {
-      const x = (x0 - j * (0.4 - w * 0.8)) | 0, y = (y0 - j) | 0;
-      if (openSky(x, y)) blend(y * PW + x, 190, 210, 235, 0.35);
+  if (!S.weather) return;
+  const cs = CELL * T, idsPerCell = Math.ceil(PH / PRECIP_VISUAL.spacing);
+  const cx0 = Math.max(0, Math.floor((VIEW.x - PRECIP_VISUAL.margin) / cs));
+  const cx1 = Math.min(AW - 1, Math.floor((VIEW.x + VIEW.w + PRECIP_VISUAL.margin) / cs));
+  for (let cx = cx0; cx <= cx1; cx++) {
+    let endY = PH;
+    for (let cy = AH - 1; cy >= 0; cy--) {
+      const c = cy * AW + cx;
+      if (cloud[c] <= RAIN_AT) continue;
+      const sourceY = (cy * CELL + CELL - 1) * T, bottom = endY;
+      endY = sourceY;
+      if (sourceY >= VIEW.y + VIEW.h || bottom <= VIEW.y) continue;
+      const span = bottom - sourceY, count = Math.ceil(span / PRECIP_VISUAL.spacing);
+      const r = Math.min(1, (cloud[c] - RAIN_AT) / PRECIP_VISUAL.densityRange), snow = cellT[c] < 0, w = u[c];
+      for (let i = 0; i < count; i++) {
+        const id = c * idsPerCell + i;
+        if (hash(id, 83) > r) continue;
+        const x0 = cx * cs + hash(id, 71) * cs;
+        if (!openSky(x0 | 0, sourceY)) continue;
+        const fall = snow ? PRECIP_VISUAL.snowSpeed + hash(id, 79) * PRECIP_VISUAL.snowVariation :
+          PRECIP_VISUAL.rainSpeed + hash(id, 79) * PRECIP_VISUAL.rainVariation;
+        const y0 = sourceY + ((hash(id, 73) * span + time * fall) % span);
+        if (snow) {
+          const x = Math.floor(x0 + Math.sin(time * PRECIP_VISUAL.snowFrequency + id) * PRECIP_VISUAL.snowSway + w * PRECIP_VISUAL.windOffset), y = Math.floor(y0);
+          if (precipitationSky(x, y, sourceY, bottom)) blend(y * PW + x, 245, 248, 255, 0.8);
+          if (precipitationSky(x + 1, y, sourceY, bottom)) blend(y * PW + x + 1, 245, 248, 255, 0.5);
+        } else for (let j = 0; j < PRECIP_VISUAL.rainLength; j++) {
+          const x = Math.floor(x0 - j * (PRECIP_VISUAL.rainSlant - w * PRECIP_VISUAL.rainWind)), y = Math.floor(y0) - j;
+          if (precipitationSky(x, y, sourceY, bottom)) blend(y * PW + x, 190, 210, 235, 0.35);
+        }
+      }
     }
   }
 }

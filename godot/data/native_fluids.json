@@ -1,0 +1,10 @@
+{
+  "note": "Native-only transport approximations; chemistry and mixture composition live in workshop.json. Existing browser IDs remain unchanged.",
+  "fluids": [
+    {"id":35,"name":"Ethanol","density":0.789,"capacity":1.93,"viscosity":1,"rgb":[178,211,220],"opacity":0.27,"flow":1.4},
+    {"id":36,"name":"Blood","density":1.06,"capacity":3.8,"viscosity":3,"rgb":[145,23,38],"opacity":0.95,"flow":0.65},
+    {"id":37,"name":"Blood plasma","density":1.025,"capacity":3.9,"viscosity":2,"rgb":[228,191,87],"opacity":0.5,"flow":0.9},
+    {"id":38,"name":"Vinegar","density":1.006,"capacity":4.0,"viscosity":1,"rgb":[209,204,158],"opacity":0.25,"flow":1.2},
+    {"id":39,"name":"Brine","density":1.025,"capacity":4.0,"viscosity":1,"rgb":[112,182,205],"opacity":0.38,"flow":1.1}
+  ]
+}
