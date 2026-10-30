@@ -140,7 +140,7 @@ def ui_sheet():
 ICONS = ["heart", "bubble", "coin", "sun", "moon", "truck", "crate", "gear", "pause", "hammer", "pot",
          "wood", "brick", "stone", "glass", "steel", "dirt", "wood_wall", "brick_wall", "ladder", "door",
          "pipe", "valve", "pump", "thermometer", "drop", "flask", "flame", "laptop", "save", "load", "sandbox",
-         "sack", "beet", "close", "person"]
+         "sack", "beet", "close", "person", "roof", "plaster_wall"]
 
 
 def icon(name, img, ox, oy):
@@ -261,6 +261,23 @@ def icon(name, img, ox, oy):
         r(1, 1, 14, 1, GREEN)
         for x, y in ((4, 7), (10, 9), (7, 12), (12, 5)):
             p(x, y, DIRT_DARK)
+    elif name == "roof":
+        # clay tiles in courses, the top course stepped in like a roof
+        for row in range(4):
+            y = 2 + row * 3
+            x0 = 1 + max(0, 3 - row) if row < 3 else 1
+            for x in range(1 if row else 4, 15 if row else 12):
+                c = (204, 106, 58) if (x + row) % 4 else (168, 70, 42)
+                p(x, y, (232, 154, 92) if (x + row) % 4 == 1 else c)
+                p(x, y + 1, c)
+                p(x, y + 2, (122, 47, 30) if (x + row * 2) % 4 in (0, 3) else (168, 70, 42))
+    elif name == "plaster_wall":
+        r(1, 1, 14, 14, (227, 205, 174))
+        r(1, 1, 14, 2, (101, 58, 34))
+        r(6, 3, 8, 14, (138, 85, 48))
+        r(6, 3, 6, 14, (173, 116, 66))
+        for x, y in ((3, 6), (11, 9), (12, 5), (3, 11)):
+            p(x, y, (203, 177, 150))
     elif name == "wood_wall":
         r(1, 1, 14, 14, WOOD_DARK)
         for x in (4, 8, 12):

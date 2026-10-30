@@ -204,11 +204,22 @@ func run() -> void:
         check(game.workshop.model.cash == saved_cash, "Workshop loads the latest file without changing sandbox state")
         check(game.campaign and game.world == game.campaign_world, "The game starts in campaign mode")
         check(game.build_items.size() >= 10 and game.player_texture != null, "Build palette and player sprite load")
+        # the art pass: the shack has a stepped clay tile roof over plaster walls
+        var roof_ok := true
+        for row in 4:
+            roof_ok = roof_ok and int(game.world.inspect(240 - 3 + row, 88 - row).solid) == 82 \
+                and int(game.world.inspect(271 + 3 - row, 88 - row).solid) == 82 \
+                and game.world.inspect(240 - 4 + row, 88 - row).solid == 0
+        check(roof_ok, "The shack has a stepped tile roof")
+        check(int(game.world.inspect(250, 95).back) & 15 == 3, "The shack's back walls are plaster")
+        check(not game._item_for(-82).is_empty() and not game._item_for(1009).is_empty(), "Roof tiles and the plaster wall are on the build bar")
         game._set_mode(false)
         check(game.world == game.sandbox_world and not game.build_bar.visible, "Tab switches to the free sandbox")
         game._set_mode(true)
         var cash_before: float = game.workshop.model.cash
-        var spot := Vector2i(int(game.player.x / 8) - 4, 86)
+        # open air just past the eaves (the roof covers rows 85-88 over the shack)
+        var spot := Vector2i(int(game.player.x / 8) + 11, 86)
+        check(game.world.inspect(spot.x, spot.y).solid == 0, "The test spot past the eaves is open air")
         game._select_build(0)
         game.removing = false
         game.last_build = Vector2i(-1, -1)

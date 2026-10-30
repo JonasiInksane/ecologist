@@ -729,6 +729,12 @@ int main() {
                   (f.s.back[f.cell(5, 5)] & BACK_WALL),
               "remove takes the ladder before the wall");
         check(f.s.build(f.w, f.g, 4, 4, BUILD_REMOVE) == 4 && !f.s.back[f.cell(5, 5)], "then the wall");
+        check(f.s.build(f.w, f.g, 4, 4, BUILD_BACK_PLASTER) == 4 && (f.s.back[f.cell(5, 5)] & BACK_WALL) == WALL_PLASTER &&
+                  f.s.build(f.w, f.g, 4, 4, BUILD_REMOVE) == 4 && !f.s.back[f.cell(5, 5)],
+              "a plaster wall goes up and comes down like the others");
+        check(f.s.build(f.w, f.g, 4, 4, -B_ROOF) == 4 && f.w.solid[f.cell(5, 5)] == B_ROOF &&
+                  f.s.build(f.w, f.g, 4, 4, BUILD_REMOVE) == 4 && !f.w.solid[f.cell(5, 5)],
+              "roof tiles are built and removed as a tile");
         check(near(f.volume(), v), "building never changes liquid volume");
     }
     {

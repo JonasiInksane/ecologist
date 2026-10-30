@@ -614,7 +614,9 @@ func _salvage(tile: Vector2i) -> float:
             if int(cell.back) & 0x40:
                 item = _item_for(1003)
         elif int(cell.back) & 0x0f:
-            item = _item_for(1000 + (int(cell.back) & 0x0f))
+            # wood 1 and brick 2 are built with 1001 and 1002; plaster 3 with 1009
+            var wall := int(cell.back) & 0x0f
+            item = _item_for(1009 if wall == 3 else 1000 + wall)
         if not item.is_empty():
             value += float(item.cost) * float(item.salvage) * share
     return value

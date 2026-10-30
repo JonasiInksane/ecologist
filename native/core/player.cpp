@@ -186,11 +186,17 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
     for (int x = 380; x < w.width; x++) // the road, where delivery trucks will park
         for (int y = GROUND; y < GROUND + 2; y++)
             set(x, y, B_BASALT);
-    // The shack: 16 tiles wide, a 5-tile room, wooden floor, walls and roof, a window and a door.
+    // The shack: 16 tiles wide, a 5-tile room with a wooden floor, walls and ceiling beam, plaster inside, a window
+    // and a door, under a clay tile roof that steps in a cell a row (drawn sloped) with a brick chimney through it.
     constexpr int L = 240, R = 271, ROOF = 88;
-    for (int x = L - 2; x <= R + 2; x++)
-        for (int y = ROOF; y < ROOF + 2; y++)
-            set(x, y, B_WOOD);
+    for (int x = L - 1; x <= R + 1; x++)
+        set(x, ROOF + 1, B_WOOD);
+    for (int row = 0; row < 4; row++)
+        for (int x = L - 3 + row; x <= R + 3 - row; x++)
+            set(x, ROOF - row, B_ROOF);
+    for (int y = ROOF - 7; y <= ROOF; y++)
+        for (int x : {R - 8, R - 7})
+            set(x, y, B_BRICK);
     for (int y = ROOF + 2; y < GROUND; y++)
         for (int x : {L, L + 1, R - 1, R})
             set(x, y, B_WOOD);
@@ -205,7 +211,7 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
             set(x, y, B_DOOR);
     for (int y = ROOF + 2; y < GROUND; y++)
         for (int x = L + 2; x < R - 1; x++)
-            s.back[y * w.width + x] = 1;
+            s.back[y * w.width + x] = WALL_PLASTER;
     // The kitchen: a sink with mains water, a table with a candy mold and the laptop the shop runs on, and a stove
     // with a saucepan on it.
     place_equipment(w, g, s, EQ_SINK, L + 4, GROUND - 1);

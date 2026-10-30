@@ -9,7 +9,7 @@ namespace {
 bool buildable_block(int b) {
     switch (b) {
     case B_DIRT: case B_STONE: case B_WOOD: case B_BRICK: case B_GLASS: case B_METAL: case B_COPPER: case B_CLAY:
-    case B_SAND: case B_BASALT: case B_WOOL: case B_POROUS: case B_LIMESTONE:
+    case B_SAND: case B_BASALT: case B_WOOL: case B_POROUS: case B_LIMESTONE: case B_ROOF:
         return true;
     default: return false;
     }
@@ -103,10 +103,11 @@ int Sandbox::build(World &w, Grains &g, int x, int y, int code) {
             }
         return changed;
     }
-    if (code == BUILD_BACK_WOOD || code == BUILD_BACK_BRICK) {
+    if (code == BUILD_BACK_WOOD || code == BUILD_BACK_BRICK || code == BUILD_BACK_PLASTER) {
+        const std::uint8_t wall = code == BUILD_BACK_WOOD ? WALL_WOOD : code == BUILD_BACK_BRICK ? WALL_BRICK : WALL_PLASTER;
         for (int k : cells)
             if (!(back[k] & BACK_WALL)) {
-                back[k] = (back[k] & ~BACK_WALL) | (code == BUILD_BACK_WOOD ? 1 : 2);
+                back[k] = (back[k] & ~BACK_WALL) | wall;
                 changed++;
             }
         return changed;

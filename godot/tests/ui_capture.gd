@@ -45,7 +45,9 @@ func run() -> void:
     game.shop.model.order("hollis", 0, 2)
     game.shop.model.order("calcium", 0, 1)
     game.shop.model.step(124 * 60)
-    game._select_build(9)
+    for i in game.build_items.size():
+        if int(game.build_items[i].code) == game.DOOR_CODE:
+            game._select_build(i)
     game._notice("Hollis van at the curb. Walk over and click it to unload.")
     var shot: int = await _shot(game, "ui-hud", Vector2(310, 92), 1.4, Vector2i(363, 90))
     print("Tip: ", game.hud.tip_label.text)

@@ -7,8 +7,9 @@ build mode that costs money, whole-world saves and a macOS build.
 ## Campaign and sandbox
 
 The game opens in **campaign** mode on a starting plot: a 512 × 128 world with ground at row 100, gentle land to
-the west, a basalt road to the east (where delivery trucks will park in M2) and a one-room wooden shack with a
-window, a wooden floor, a wood background wall and a door. **Tab** swaps to the free **sandbox** world with the
+the west, a basalt road to the east (where delivery trucks will park in M2) and a one-room shack with a
+window, a wooden floor, a door, plaster walls between timber posts and a stepped clay tile roof with a brick chimney
+(the walls and roof came with the art pass; both can be built from the hotbar). **Tab** swaps to the free **sandbox** world with the
 full paint and machine palette, and back; the two are separate `EcologistWorld` instances, so neither loses its
 state. Credits are the workshop ledger's cash, shared by both.
 

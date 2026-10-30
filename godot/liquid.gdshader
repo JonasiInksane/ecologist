@@ -438,6 +438,31 @@ vec3 wood_pixel(ivec2 p, ivec2 t, ivec2 l, bool up, bool down, bool left, bool r
     if (world_hash(p + ivec2(0, 6700)) > 0.9) { tone -= 1; }
     return PAL_WOOD[tone];
 }
+// Clay roof tiles in courses of four pixels; an exposed top corner over a step down is cut on the diagonal, so a
+// roof that steps in a cell a row reads as a slope.
+vec4 roof_pixel(ivec2 p, ivec2 t, ivec2 l, vec4 bg, bool up, bool down, bool left, bool right) {
+    if (up && left && solid_at(t + ivec2(-1, 1))) {
+        int d = l.y - (7 - l.x);
+        if (d < 0) { return bg; }
+        if (d == 0) { return vec4(PAL_TERRACOTTA[0], 1.0); }
+        if (d == 1) { return vec4(PAL_TERRACOTTA[4], 1.0); }
+    }
+    if (up && right && solid_at(t + ivec2(1, 1))) {
+        int d = l.y - l.x;
+        if (d < 0) { return bg; }
+        if (d == 0) { return vec4(PAL_TERRACOTTA[0], 1.0); }
+        if (d == 1) { return vec4(PAL_TERRACOTTA[3], 1.0); }
+    }
+    if ((up && l.y == 0) || (down && l.y == 7) || (left && l.x == 0) || (right && l.x == 7)) { return vec4(PAL_TERRACOTTA[0], 1.0); }
+    if (up && l.y == 1) { return vec4(PAL_TERRACOTTA[4], 1.0); }
+    int course = p.y >> 2, ly = p.y & 3;
+    int sx = p.x + (course & 1) * 2, lx = sx & 3;
+    float r = world_hash(ivec2(sx >> 2, course) + ivec2(0, 7700));
+    int base = r < 0.12 ? 2 : r > 0.88 ? 4 : 3;
+    int tone = ly == 0 ? base : ly == 1 ? base - (lx == 3 ? 1 : 0) : ly == 2 ? base - 1 - (lx == 3 ? 1 : 0) : (lx == 0 || lx == 3 ? 0 : 1);
+    if (ly == 0 && lx == 1) { tone = min(4, base + 1); }
+    return vec4(PAL_TERRACOTTA[clamp(tone, 0, 4)], 1.0);
+}
 vec3 brick_pixel(ivec2 p, ivec2 t, ivec2 l, bool edge) {
     if (edge) { return PAL_INK[2]; }
     int row = p.y >> 2, shifted = p.x + (row & 1) * 4;
@@ -487,11 +512,21 @@ vec3 styled_wall(ivec2 p, int wall) {
         return PAL_BRICK[r < 0.45 ? 1 : r < 0.9 ? 2 : 3];
     }
     if (wall == 3) {
+        // plaster between timbers: a beam under the ceiling, a skirting board, a post every eight cells
+        ivec2 t = p >> 3, l = p - t * 8;
+        bool ceiling = solid_at(t + ivec2(0, -1)), floor_below = solid_at(t + ivec2(0, 1));
+        if (ceiling && l.y < 3) { return PAL_WOOD[l.y == 2 ? 1 : l.y == 0 ? 3 : 2]; }
+        if (floor_below && l.y >= 6) { return PAL_WOOD[l.y == 6 ? 4 : 2]; }
+        if (t.x % 8 == 3 && l.x >= 2 && l.x <= 5) { return PAL_WOOD[l.x == 2 ? 4 : l.x == 5 ? 1 : (world_hash(ivec2(p.x, p.y >> 3) + ivec2(0, 9450)) > 0.8 ? 2 : 3)]; }
         float n = world_noise(vec2(p) / vec2(9.0, 5.0), 9300);
         float r = world_hash(p + ivec2(0, 9400));
-        int tone = n < 0.3 ? 2 : n > 0.75 ? 4 : 3;
+        int tone = n < 0.3 ? 3 : n > 0.75 ? 5 : 4;
         if (r > 0.97) { tone -= 1; }
-        return PAL_PLASTER[tone];
+        // the corner under the beam and beside the posts sits in shade
+        if (ceiling && l.y < 5) { tone -= 1; }
+        if (t.x % 8 == 3 && (l.x == 1 || l.x == 6) || t.x % 8 == 2 && l.x == 7 || t.x % 8 == 4 && l.x == 0) { tone -= 1; }
+        if (solid_at(t + ivec2(-1, 0)) && l.x < 2 || solid_at(t + ivec2(1, 0)) && l.x > 5) { tone -= 1; }
+        return PAL_PLASTER[clamp(tone, 0, 5)];
     }
     // boards running up the wall
     int board = p.x / 6;
@@ -552,6 +587,7 @@ vec4 styled_base(ivec2 pixel) {
     }
     bool up = !solid_at(tile + ivec2(0, -1)), down = !solid_at(tile + ivec2(0, 1));
     bool left = !solid_at(tile + ivec2(-1, 0)), right = !solid_at(tile + ivec2(1, 0));
+    if (material == 82) { return roof_pixel(pixel, tile, local, bg, up, down, left, right); }
     bool corner = (local.x == 0 && local.y == 0 && up && left) || (local.x == 7 && local.y == 0 && up && right) || (local.x == 0 && local.y == 7 && down && left) || (local.x == 7 && local.y == 7 && down && right);
     if (corner) { return bg; }
     bool edge = (up && local.y == 0) || (down && local.y == 7) || (left && local.x == 0) || (right && local.x == 7);

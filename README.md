@@ -32,7 +32,7 @@ match the Windows actions. Setup downloads the pinned Godot 4.7.2 macOS build an
 
 ## Playing
 
-The game starts in **campaign** mode: your character in a wooden shack on a small plot. Walk with **A D**,
+The game starts in **campaign** mode: your character in a tile-roofed shack on a small plot. Walk with **A D**,
 jump with **Space**, climb ladders with **W S** and open doors with **E**. Left click builds the selected tile
 from the hotbar (it costs credits), right click removes one for a partial refund. **Esc** opens the menu,
 **F5** saves the whole world and the workshop, **F9** loads them, and **Tab** switches to the free sandbox. See
