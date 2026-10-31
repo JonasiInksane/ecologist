@@ -25,6 +25,9 @@ constexpr EquipmentSpec SPECS[EQ_KINDS] = {
     {"coupling", 2, 2, 20000, 5000, 0.5, 0, false, true},
     {"kettle", 6, 4, 60000, 20000, 12.0, 6, false, false},
     {"centrifuge", 4, 4, 30000, 30000, 3.0, 0.5, false, false, 30000},
+    {"glass_tank", 4, 7, 200000, 30000, 3.0, 0, false, true},
+    {"wide_tank", 6, 5, 400000, 50000, 4.0, 0, false, true},
+    {"vat", 5, 3, 100000, 20000, 8.0, 3, false, false},
 };
 constexpr int OXYGEN_DEFICIT = 12, SOL_BITTERN = SOL_METAL, SOL_COLLOID = SOL_SILT, SOL_ASH = SOL_METAL, SOL_ACIDS = 7, SOL_LIME = 8;
 constexpr double SET_BELOW = 45, MELT_ABOVE = 90, MAX_TEMPERATURE = 400;
@@ -472,13 +475,17 @@ const std::vector<PortSpec> &equipment_ports(int kind) {
     static const std::vector<PortSpec> none, drum{{0, 3, 1}, {1, 3, 2}, {1, 0, 0}},
         tote{{0, 5, 1}, {5, 5, 2}, {2, 0, 0}, {3, 0, 0}},
         coupling{{0, 0, 0}, {1, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 3}, {1, 1, 3}}, kettle{{0, 3, 1}, {5, 3, 2}},
-        centrifuge{{0, 3, 1, true}, {3, 3, 2, true}};
+        centrifuge{{0, 3, 1, true}, {3, 3, 2, true}}, glass_tank{{0, 6, 1}, {3, 6, 2}, {1, 0, 0}, {2, 0, 0}},
+        wide_tank{{0, 4, 1}, {5, 4, 2}, {2, 0, 0}, {3, 0, 0}}, vat{{0, 2, 1}, {4, 2, 2}};
     switch (kind) {
     case EQ_DRUM: return drum;
     case EQ_TOTE: return tote;
     case EQ_COUPLING: return coupling;
     case EQ_KETTLE: return kettle;
     case EQ_CENTRIFUGE: return centrifuge;
+    case EQ_GLASS_TANK: return glass_tank;
+    case EQ_WIDE_TANK: return wide_tank;
+    case EQ_VAT: return vat;
     default: return none;
     }
 }

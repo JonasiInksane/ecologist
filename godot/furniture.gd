@@ -2,15 +2,18 @@ extends Node2D
 # Furniture in the base's rooms (docs/design/rooms.md): the generated pieces in art/rooms/furniture.png, placed
 # freely inside rooms. A floor piece stands on a room's floor, a ceiling piece hangs from its ceiling; pieces don't
 # overlap. main.gd owns the mode and the cash; this node keeps the placements, checks them and draws them in the
-# campaign light.
+# campaign light. Pieces with "equipment" (the glass tanks and the vat) are real equipment: main.gd places them in
+# the world, which owns and draws them; here they only get their spot, on the cell grid, and their preview.
 
 const ART := "res://art/rooms/furniture.png"
+const VESSELS := "res://art/rooms/vessels.png"
 const DATA := "res://data/furniture.json"
 
 var pieces: Array = []      # the catalogue from data/furniture.json
 var placed: Array = []      # {id, x, y}: x the left edge, y the bottom edge, in world pixels
 var rooms: RoomsModel
 var texture: Texture2D
+var vessels: Texture2D
 var frame: Texture2D # art/rooms/walls.png: the floor slab at (0, 64) and the room post at (384, 0)
 var world
 
@@ -23,8 +26,8 @@ func setup(model: RoomsModel) -> void:
     rooms = model
     var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DATA))
     pieces = data.pieces
-    if ResourceLoader.exists(ART):
-        texture = load(ART)
+    texture = UiStyle.texture(ART)
+    vessels = UiStyle.texture(VESSELS)
 
 func piece(id: String) -> Dictionary:
     for p in pieces:
@@ -46,6 +49,8 @@ func spot(id: String, pointer: Vector2) -> Rect2:
     var inside := RoomsModel.interior(slot.x, slot.y)
     var size := size_of(id)
     var left := clampf(roundf(pointer.x - size.x / 2.0), inside.position.x * 8.0, inside.end.x * 8.0 - size.x)
+    if piece(id).has("equipment"):
+        left = clampf(roundf(left / 16.0) * 16.0, inside.position.x * 8.0, floorf((inside.end.x * 8.0 - size.x) / 16.0) * 16.0)
     var top := inside.end.y * 8.0 - size.y if piece(id).stand == "floor" else inside.position.y * 8.0
     return Rect2(left, top, size.x, size.y)
 
@@ -61,6 +66,11 @@ func refusal(id: String, rect: Rect2) -> String:
     for entry in placed:
         if rect_of(entry).grow(-1).intersects(rect.grow(-1)):
             return "something is in the way"
+    if world != null:
+        for y in range(int(rect.position.y) / 8, ceili(rect.end.y / 8.0)):
+            for x in range(int(rect.position.x) / 8, ceili(rect.end.x / 8.0)):
+                if world.equipment_at(x, y) >= 0:
+                    return "something is in the way"
     return ""
 
 func place(id: String, rect: Rect2) -> void:
@@ -78,10 +88,11 @@ func remove_at(pointer: Vector2) -> String:
     return ""
 
 func draw_piece(canvas: CanvasItem, id: String, rect: Rect2, tint := Color.WHITE) -> void:
-    if texture == null:
+    var sheet := vessels if piece(id).has("equipment") else texture
+    if sheet == null:
         return
     var r: Array = piece(id).region
-    canvas.draw_texture_rect_region(texture, rect, Rect2(r[0], r[1], r[2], r[3]), tint)
+    canvas.draw_texture_rect_region(sheet, rect, Rect2(r[0], r[1], r[2], r[3]), tint)
 
 func _draw() -> void:
     _draw_frames()

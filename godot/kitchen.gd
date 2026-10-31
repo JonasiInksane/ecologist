@@ -14,6 +14,7 @@ var carrying := -1
 var billed_joules := 0.0
 var billed_power := 0.0
 var sheet: Texture2D
+var sheets := {} # other sprite sheets by path (the base's vessels), loaded once
 var clock := 0.0
 var title := UiStyle.label("", "Title")
 var picture := UiStyle.icon_rect(null, 40)
@@ -120,6 +121,18 @@ func world() -> EcologistWorld:
 
 func model() -> WorkshopModel:
     return main.workshop.model
+
+# The sheet an item's sprite is cut from: its own "sheet" if it has one, art/equipment.png otherwise.
+func sheet_path(item: Dictionary) -> String:
+    return String(item.get("sheet", SPRITES))
+
+func sheet_of(item: Dictionary) -> Texture2D:
+    var path := sheet_path(item)
+    if path == SPRITES:
+        return sheet
+    if not sheets.has(path):
+        sheets[path] = main._load_texture(path)
+    return sheets[path]
 
 func name_of(kind: String) -> String:
     return items[kind].name if items.has(kind) else kind.capitalize()
@@ -270,7 +283,7 @@ func refresh() -> void:
         close()
         return
     title.text = name_of(info.kind)
-    picture.texture = UiStyle.sprite(SPRITES, items[info.kind].sprite) if items.has(info.kind) and items[info.kind].has("sprite") else null
+    picture.texture = UiStyle.sprite(sheet_path(items[info.kind]), items[info.kind].sprite) if items.has(info.kind) and items[info.kind].has("sprite") else null
     picture.visible = picture.texture != null
     var under: Dictionary = world().equipment_info(int(info.resting_on))
     var places: Array[String] = [("On the " + name_of(under.kind).to_lower()) if not under.is_empty() else "On the floor"]
@@ -510,6 +523,7 @@ func footprint(kind: String, cell: Vector2i) -> Rect2:
 func _liquid_color(info: Dictionary) -> Color:
     var color := Color("5daee7")
     color = color.lerp(Color("e8b04a"), clampf(float(info.sugar) * 1.4, 0.0, 1.0))
+    color = color.lerp(Color("3fb3a0"), clampf(float(info.get("salt", 0.0)) * 14.0, 0.0, 0.7))
     color = color.lerp(Color("9a8466"), clampf(float(info.cloudy) * 60.0, 0.0, 0.8))
     color = color.lerp(Color("4a2a12"), clampf(float(info.burnt) * 6.0, 0.0, 1.0))
     color.a = 0.95 if info.set else 0.85
@@ -552,9 +566,16 @@ func draw_equipment(canvas: CanvasItem, view: Array, time: float) -> void:
                 for i in 3:
                     var angle := time * 25.0 + float(i) * TAU / 3.0
                     canvas.draw_line(hub, hub + Vector2(cos(angle) * back.size.x / 2.0, sin(angle) * back.size.y / 4.0), Color(0.9, 0.95, 1.0, 0.5), 1.0)
-        if sheet != null and item.has("sprite"):
+        var texture := sheet_of(item)
+        if texture != null and item.has("sprite"):
             var sprite: Array = item.sprite
-            canvas.draw_texture_rect_region(sheet, Rect2(pos, size), Rect2(sprite[0], sprite[1], sprite[2], sprite[3]))
+            canvas.draw_texture_rect_region(texture, Rect2(pos, size), Rect2(sprite[0], sprite[1], sprite[2], sprite[3]))
+            # an open vessel drawn with a dark cavity (the vat) shows its liquid on top, in the opening's shape
+            if item.has("surface") and info.vessel and float(info.mass) > 0.5:
+                var surface: Array = item.surface
+                var color := _liquid_color(info)
+                color.a = lerpf(0.55, 0.95, clampf(float(info.fill) * 2.0, 0.0, 1.0))
+                canvas.draw_texture_rect_region(texture, Rect2(pos + inside.position, inside.size), Rect2(surface[0], surface[1], surface[2], surface[3]), color)
         else:
             canvas.draw_rect(Rect2(pos, size), Color("6d7a80"), false, 1.0)
         if info.kind == "stove" and int(info.setting) > 0:

@@ -11,7 +11,9 @@ namespace ecologist {
 // pumps (docs/design/m2-logistics.md).
 enum EquipmentKind {
     EQ_STOVE = 1, EQ_SINK, EQ_TABLE, EQ_SAUCEPAN, EQ_CANDY_MOLD, EQ_SALT_PAN,
-    EQ_LAPTOP, EQ_DRUM, EQ_TOTE, EQ_COUPLING, EQ_KETTLE, EQ_CENTRIFUGE, EQ_KINDS
+    EQ_LAPTOP, EQ_DRUM, EQ_TOTE, EQ_COUPLING, EQ_KETTLE, EQ_CENTRIFUGE,
+    // The base's vessels (docs/design/rooms.md): glass tanks and an open vat to build reaction lines from.
+    EQ_GLASS_TANK, EQ_WIDE_TANK, EQ_VAT, EQ_KINDS
 };
 struct EquipmentSpec {
     const char *id;

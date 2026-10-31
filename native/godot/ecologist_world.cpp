@@ -202,6 +202,7 @@ Dictionary summary(const ecologist::World &w, const ecologist::Sandbox &s, int i
     d["crystals"] = mass > 0 ? (v.sugar_crystal + v.salt_crystal + v.bittern_crystal) / mass : 0.0;
     d["burnt"] = mass > 0 ? v.burnt / mass : 0.0;
     d["sugar"] = mass > 0 ? v.dissolved[ecologist::SOL_SUGAR] / mass : 0.0;
+    d["salt"] = mass > 0 ? v.dissolved[ecologist::SOL_SALT] / mass : 0.0;
     const double tissue = v.beet + v.beet_water + v.beet_sugar + v.beet_colloid + v.beet_ash;
     d["beets"] = mass > 0 ? tissue / mass : 0.0;
     d["mud"] = mass > 0 ? v.mud / mass : 0.0;

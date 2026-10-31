@@ -91,7 +91,7 @@ func run() -> void:
     var shack := EcologistWorld.new()
     shack.setup_plot(7)
     var kinds: Array = shack.equipment_kinds()
-    check(kinds.size() == 12 and kinds[3].id == "saucepan" and kinds[0].support and not kinds[3].support and kinds[8].closed and kinds[8].ports == 4, "Twelve kinds of equipment, with closed tanks and ports")
+    check(kinds.size() == 15 and kinds[3].id == "saucepan" and kinds[0].support and not kinds[3].support and kinds[8].closed and kinds[8].ports == 4, "Fifteen kinds of equipment, with closed tanks and ports")
     var ids := {}
     for info in shack.equipment_list():
         ids[info.kind] = info.id

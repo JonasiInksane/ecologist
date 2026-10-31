@@ -110,6 +110,7 @@ var room_type := 0
 var furniture: Node2D
 var furnish_mode := false
 var furnish_index := 0
+var pipe_texture: Texture2D # art/rooms/pipes.png: the pipe joins by mask, the valves, the flange and the pump
 
 func _ready() -> void:
     rooms = RoomsModel.new(campaign_world)
@@ -123,6 +124,7 @@ func _ready() -> void:
     _load_catalog()
     _load_build_items()
     player_texture = _load_texture(PLAYER_ART)
+    pipe_texture = _load_texture("res://art/rooms/pipes.png")
     surface.centered = false
     surface.show_behind_parent = true
     # The texture holds two metadata planes; the shader expands each world cell to 8x8 pixels.
@@ -166,7 +168,8 @@ func _load_build_items() -> void:
     var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/build_costs.json"))
     build_items = data.items
     build_reach = int(data.reach_tiles)
-    kit_items = JSON.parse_string(FileAccess.get_file_as_string("res://data/equipment.json")).items
+    # the base's vessels (furnish: true) are bought in furnish mode, not from the kit bar
+    kit_items = JSON.parse_string(FileAccess.get_file_as_string("res://data/equipment.json")).items.filter(func(item): return not item.get("furnish", false))
 
 # Imported when the editor has seen the file; read straight from disk otherwise (headless test runs).
 func _load_texture(path: String) -> Texture2D:
@@ -901,9 +904,7 @@ func _unhandled_input(event: InputEvent) -> void:
                     if event.button_index == MOUSE_BUTTON_LEFT:
                         _furnish(get_global_mouse_position())
                     else:
-                        var taken: String = furniture.remove_at(get_global_mouse_position())
-                        if not taken.is_empty():
-                            workshop.model.cash += float(furniture.piece(taken).cost) * 0.5
+                        _unfurnish(get_global_mouse_position())
                     return
                 if _equipment_click(clicked, event.button_index == MOUSE_BUTTON_RIGHT):
                     return
@@ -944,19 +945,45 @@ func _unhandled_input(event: InputEvent) -> void:
 func _furnish_piece() -> Dictionary:
     return furniture.pieces[furnish_index]
 
-# Places the chosen piece where the pointer is, paid from the cash.
+# Places the chosen piece where the pointer is, paid from the cash. A vessel goes into the world as equipment,
+# standing on the room's floor (its anchor is the floor's last cell row, as kitchen.place takes the pointer's).
 func _furnish(pointer: Vector2) -> String:
     var piece := _furnish_piece()
     var spot: Rect2 = furniture.spot(piece.id, pointer)
     var why: String = furniture.refusal(piece.id, spot)
     if why.is_empty() and workshop.model.cash + 0.000001 < float(piece.cost):
         why = "not enough credits"
+    if why.is_empty() and piece.has("equipment"):
+        var result: Dictionary = world.equipment_place(piece.equipment, int(spot.position.x / CELL), int(spot.end.y / CELL) - 1)
+        why = String(result.error) if int(result.id) < 0 else ""
+        if why.is_empty():
+            dirty = true
+    elif why.is_empty():
+        furniture.place(piece.id, spot)
     if why.is_empty():
         workshop.model.cash -= float(piece.cost)
-        furniture.place(piece.id, spot)
     else:
         _notice("Can't put it here: %s" % why)
     return why
+
+# Takes back the piece under the pointer for half its price: equipment if there is some (it must be empty), else
+# furniture. Returns the id taken, or "".
+func _unfurnish(pointer: Vector2) -> String:
+    var cell := Vector2i((pointer / CELL).floor())
+    var id: int = world.equipment_at(cell.x, cell.y)
+    if id >= 0:
+        var kind := String(world.equipment_info(id).get("kind", ""))
+        var why: String = world.equipment_remove(id)
+        if not why.is_empty():
+            _notice("Can't take it back: %s" % why)
+            return ""
+        dirty = true
+        workshop.model.cash += float(furniture.piece(kind).get("cost", 0)) * 0.5
+        return kind
+    var taken: String = furniture.remove_at(pointer)
+    if not taken.is_empty():
+        workshop.model.cash += float(furniture.piece(taken).cost) * 0.5
+    return taken
 
 # Builds a room of the chosen kind in a slot, paid from the cash.
 func _build_room(slot: Vector2i) -> String:
@@ -1140,11 +1167,14 @@ func _refresh_texture() -> void:
 
 func _draw() -> void:
     draw_rect(Rect2(0, 0, WIDTH * CELL, HEIGHT * CELL), Color("42616a"), false, 1.0)
+    var fittings := _fittings() if campaign and pipe_texture != null else {}
     for device in machine_view:
         var pos := Vector2(int(device.cell) % WIDTH, int(device.cell) / WIDTH) * CELL
         var live: bool = device.on or device.active or device.open
         var lit := Color("7ae08a") if live else Color("d47868")
-        if device.kind in [25, 26, 27]:
+        if fittings.has(int(device.cell)):
+            _draw_fitting(device, pos, fittings)
+        elif device.kind in [25, 26, 27]:
             draw_rect(Rect2(pos + Vector2(2, 0), Vector2(4, 8)), Color("8297a5"))
             draw_rect(Rect2(pos + Vector2(0, 2), Vector2(8, 4)), Color("8297a5"))
             draw_rect(Rect2(pos + Vector2(3, 1), Vector2(2, 6)), Color("5fbae0") if device.active else Color("26383e"))
@@ -1192,11 +1222,73 @@ func _draw() -> void:
         var start := Vector2(pending_wire % WIDTH, pending_wire / WIDTH) * CELL + Vector2(4, 4)
         draw_line(start, get_global_mouse_position(), Color("f2c94c"), 1.0 / camera.zoom.x)
     if campaign:
+        _draw_pumps()
         _draw_campaign()
     elif not _pointer_over_ui():
         var center := (get_global_mouse_position() / CELL).floor() * CELL + Vector2.ONE * CELL / 2
         var fine: bool = TOOLS[selected][1] >= 101 and TOOLS[selected][1] <= 107
         draw_arc(get_global_mouse_position() if fine else center, radius * (4.0 if fine else CELL), 0, TAU, 48, Color(0.85, 0.96, 0.91, 0.65), 1.0 / camera.zoom.x)
+
+# The campaign's pipe run: every pipe, valve, filter and pump end by cell, and the cells outside equipment ports
+# (as -1 - the direction from that cell to the port: 0 up, 1 right, 2 down, 3 left).
+func _fittings() -> Dictionary:
+    var cells := {}
+    for device in machine_view:
+        if int(device.kind) in [8, 9, 25, 26, 27]:
+            cells[int(device.cell)] = device
+    for info in equipment_view:
+        for port in info.get("ports", []):
+            var step: Vector2i = [Vector2i(0, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1)][int(port.dir)]
+            var outside := Vector2i(int(port.x), int(port.y)) + step
+            var toward: int = [2, 1, 3, 0][int(port.dir)]
+            var k := outside.y * WIDTH + outside.x
+            if not cells.has(-1 - k):
+                cells[-1 - k] = []
+            cells[-1 - k].append(toward)
+    return cells
+
+# One fitting from art/rooms/pipes.png: the pipe piece joining its four neighbours (pipes, valves, filters, pump
+# ends and equipment ports), a flange where it meets a port, the valve over it and the pump over a pump's inlet.
+func _draw_fitting(device: Dictionary, pos: Vector2, fittings: Dictionary) -> void:
+    var k := int(device.cell)
+    var mask := 0
+    for bit in 4:
+        var step: Vector2i = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)][bit]
+        if fittings.has(k + step.y * WIDTH + step.x):
+            mask |= 1 << bit
+    var ports: Array = fittings.get(-1 - k, [])
+    for bit in ports:
+        mask |= 1 << int(bit)
+    var vertical := mask & 5 != 0 and mask & 10 == 0
+    if int(device.kind) == 26:
+        var piece := 16 if device.open else 17
+        draw_set_transform(pos + Vector2(4, 4), PI / 2 if vertical else 0.0, Vector2.ONE)
+        draw_texture_rect_region(pipe_texture, Rect2(-4, -4, 8, 8), Rect2(piece * 8, 0, 8, 8))
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+    else:
+        draw_texture_rect_region(pipe_texture, Rect2(pos, Vector2(8, 8)), Rect2((mask if mask > 0 else 0) * 8, 0, 8, 8))
+    for bit in ports:
+        draw_set_transform(pos + Vector2(4, 4), (int(bit) - 1) * PI / 2, Vector2.ONE)
+        draw_texture_rect_region(pipe_texture, Rect2(2, -4, 2, 8), Rect2(18 * 8 + 6, 0, 2, 8))
+        draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+    if int(device.kind) == 27:
+        draw_rect(Rect2(pos + Vector2(2, 2), Vector2(4, 4)), Color("cbd889"), false, 1)
+
+# A pump stands over its inlet, on the inlet cell's bottom edge, after the pipes so they don't show through it;
+# when its outlet is the cell beside the inlet it is centred over the pair.
+func _draw_pumps() -> void:
+    if pipe_texture == null:
+        return
+    for device in machine_view:
+        if int(device.kind) != 8:
+            continue
+        var cell := Vector2i(int(device.cell) % WIDTH, int(device.cell) / WIDTH)
+        var middle := float(cell.x) + 0.5
+        for target in device.targets:
+            if absi(int(target) - int(device.cell)) == 1:
+                middle = (float(cell.x) + float(int(target) % WIDTH)) / 2.0 + 0.5
+        var rect := Rect2(middle * CELL - 12, (cell.y + 1) * CELL - 16, 24, 16)
+        draw_texture_rect_region(pipe_texture, rect, Rect2(19 * 8, 0, 24, 16), Color.WHITE if device.on else Color(0.8, 0.8, 0.85))
 
 # Sprite sheet frames: 0 idle, 1-4 walk, 5 jump, 6-7 climb. The 32 x 48 frame puts the 20 x 42 hitbox at (6, 6).
 func _player_frame() -> int:

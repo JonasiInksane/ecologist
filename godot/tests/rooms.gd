@@ -48,7 +48,14 @@ func _initialize() -> void:
     check(again.rooms.size() == 4 and again.rooms[Vector2i(0, -1)] == "cellar", "Rooms save and load")
     call_deferred("game_checks")
 
-# The base in the game: one bare room at the start, rooms bought in room mode, furniture placed and taken back.
+func _piece(game, id: String) -> int:
+    for i in game.furniture.pieces.size():
+        if game.furniture.pieces[i].id == id:
+            return i
+    return -1
+
+# The base in the game: one bare room at the start, rooms bought in room mode, furniture placed and taken back,
+# vessels placed as equipment and pumped between.
 func game_checks() -> void:
     var game = load("res://main.tscn").instantiate()
     root.add_child(game)
@@ -61,19 +68,48 @@ func game_checks() -> void:
     check(game._build_room(Vector2i(3, 0)) == "build next to a room" and is_equal_approx(game.workshop.model.cash, 800.0), "A room apart from the base is refused, free")
     game.room_type = 3
     check(game._build_room(Vector2i(0, -1)) == "" and is_equal_approx(game.workshop.model.cash, 650.0), "A cellar costs extra to dig")
-    var tank := -1
-    for i in game.furniture.pieces.size():
-        if game.furniture.pieces[i].id == "tank":
-            tank = i
-    game.furnish_index = tank
+    game.furnish_index = _piece(game, "workbench")
     var inside := RoomsModel.interior(1, 0)
-    var at := Vector2((inside.position.x + 8) * 8.0, (inside.position.y + 4) * 8.0)
-    check(game._furnish(at) == "" and game.furniture.placed.size() == 1 and is_equal_approx(game.workshop.model.cash, 500.0), "A tank is placed in the lab for its price")
+    var at := Vector2((inside.position.x + 14) * 8.0, (inside.position.y + 4) * 8.0)
+    check(game._furnish(at) == "" and game.furniture.placed.size() == 1 and is_equal_approx(game.workshop.model.cash, 580.0), "A workbench is placed in the lab for its price")
     var spot: Rect2 = game.furniture.rect_of(game.furniture.placed[0])
     check(is_equal_approx(spot.end.y, inside.end.y * 8.0), "It stands on the lab's floor")
     check(game._furnish(at) == "something is in the way", "Two pieces can't overlap")
     check(game._furnish(Vector2(40, 40)) == "furniture goes inside a room", "Furniture goes inside rooms only")
-    check(game.furniture.remove_at(spot.get_center()) == "tank" and game.furniture.placed.is_empty(), "A placed piece can be taken back")
+    check(game.furniture.remove_at(spot.get_center()) == "workbench" and game.furniture.placed.is_empty(), "A placed piece can be taken back")
+    # vessels are real equipment: a glass tank of water, pumped into a vat
+    game.furnish_index = _piece(game, "glass_tank")
+    check(game._furnish(Vector2((inside.position.x + 4) * 8.0, (inside.position.y + 2) * 8.0)) == "" and is_equal_approx(game.workshop.model.cash, 430.0), "A glass tank is bought in the lab")
+    var tanks: Array = game.world.equipment_list()
+    check(tanks.size() == 1 and tanks[0].kind == "glass_tank" and int(tanks[0].y) + int(tanks[0].height) == inside.end.y and int(tanks[0].x) % 2 == 0, "It stands on the lab's floor as equipment")
+    var tank: Dictionary = tanks[0]
+    check(game._furnish(Vector2((tank.x + 2) * 8.0, (inside.position.y + 2) * 8.0)) == "something is in the way", "Nothing goes where the tank stands")
+    check(game.world.vessel_add(int(tank.id), "water", 50000, 20) == "" and float(game.world.equipment_info(int(tank.id)).mass) > 49999.0, "Water goes into the tank")
+    game.furnish_index = _piece(game, "vat")
+    var vat_at := Vector2((tank.x + 12) * 8.0, (inside.position.y + 2) * 8.0)
+    check(game._furnish(vat_at) == "" and is_equal_approx(game.workshop.model.cash, 370.0), "An open vat is bought beside it")
+    var vat: Dictionary = game.world.equipment_info(game.world.equipment_at(int(vat_at.x / 8.0), inside.end.y - 1))
+    check(vat.get("kind", "") == "vat", "The vat stands on the floor too")
+    # the pump's inlet at the tank's low right port, its outlet just past it, then a pipe along the floor to the vat
+    var floor_row: int = inside.end.y - 1
+    var inlet := Vector2i(int(tank.x) + 4, floor_row)
+    game.world.build(inlet.x, inlet.y, 1008)
+    game.world.build(inlet.x + 1, inlet.y, 1008)
+    for x in range(inlet.x + 2, int(vat.x)):
+        game.world.build(x, floor_row, 1006)
+    check(int(game.world.inspect(inlet.x, inlet.y).solid) == 8 and int(game.world.inspect(inlet.x + 1, inlet.y).solid) == 9 and int(game.world.inspect(int(vat.x) - 1, floor_row).solid) == 25, "A pump and a pipe join the tank to the vat")
+    var info: Dictionary = game.world.equipment_info(int(tank.id))
+    check(info.ports[1].connected and game.world.equipment_info(int(vat.id)).ports[0].connected, "The pump couples to the tank's port and the pipe to the vat's")
+    for i in 600:
+        game.world.advance(1)
+    var moved: float = float(game.world.equipment_info(int(vat.id)).get("mass", 0.0))
+    check(moved > 1000.0 and float(game.world.equipment_info(int(tank.id)).mass) < 50000.0 - moved + 1.0, "The pump moves water from the tank into the vat (%.0f g)" % moved)
+    game._refresh_texture()
+    check(game._fittings().size() >= int(vat.x) - inlet.x, "The pipe run is drawn from the pipe sheet")
+    check(game._unfurnish(Vector2((tank.x + 1) * 8.0, (tank.y + 1) * 8.0)) == "" and game.world.equipment_list().size() == 2, "A tank with water in it can't be taken back")
+    game.world.vessel_drain(int(vat.id), false)
+    var cash: float = game.workshop.model.cash
+    check(game._unfurnish(Vector2((vat.x + 2) * 8.0, (vat.y + 1) * 8.0)) == "vat" and is_equal_approx(game.workshop.model.cash, cash + 30.0) and game.world.equipment_list().size() == 1, "An empty vat is taken back for half its price")
     game.free()
     print("Rooms: %d checks, %d failures" % [checks, failures])
     quit(1 if failures else 0)
