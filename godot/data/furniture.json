@@ -1,0 +1,252 @@
+{
+  "_comment": "Written by tools/make-room-art.py from the PixelLab room art: each piece's region in art/rooms/furniture.png, whether it stands on the floor or hangs from the ceiling, and its price.",
+  "pieces": [
+    {
+      "id": "desk",
+      "name": "Desk with computer",
+      "stand": "floor",
+      "cost": 60,
+      "about": "where orders and research are done",
+      "region": [
+        0,
+        0,
+        60,
+        44
+      ]
+    },
+    {
+      "id": "lab_bench",
+      "name": "Lab bench",
+      "stand": "floor",
+      "cost": 80,
+      "about": "glassware for small reactions",
+      "region": [
+        62,
+        0,
+        60,
+        53
+      ]
+    },
+    {
+      "id": "chair",
+      "name": "Office chair",
+      "stand": "floor",
+      "cost": 10,
+      "about": "",
+      "region": [
+        124,
+        0,
+        13,
+        21
+      ]
+    },
+    {
+      "id": "shelf",
+      "name": "Shelf",
+      "stand": "floor",
+      "cost": 25,
+      "about": "storage",
+      "region": [
+        139,
+        0,
+        54,
+        55
+      ]
+    },
+    {
+      "id": "tank",
+      "name": "Liquid tank",
+      "stand": "floor",
+      "cost": 150,
+      "about": "holds liquids for a reaction line",
+      "region": [
+        195,
+        0,
+        58,
+        60
+      ]
+    },
+    {
+      "id": "vat",
+      "name": "Open vat",
+      "stand": "floor",
+      "cost": 60,
+      "about": "an open vessel to mix in",
+      "region": [
+        255,
+        0,
+        26,
+        29
+      ]
+    },
+    {
+      "id": "pump_unit",
+      "name": "Pump",
+      "stand": "floor",
+      "cost": 40,
+      "about": "moves liquid through pipes",
+      "region": [
+        283,
+        0,
+        28,
+        26
+      ]
+    },
+    {
+      "id": "still",
+      "name": "Copper still",
+      "stand": "floor",
+      "cost": 180,
+      "about": "distils what is in it",
+      "region": [
+        313,
+        0,
+        45,
+        60
+      ]
+    },
+    {
+      "id": "generator",
+      "name": "Generator",
+      "stand": "floor",
+      "cost": 220,
+      "about": "power for the base",
+      "region": [
+        360,
+        0,
+        57,
+        60
+      ]
+    },
+    {
+      "id": "grow_rack",
+      "name": "Grow rack",
+      "stand": "floor",
+      "cost": 90,
+      "about": "plants under grow lights",
+      "region": [
+        419,
+        0,
+        40,
+        47
+      ]
+    },
+    {
+      "id": "hydro_tray",
+      "name": "Hydroponic tray",
+      "stand": "floor",
+      "cost": 40,
+      "about": "seedlings in water",
+      "region": [
+        461,
+        0,
+        46,
+        15
+      ]
+    },
+    {
+      "id": "pot_sprout",
+      "name": "Potted sprout",
+      "stand": "floor",
+      "cost": 5,
+      "about": "",
+      "region": [
+        509,
+        0,
+        10,
+        15
+      ]
+    },
+    {
+      "id": "pot_half",
+      "name": "Potted plant",
+      "stand": "floor",
+      "cost": 8,
+      "about": "",
+      "region": [
+        521,
+        0,
+        13,
+        18
+      ]
+    },
+    {
+      "id": "pot_full",
+      "name": "Flowering plant",
+      "stand": "floor",
+      "cost": 12,
+      "about": "",
+      "region": [
+        536,
+        0,
+        18,
+        21
+      ]
+    },
+    {
+      "id": "lamp",
+      "name": "Ceiling lamp",
+      "stand": "ceiling",
+      "cost": 15,
+      "about": "light",
+      "region": [
+        556,
+        0,
+        14,
+        14
+      ]
+    },
+    {
+      "id": "door",
+      "name": "Steel door",
+      "stand": "floor",
+      "cost": 50,
+      "about": "",
+      "region": [
+        572,
+        0,
+        49,
+        59
+      ]
+    },
+    {
+      "id": "crate",
+      "name": "Crate",
+      "stand": "floor",
+      "cost": 6,
+      "about": "",
+      "region": [
+        623,
+        0,
+        18,
+        19
+      ]
+    },
+    {
+      "id": "barrel",
+      "name": "Barrel",
+      "stand": "floor",
+      "cost": 8,
+      "about": "",
+      "region": [
+        643,
+        0,
+        16,
+        21
+      ]
+    },
+    {
+      "id": "workbench",
+      "name": "Workbench",
+      "stand": "floor",
+      "cost": 70,
+      "about": "tools",
+      "region": [
+        661,
+        0,
+        58,
+        52
+      ]
+    }
+  ]
+}

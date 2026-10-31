@@ -5,6 +5,7 @@ func _initialize() -> void:
 
 func run() -> void:
     var game = load("res://main.tscn").instantiate()
+    game.legacy_plot = true
     root.add_child(game)
     # Exercise the real fixed-timestep loop and GPU rendering before capturing.
     var ticks := 360 if "--long" in OS.get_cmdline_user_args() else 90

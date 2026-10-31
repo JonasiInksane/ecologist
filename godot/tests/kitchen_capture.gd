@@ -7,6 +7,7 @@ func _initialize() -> void:
 
 func run() -> void:
     var game = load("res://main.tscn").instantiate()
+    game.legacy_plot = true
     root.add_child(game)
     await physics_frame
     var ids := {}

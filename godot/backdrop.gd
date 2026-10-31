@@ -4,10 +4,9 @@ extends Node2D
 # through the hall's tall windows. The lamps, sight glasses and vats glow, brighter after dusk. main.gd adds it behind the world, whose shader leaves the open sky clear, and
 # sets the clock; it is not lit by the world's light, so it shades itself for the hour.
 
-const HORIZON := 800.0
 const ART := "res://art/backdrop/%s.png"
 # Each layer and how far it moves with the camera (1 would be fixed to the world).
-const LAYERS := [["far", 0.12], ["mid", 0.3], ["near", 0.55]]
+const LAYERS := [["hall", 0.12]]
 # The sky at the top, the middle and the horizon through the day, by hour, in the palette's sky, night and dusk ramps.
 const SKY_KEYS := [
     [0.0, "0b0c18", "121530", "242c66"],
@@ -21,13 +20,15 @@ const SKY_KEYS := [
     [24.0, "0b0c18", "121530", "242c66"],
 ]
 const SKY_HEIGHT := 440.0
-const ROOF_COLOR := Color("1a2040")
+const ROOF_COLOR := Color("1c1a28")
 const BANDS := 22
 # Cloud sprites in clouds.png.
 const CLOUDS := [Rect2(0, 0, 120, 44), Rect2(128, 0, 96, 36), Rect2(0, 48, 72, 30), Rect2(128, 48, 128, 40)]
 const CLOUD_SPAN := 2600.0
 
 var camera: Camera2D
+# The floor line the hall stands on, in world pixels; main.gd sets it to the base's ground.
+var horizon := 800.0
 var minute := 480.0
 var level := 1.0
 var textures := {}
@@ -37,9 +38,8 @@ var clouds: Array = []
 func _ready() -> void:
     z_index = -10
     texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-    for layer in LAYERS:
-        textures[layer[0]] = _load(ART % layer[0])
-        textures[layer[0] + "-lights"] = _load(ART % (layer[0] + "-lights"))
+    # the generated factory hall (tools/make-room-art.py)
+    textures.hall = _load("res://art/rooms/hall.png")
     textures.clouds = _load(ART % "clouds")
     textures.sky = _load(ART % "sky")
     var rng := RandomNumberGenerator.new()
@@ -95,7 +95,7 @@ func _draw() -> void:
     var hour := minute / 60.0
     var colors := sky_colors(hour)
     # the sky in bands, from its top colour down to the horizon
-    var top := HORIZON - SKY_HEIGHT
+    var top := horizon - SKY_HEIGHT
     if view.position.y < top:
         draw_rect(Rect2(view.position.x, view.position.y, view.size.x, top - view.position.y + 1.0), colors[0])
     var band := SKY_HEIGHT / BANDS
@@ -103,16 +103,16 @@ func _draw() -> void:
         var t := float(i) / (BANDS - 1)
         var color: Color = colors[0].lerp(colors[1], t * 2.0) if t < 0.5 else colors[1].lerp(colors[2], (t - 0.5) * 2.0)
         draw_rect(Rect2(view.position.x, top + i * band, view.size.x, band + 1.0), color)
-    draw_rect(Rect2(view.position.x, HORIZON, view.size.x, maxf(0.0, view.end.y - HORIZON)), colors[2])
+    draw_rect(Rect2(view.position.x, horizon, view.size.x, maxf(0.0, view.end.y - horizon)), colors[2])
     _draw_stars(view)
     _draw_bodies(view, hour)
     _draw_clouds(view)
     for i in LAYERS.size():
         _draw_layer(view, LAYERS[i][0], LAYERS[i][1], layer_tint(i))
     # the hall's roof above the back wall
-    var far: Texture2D = textures.get("far")
-    if far != null and view.position.y < HORIZON - far.get_height():
-        draw_rect(Rect2(view.position.x, view.position.y, view.size.x, HORIZON - far.get_height() - view.position.y + 1.0), ROOF_COLOR * layer_tint(0))
+    var far: Texture2D = textures.get("hall")
+    if far != null and view.position.y < horizon - far.get_height():
+        draw_rect(Rect2(view.position.x, view.position.y, view.size.x, horizon - far.get_height() - view.position.y + 1.0), ROOF_COLOR * layer_tint(0))
 
 func _draw_stars(view: Rect2) -> void:
     var night := clampf(1.0 - level * 1.6, 0.0, 1.0)
@@ -123,7 +123,7 @@ func _draw_stars(view: Rect2) -> void:
         var x: float = origin + star[0] - 400.0
         if x < view.position.x or x > view.end.x:
             continue
-        var y: float = HORIZON - 80.0 - star[1]
+        var y: float = horizon - 80.0 - star[1]
         var twinkle: float = 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.002 + star[2] * 90.0) if star[2] > 0.8 else 1.0
         var size := 2.0 if star[2] > 0.92 else 1.0
         draw_rect(Rect2(Vector2(x, y).floor(), Vector2(size, size)), Color(1.0, 0.97, 0.86, night * twinkle))
@@ -135,12 +135,12 @@ func _draw_bodies(view: Rect2, hour: float) -> void:
         return
     var day_t := (hour - 5.5) / 15.0
     if day_t > 0.0 and day_t < 1.0:
-        var at := Vector2(view.get_center().x + (0.45 - day_t * 0.9) * view.size.x, HORIZON - 60.0 - sin(PI * day_t) * 300.0)
+        var at := Vector2(view.get_center().x + (0.45 - day_t * 0.9) * view.size.x, horizon - 60.0 - sin(PI * day_t) * 300.0)
         draw_circle(at, 28.0, Color(1.0, 0.9, 0.6, 0.12))
         draw_texture_rect_region(sheet, Rect2((at - Vector2(16, 16)).floor(), Vector2(32, 32)), Rect2(0, 0, 32, 32))
     var night_t := fposmod(hour - 19.5, 24.0) / 11.0
     if night_t > 0.0 and night_t < 1.0:
-        var at := Vector2(view.get_center().x + (0.4 - night_t * 0.8) * view.size.x, HORIZON - 80.0 - sin(PI * night_t) * 280.0)
+        var at := Vector2(view.get_center().x + (0.4 - night_t * 0.8) * view.size.x, horizon - 80.0 - sin(PI * night_t) * 280.0)
         draw_texture_rect_region(sheet, Rect2((at - Vector2(16, 16)).floor(), Vector2(32, 32)), Rect2(32, 0, 32, 32))
 
 func _draw_clouds(view: Rect2) -> void:
@@ -157,7 +157,7 @@ func _draw_clouds(view: Rect2) -> void:
         var x := origin + fposmod(cloud[1] + drift, CLOUD_SPAN) - 300.0
         if x > view.end.x or x + region.size.x < view.position.x:
             continue
-        var y: float = HORIZON - cloud[2]
+        var y: float = horizon - cloud[2]
         draw_texture_rect_region(sheet, Rect2(Vector2(x, y).floor(), region.size), region, tint * Color(1, 1, 1, cloud[3]))
 
 func _draw_layer(view: Rect2, name: String, follow: float, tint: Color) -> void:
@@ -170,7 +170,7 @@ func _draw_layer(view: Rect2, name: String, follow: float, tint: Color) -> void:
     var x := floorf((view.position.x - offset) / width) * width + offset
     var glow := window_light()
     while x < view.end.x:
-        var at := Vector2(roundf(x), HORIZON - texture.get_height())
+        var at := Vector2(roundf(x), horizon - texture.get_height())
         draw_texture(texture, at, tint)
         if lights != null and glow > 0.0:
             draw_texture(lights, at, Color(1, 1, 1, glow))

@@ -33,6 +33,7 @@ func _walker(town: PeopleModel, name: String, look: int, kind: String, x: float,
 
 func run() -> void:
     var game = load("res://main.tscn").instantiate()
+    game.legacy_plot = true
     root.add_child(game)
     await physics_frame
     game.set_physics_process(false)

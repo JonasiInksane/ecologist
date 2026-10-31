@@ -10,6 +10,7 @@ void EcologistWorld::_bind_methods() {
     ClassDB::bind_method(D_METHOD("setup", "width", "height", "seed"), &EcologistWorld::setup);
     ClassDB::bind_method(D_METHOD("reset_demo", "seed"), &EcologistWorld::reset_demo);
     ClassDB::bind_method(D_METHOD("setup_plot", "seed"), &EcologistWorld::setup_plot);
+    ClassDB::bind_method(D_METHOD("setup_base", "seed"), &EcologistWorld::setup_base);
     ClassDB::bind_method(D_METHOD("advance", "ticks"), &EcologistWorld::advance);
     ClassDB::bind_method(D_METHOD("player_input", "left", "right", "jump", "up", "down"), &EcologistWorld::player_input);
     ClassDB::bind_method(D_METHOD("player_state"), &EcologistWorld::player_state);
@@ -67,6 +68,7 @@ void EcologistWorld::reset_demo(int seed) {
     player = {};
 }
 void EcologistWorld::setup_plot(int seed) { ecologist::start_plot(simulation, grains, sandbox, player, seed); }
+void EcologistWorld::setup_base(int seed) { ecologist::start_base(simulation, grains, sandbox, player, seed); }
 void EcologistWorld::advance(int ticks) {
     if (simulation.width)
         for (int i = 0; i < std::clamp(ticks, 0, 600); i++)

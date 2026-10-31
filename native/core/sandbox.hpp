@@ -57,8 +57,12 @@ inline constexpr std::uint8_t BACK_WALL = 0x0f, BACK_LADDER = 0x40, BACK_DOOR_OP
 inline constexpr int BUILD_REMOVE = 1000, BUILD_BACK_WOOD = 1001, BUILD_BACK_BRICK = 1002, BUILD_LADDER = 1003,
                      BUILD_DOOR = 1004, BUILD_REMOVE_BACK = 1005, BUILD_PIPE = 1006, BUILD_VALVE = 1007, BUILD_PUMP = 1008,
                      BUILD_BACK_PLASTER = 1009;
+// Rooms (docs/design/rooms.md) set any background wall kind with BUILD_BACK_KIND + kind (1-15), replacing what is there.
+inline constexpr int BUILD_BACK_KIND = 1100;
 // Background wall kinds in the low bits of the building layer.
 inline constexpr std::uint8_t WALL_WOOD = 1, WALL_BRICK = 2, WALL_PLASTER = 3;
+// Room walls drawn from the generated wall textures (art-source/pixellab/rooms): plaster, steel, tile, concrete.
+inline constexpr std::uint8_t WALL_ROOM_PLASTER = 4, WALL_ROOM_STEEL = 5, WALL_ROOM_TILE = 6, WALL_ROOM_CONCRETE = 7;
 inline constexpr double AIR_OX = 210, AIR_CARB = 4, MAX_AIR_OX = 1000, MAX_AIR_CARB = 10000, CARB_PER_OX = 10,
                         FIRE_OX = 150;
 struct Sandbox {

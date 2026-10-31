@@ -25,4 +25,8 @@ struct Player {
 // the player (when one is active).
 void step_game(World &w, Grains &g, Sandbox &s, Player *p);
 void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed);
+// The base (docs/design/rooms.md): open air over a concrete-capped ground line at row BASE_GROUND, earth and rock below,
+// nothing built. The player stands on the ground at cell column BASE_SPAWN; rooms are carved by the game.
+inline constexpr int BASE_WIDTH = 512, BASE_HEIGHT = 128, BASE_GROUND = 48, BASE_SPAWN = 256;
+void start_base(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed);
 }

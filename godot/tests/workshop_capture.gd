@@ -5,6 +5,7 @@ func _initialize() -> void:
 
 func run() -> void:
     var game = load("res://main.tscn").instantiate()
+    game.legacy_plot = true
     root.add_child(game)
     game.camera.position = Vector2(102, 78) * 8
     game.camera.zoom = Vector2.ONE * 1.5

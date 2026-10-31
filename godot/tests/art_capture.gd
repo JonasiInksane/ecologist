@@ -31,6 +31,7 @@ func _at(game, hour: float) -> void:
 
 func run() -> void:
     var game = load("res://main.tscn").instantiate()
+    game.legacy_plot = true
     root.add_child(game)
     await physics_frame
     game.set_physics_process(false)

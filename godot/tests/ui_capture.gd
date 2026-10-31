@@ -30,6 +30,7 @@ func _shot(game, name: String, center: Vector2, zoom: float, hover := Vector2i(-
 
 func run() -> void:
     var game = load("res://main.tscn").instantiate()
+    game.legacy_plot = true
     root.add_child(game)
     await physics_frame
     game.set_physics_process(false)

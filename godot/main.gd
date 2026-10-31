@@ -4,6 +4,8 @@ const CELL := 8.0
 const WIDTH := 512
 const HEIGHT := 128
 const SEED := 7
+# The campaign is the base (docs/design/rooms.md): one bare room over the factory hall, built out room by room.
+const ROOM_TYPES := ["workshop", "lab", "grow", "cellar"]
 const WORLD_SAVE := "user://world-v1.ecosave"
 const PLAYER_ART := "res://art/player.png"
 const DOOR_CODE := 1004
@@ -99,9 +101,23 @@ var breezy := true
 var pressure := true
 var momentum := true
 var pending_wire := -1
+var rooms: RoomsModel
+# The old plot (the workshop bay with its kitchen, the van and the town) instead of the base: tests of those
+# systems set it before the game enters the tree.
+var legacy_plot := false
+var room_mode := false
+var room_type := 0
+var furniture: Node2D
+var furnish_mode := false
+var furnish_index := 0
 
 func _ready() -> void:
-    campaign_world.setup_plot(SEED)
+    rooms = RoomsModel.new(campaign_world)
+    if legacy_plot:
+        campaign_world.setup_plot(SEED)
+    else:
+        campaign_world.setup_base(SEED)
+        rooms.add(0, 0, "workshop")
     sandbox_world.reset_demo(SEED)
     world = campaign_world
     _load_catalog()
@@ -114,7 +130,17 @@ func _ready() -> void:
     surface.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
     liquid_material.shader = preload("res://liquid.gdshader")
     surface.material = liquid_material
+    var walls := _load_texture("res://art/rooms/walls.png")
+    if walls != null:
+        liquid_material.set_shader_parameter("wall_atlas", walls)
+        liquid_material.set_shader_parameter("has_wall_atlas", true)
     add_child(surface)
+    furniture = preload("res://furniture.gd").new()
+    furniture.show_behind_parent = true
+    furniture.setup(rooms)
+    furniture.world = campaign_world
+    furniture.frame = walls
+    add_child(furniture)
     lighting = preload("res://lighting.gd").new()
     add_child(lighting)
     # Sprites drawn here and the props share the campaign light; the backdrop sits behind the world.
@@ -122,9 +148,12 @@ func _ready() -> void:
     material = sprite_material
     backdrop = preload("res://backdrop.gd").new()
     backdrop.camera = camera
+    backdrop.horizon = 800.0 if legacy_plot else RoomsModel.GROUND * CELL
     add_child(backdrop)
     decor = preload("res://decor.gd").new()
     decor.setup(self)
+    if not legacy_plot:
+        decor.data.placements = [] # the base starts bare: props come with the generated furniture
     add_child(decor)
     camera.position = Vector2(104, 74) * CELL
     add_child(camera)
@@ -677,6 +706,12 @@ func _save_world() -> void:
         error = shop.save()
     if error.is_empty():
         error = people.save()
+    if error.is_empty():
+        var file := FileAccess.open(WORLD_SAVE + ".rooms.json", FileAccess.WRITE)
+        if file == null:
+            error = "could not write the rooms"
+        else:
+            file.store_string(JSON.stringify(rooms.save_data()))
     _notice("Game saved." if error.is_empty() else "Could not save the world: " + error)
 
 func _load_world() -> void:
@@ -689,6 +724,10 @@ func _load_world() -> void:
         return
     workshop._load_save()
     kitchen.reset()
+    if FileAccess.file_exists(WORLD_SAVE + ".rooms.json"):
+        var data = JSON.parse_string(FileAccess.get_file_as_string(WORLD_SAVE + ".rooms.json"))
+        if data is Array:
+            rooms.load_data(data)
     var deliveries: String = shop.load_save()
     var town: String = people.load_save()
     _refresh_kit()
@@ -811,6 +850,25 @@ func _unhandled_input(event: InputEvent) -> void:
                 kitchen.carrying = -1
             else:
                 hud.toggle_menu()
+        elif event.physical_keycode == KEY_R:
+            room_mode = not room_mode
+            furnish_mode = false
+            _notice("Rooms: click a green slot to build a %s · 1-4 picks the kind · R to leave" % RoomsModel.TYPES[ROOM_TYPES[room_type]].name if room_mode else "Back to building inside the rooms")
+            queue_redraw()
+        elif event.physical_keycode == KEY_F:
+            furnish_mode = not furnish_mode
+            room_mode = false
+            _notice("Furnish: click in a room to place a %s · , and . pick another · right-click takes one back · F to leave" % _furnish_piece().name.to_lower() if furnish_mode else "Back to building inside the rooms")
+            queue_redraw()
+        elif furnish_mode and (event.keycode == KEY_COMMA or event.keycode == KEY_PERIOD):
+            furnish_index = posmod(furnish_index + (1 if event.keycode == KEY_PERIOD else -1), furniture.pieces.size())
+            var piece := _furnish_piece()
+            _notice("%s · %d credits%s" % [piece.name, int(piece.cost), " · " + piece.about if not String(piece.about).is_empty() else ""])
+            queue_redraw()
+        elif room_mode and event.keycode >= KEY_1 and event.keycode <= KEY_4:
+            room_type = event.keycode - KEY_1
+            _notice("%s · %s" % [RoomsModel.TYPES[ROOM_TYPES[room_type]].name, RoomsModel.TYPES[ROOM_TYPES[room_type]].about])
+            queue_redraw()
         elif event.physical_keycode == KEY_K:
             _set_kit_mode(not kit_mode)
         elif event.physical_keycode == KEY_E and target >= 0 and _in_reach(_tile_at(hovered)):
@@ -835,11 +893,17 @@ func _unhandled_input(event: InputEvent) -> void:
         match event.button_index:
             MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT:
                 var clicked := Vector2i((get_global_mouse_position() / CELL).floor())
-                if kitchen.carrying < 0 and event.button_index == MOUSE_BUTTON_LEFT and people.click(get_global_mouse_position()):
-                    return
-                if kitchen.carrying < 0 and shop.truck_at(clicked):
+                if room_mode:
                     if event.button_index == MOUSE_BUTTON_LEFT:
-                        shop.click_truck()
+                        _build_room(RoomsModel.slot_at(clicked))
+                    return
+                if furnish_mode:
+                    if event.button_index == MOUSE_BUTTON_LEFT:
+                        _furnish(get_global_mouse_position())
+                    else:
+                        var taken: String = furniture.remove_at(get_global_mouse_position())
+                        if not taken.is_empty():
+                            workshop.model.cash += float(furniture.piece(taken).cost) * 0.5
                     return
                 if _equipment_click(clicked, event.button_index == MOUSE_BUTTON_RIGHT):
                     return
@@ -876,6 +940,57 @@ func _unhandled_input(event: InputEvent) -> void:
             camera.position -= event.relative / camera.zoom
             _clamp_camera()
         queue_redraw()
+
+func _furnish_piece() -> Dictionary:
+    return furniture.pieces[furnish_index]
+
+# Places the chosen piece where the pointer is, paid from the cash.
+func _furnish(pointer: Vector2) -> String:
+    var piece := _furnish_piece()
+    var spot: Rect2 = furniture.spot(piece.id, pointer)
+    var why: String = furniture.refusal(piece.id, spot)
+    if why.is_empty() and workshop.model.cash + 0.000001 < float(piece.cost):
+        why = "not enough credits"
+    if why.is_empty():
+        workshop.model.cash -= float(piece.cost)
+        furniture.place(piece.id, spot)
+    else:
+        _notice("Can't put it here: %s" % why)
+    return why
+
+# Builds a room of the chosen kind in a slot, paid from the cash.
+func _build_room(slot: Vector2i) -> String:
+    var type: String = ROOM_TYPES[room_type]
+    var price: float = rooms.cost(type, slot.y)
+    var why: String = rooms.refusal(slot.x, slot.y)
+    if why.is_empty() and workshop.model.cash + 0.000001 < price:
+        why = "not enough credits"
+    if why.is_empty():
+        workshop.model.cash -= price
+        rooms.add(slot.x, slot.y, type)
+        dirty = true
+        _notice("Built a %s for %.0f credits" % [RoomsModel.TYPES[type].name.to_lower(), price])
+    else:
+        _notice("Can't build here: %s" % why)
+    return why
+
+# In room mode: every slot a room could go in, green if affordable, with the room under the pointer outlined.
+func _draw_room_slots() -> void:
+    var type: String = ROOM_TYPES[room_type]
+    var font := ThemeDB.fallback_font
+    var pointer := RoomsModel.slot_at(Vector2i((get_global_mouse_position() / CELL).floor()))
+    for level in range(RoomsModel.MIN_LEVEL, RoomsModel.MAX_LEVEL + 1):
+        for slot in range(RoomsModel.MIN_SLOT, RoomsModel.MAX_SLOT + 1):
+            if not rooms.refusal(slot, level).is_empty():
+                continue
+            var r := RoomsModel.slot_rect(slot, level)
+            var rect := Rect2(Vector2(r.position) * CELL, Vector2(r.size) * CELL).grow(-3)
+            var ok: bool = workshop.model.cash + 0.000001 >= rooms.cost(type, level)
+            var tint := Color(0.55, 0.95, 0.65) if ok else Color(1.0, 0.45, 0.4)
+            var hot := Vector2i(slot, level) == pointer
+            draw_rect(rect, Color(tint, 0.22 if hot else 0.08))
+            draw_rect(rect, Color(tint, 0.9 if hot else 0.45), false, 1.0)
+            draw_string(font, rect.get_center() + Vector2(-30, 4), "+ %.0f" % rooms.cost(type, level), HORIZONTAL_ALIGNMENT_CENTER, 60, 10, Color(tint, 0.9))
 
 func _zoom(factor: float) -> void:
     var before := get_global_mouse_position()
@@ -919,8 +1034,9 @@ func _physics_process(_delta: float) -> void:
         workshop.model.step(1)
         if campaign:
             kitchen.bill()
-            shop.step()
-            people.step()
+            if legacy_plot:
+                shop.step()
+                people.step()
         dirty = true
 
 func _process(delta: float) -> void:
@@ -972,6 +1088,8 @@ func _process(delta: float) -> void:
                 inspector_label.text = "%s · %.1f °C%s · sugar %.2f · salt %.2f · stored water %.1f · %s" % [label, sample.temperature, " · burning" if sample.burning else "", sample.sugar, sample.salt, sample.stored_water, stats.message]
 
 func _refresh_texture() -> void:
+    if furniture != null:
+        furniture.queue_redraw()
     var pixels: PackedByteArray = world.render_data()
     var image := Image.create_from_data(WIDTH, HEIGHT * 2, false, Image.FORMAT_RGBA8, pixels)
     if texture == null:
@@ -1091,9 +1209,21 @@ func _player_frame() -> int:
     return 0
 
 func _draw_campaign() -> void:
-    shop.draw_trucks(self, animation_time)
+    if legacy_plot:
+        shop.draw_trucks(self, animation_time)
     kitchen.draw_equipment(self, equipment_view, animation_time)
-    people.draw_people(self, animation_time)
+    if legacy_plot:
+        people.draw_people(self, animation_time)
+    if room_mode:
+        _draw_room_slots()
+    if furnish_mode and not _pointer_over_ui():
+        var piece := _furnish_piece()
+        var spot: Rect2 = furniture.spot(piece.id, get_global_mouse_position())
+        var why: String = furniture.refusal(piece.id, spot)
+        if why.is_empty() and workshop.model.cash + 0.000001 < float(piece.cost):
+            why = "not enough credits"
+        if spot.size != Vector2.ZERO:
+            furniture.draw_piece(self, piece.id, spot, Color(1, 1, 1, 0.6) if why.is_empty() else Color(1, 0.5, 0.45, 0.6))
     var pointer_cell := Vector2i((get_global_mouse_position() / CELL).floor())
     var inlet := int(world.stats().pending_inlet)
     if inlet >= 0:

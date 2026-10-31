@@ -221,4 +221,21 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
     p.active = true;
     p.place((L + 23) * CELL, GROUND * CELL - Player::HEIGHT);
 }
+
+void start_base(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) {
+    if (!w.reset(BASE_WIDTH, BASE_HEIGHT, seed))
+        return;
+    g.reset(w);
+    s.reset(w);
+    for (int x = 0; x < w.width; x++)
+        for (int y = BASE_GROUND; y < w.height; y++) {
+            const int k = y * w.width + x;
+            w.solid[k] = std::uint8_t(y < BASE_GROUND + 2 ? B_BASALT : y < BASE_GROUND + 14 ? B_DIRT : B_STONE);
+            w.under[k] = y > BASE_GROUND;
+        }
+    w.wake_all();
+    p = Player{};
+    p.active = true;
+    p.place(BASE_SPAWN * CELL, BASE_GROUND * CELL - Player::HEIGHT);
+}
 } // namespace ecologist

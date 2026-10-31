@@ -94,6 +94,10 @@ must declare AI-generated content.
 
 ## Setting: a giant factory
 
+Superseded for the campaign by `docs/design/rooms.md`: the base starts as one bare room in front of the generated
+factory hall and grows room by room, with all of its art generated. What follows describes the old plot, which the
+tests of its systems still use.
+
 The game is moving from the house in a small town to the inside of a giant factory: steel girders and catwalks on
 several floors, open vats of glowing fluids joined by copper pipes and pumps, conveyors, and warm caged work lamps
 against cool blue shadow. The PixelLab concepts in `art-source/pixellab/concepts/` set the look; the catwalk

@@ -145,6 +145,7 @@ func run() -> void:
     check(scene != null, "Load playable scene")
     if scene:
         var game = scene.instantiate()
+        game.legacy_plot = true
         root.add_child(game)
         check(game.surface.show_behind_parent, "Opaque world rendering stays behind the brush overlay")
         game.set_physics_process(false)

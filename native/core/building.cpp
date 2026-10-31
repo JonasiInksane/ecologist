@@ -103,6 +103,15 @@ int Sandbox::build(World &w, Grains &g, int x, int y, int code) {
             }
         return changed;
     }
+    if (code > BUILD_BACK_KIND && code <= BUILD_BACK_KIND + 15) {
+        const std::uint8_t wall = std::uint8_t(code - BUILD_BACK_KIND);
+        for (int k : cells)
+            if ((back[k] & BACK_WALL) != wall) {
+                back[k] = (back[k] & ~BACK_WALL) | wall;
+                changed++;
+            }
+        return changed;
+    }
     if (code == BUILD_BACK_WOOD || code == BUILD_BACK_BRICK || code == BUILD_BACK_PLASTER) {
         const std::uint8_t wall = code == BUILD_BACK_WOOD ? WALL_WOOD : code == BUILD_BACK_BRICK ? WALL_BRICK : WALL_PLASTER;
         for (int k : cells)

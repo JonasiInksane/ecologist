@@ -15,6 +15,9 @@ uniform bool has_fire = false;
 // Building layer (native back_data()): bits 0-3 background wall (1 wood, 2 brick), 0x20 open door, 0x40 ladder.
 uniform sampler2D back_data : filter_nearest, repeat_disable;
 uniform bool has_back = false;
+// Room walls (kinds 4-7: plaster, steel, tile, concrete), 64 x 64 tiles side by side, from tools/make-room-art.py.
+uniform sampler2D wall_atlas : filter_nearest, repeat_disable;
+uniform bool has_wall_atlas = false;
 uniform ivec2 world_size = ivec2(512, 128);
 uniform float animation_time = 0.0;
 uniform uint world_seed = 7u;
@@ -94,7 +97,11 @@ int back_at(ivec2 tile) {
     return int(round(texelFetch(back_data, tile, 0).r * 255.0));
 }
 // Walls behind rooms are darker than the blocks in front so a room reads as an interior.
+vec3 room_wall_pixel(ivec2 p, int wall) {
+    return texelFetch(wall_atlas, ivec2((wall - 4) * 64 + (p.x & 63), p.y & 63), 0).rgb;
+}
 vec3 back_wall_pixel(ivec2 pixel, int wall) {
+    if (wall >= 4 && wall <= 7 && has_wall_atlas) { return room_wall_pixel(pixel, wall) * 0.6; }
     if (wall == 2) {
         int row = pixel.y / 4, shifted = pixel.x + (row % 2) * 4;
         bool mortar = pixel.y % 4 == 3 || shifted % 8 == 7;
@@ -528,6 +535,14 @@ vec3 styled_door(ivec2 pixel, ivec2 tile) {
 bool frames_wall(ivec2 t) { return solid_at(t) && mat_at(t) != 81; }
 // Walls behind rooms: wood boards, brick, or plaster (3).
 vec3 styled_wall(ivec2 p, int wall) {
+    if (wall >= 4 && wall <= 7 && has_wall_atlas) {
+        // a generated room wall, a little shade in the corners where it meets the frame
+        vec3 c = room_wall_pixel(p, wall);
+        ivec2 t = p >> 3, l = p - t * 8;
+        float shade = 1.0;
+        if (frames_wall(t + ivec2(0, -1)) && l.y < 3 || frames_wall(t + ivec2(-1, 0)) && l.x < 2 || frames_wall(t + ivec2(1, 0)) && l.x > 5) { shade = 0.8; }
+        return c * shade;
+    }
     if (wall == 2) {
         int row = p.y >> 2, shifted = p.x + (row & 1) * 4;
         if ((p.y & 3) == 3 || (shifted & 7) == 7) { return PAL_ROCK[1]; }
@@ -627,6 +642,12 @@ vec4 styled_base(ivec2 pixel) {
     bool corner = (local.x == 0 && local.y == 0 && up && left) || (local.x == 7 && local.y == 0 && up && right) || (local.x == 0 && local.y == 7 && down && left) || (local.x == 7 && local.y == 7 && down && right);
     if (corner) { return bg; }
     bool edge = (up && local.y == 0) || (down && local.y == 7) || (left && local.x == 0) || (right && local.x == 7);
+    if ((material == 1 || material == 2) && has_wall_atlas) {
+        // the generated earth (art/rooms/walls.png), darker with depth, outlined where it meets the air
+        if (edge) { return vec4(PAL_SOIL[0], 1.0); }
+        vec3 earth = texelFetch(wall_atlas, ivec2(256 + (pixel.x & 127), pixel.y & 127), 0).rgb;
+        return vec4(earth * (material == 2 ? 0.8 : 1.0), 1.0);
+    }
     if (material == 1) {
         // the soil gives way to rock in a ragged line
         if (mat_at(tile + ivec2(0, 1)) == 2 && local.y >= 5 + int(world_noise(vec2(float(pixel.x), 0.0) / 3.0, 7600) * 3.0)) { return vec4(rock_pixel(pixel, 0), 1.0); }

@@ -24,6 +24,7 @@ class EcologistWorld : public RefCounted {
     bool setup(int width, int height, int seed);
     void reset_demo(int seed);
     void setup_plot(int seed);
+    void setup_base(int seed);
     void player_input(bool left, bool right, bool jump, bool up, bool down);
     Dictionary player_state() const;
     int build(int x, int y, int code);
