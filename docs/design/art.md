@@ -86,6 +86,19 @@ town fills the sky, as in the references.
 The mad scientist: a shock of white hair, brass goggles pushed up on the forehead, a lab coat with pens in the pocket
 and a green chemical splash at the hem, yellow rubber gloves, dark trousers and heavy boots.
 
+The player is drawn with PixelLab (character `1e504385-5b0c-48b3-a919-69d3ffe125c3`, side view, 48 px, with its
+eight-frame east walk). The generated frames are kept in `art-source/pixellab/player/`, and
+`tools/make-player-sprites.py` cuts them into the game's 32 × 48 frames, snaps them to the palette and sets the
+outline to `ink[1]`. The climbing frames use its front view. Because these pixels are AI-generated, a Steam release
+must declare AI-generated content.
+
+## Setting: a giant factory
+
+The game is moving from the house in a small town to the inside of a giant factory: steel girders and catwalks on
+several floors, open vats of glowing fluids joined by copper pipes and pumps, conveyors, and warm caged work lamps
+against cool blue shadow. The PixelLab concepts in `art-source/pixellab/concepts/` set the look; the catwalk
+cross-section is the layout to follow and the deep hall is the backdrop behind it.
+
 ## Next
 
 Following the manifest's phases:
