@@ -525,7 +525,7 @@ func draw_equipment(canvas: CanvasItem, view: Array, time: float) -> void:
         var inside := Rect2(region[0], region[1], region[2], region[3])
         if info.vessel:
             var back := Rect2(pos + inside.position, inside.size)
-            canvas.draw_rect(back, Color("2c3438"))
+            canvas.draw_rect(back, Color(String(item.get("back", "2c3438"))))
             var fill := clampf(float(info.fill), 0.0, 1.0)
             if float(info.mass) > 0.5:
                 var height := maxf(1.0, round(inside.size.y * fill))

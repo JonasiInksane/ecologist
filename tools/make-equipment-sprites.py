@@ -37,20 +37,41 @@ def rect(img, x0, y0, x1, y1, color):
 # The kitchen pieces are drawn after the dusk workshop reference (docs/design/art-reference-workshop.png): ink outlines,
 # light from the top left, an iron range with brass knobs, a wooden cabinet under a stone counter, a sturdy table.
 INK_, IRON, BRASS, OAK, STONE_TOP = ramp("ink"), ramp("grey"), ramp("gold"), ramp("wood"), ramp("plaster")
-STEELR = ramp("steel")
+STEELR, GLOW, RED_ = ramp("steel"), ramp("glow"), ramp("red")
 
 
 def stove(img, ox):
-    """The range, cut from the reference (an iron cooker with its oven window glowing), under a burner grate the pans
-    stand on."""
-    from reference import piece
-    cooker = piece((202, 174, 224, 205), tol=0.05)
-    left = ox + (32 - cooker.width) // 2
-    img.alpha_composite(cooker, (left, 32 - cooker.height))
-    rect(img, left - 1, 0, left + cooker.width, 2, INK_[1])
-    for x in range(left + 1, left + cooker.width - 1, 4):
-        rect(img, x, 1, x + 1, 1, IRON[1])
-    rect(img, left + 1, 3, left + cooker.width - 2, 32 - cooker.height - 1, INK_[2])
+    """An iron range in the dusk workshop reference's manner: a burner grate the pans stand on, brass knobs, a chrome
+    rail and an oven door with the fire glowing behind its window."""
+    x0, x1 = ox + 4, ox + 27
+    rect(img, x0 - 1, 0, x1 + 1, 29, INK_[1])
+    for x in range(x0, x1 + 1):  # the grate
+        put_rgb(img, x, 1, IRON[2] if (x - x0) % 4 == 1 else INK_[0])
+    rect(img, x0, 2, x1, 2, IRON[0])
+    rect(img, x0, 3, x1, 6, IRON[0]); rect(img, x0, 3, x1, 3, IRON[1]); rect(img, x0, 3, x0, 6, IRON[1])
+    for kx in (ox + 8, ox + 13, ox + 18, ox + 23):
+        put_rgb(img, kx, 4, BRASS[4]); put_rgb(img, kx + 1, 4, BRASS[3])
+        put_rgb(img, kx, 5, BRASS[2]); put_rgb(img, kx + 1, 5, BRASS[1])
+    rect(img, x0, 7, x1, 7, INK_[1])
+    rect(img, x0, 8, x1, 27, IRON[0]); rect(img, x0, 8, x0, 27, IRON[1]); rect(img, x1, 8, x1, 27, INK_[2])
+    rect(img, ox + 7, 9, ox + 24, 9, IRON[2]); put_rgb(img, ox + 7, 9, IRON[4]); put_rgb(img, ox + 8, 9, IRON[3])  # the chrome rail
+    put_rgb(img, ox + 6, 9, INK_[1]); put_rgb(img, ox + 25, 9, INK_[1])
+    rect(img, ox + 6, 11, ox + 25, 23, INK_[2])  # the oven door
+    rect(img, ox + 6, 11, ox + 25, 11, IRON[1]); rect(img, ox + 6, 11, ox + 6, 23, IRON[1])
+    rect(img, ox + 9, 13, ox + 22, 21, INK_[0])  # the window and the fire behind it
+    rect(img, ox + 10, 14, ox + 21, 20, RED_[0])
+    rect(img, ox + 10, 17, ox + 21, 20, RED_[1])
+    for fx, height in ((11, 2), (13, 4), (15, 3), (17, 5), (19, 3), (20, 2)):
+        for y in range(20 - height, 21):
+            tone = 3 if y > 20 - height + 1 else 2
+            put_rgb(img, ox + fx, y, GLOW[tone if y < 20 else 1])
+            put_rgb(img, ox + fx + 1, y, GLOW[max(1, tone - 1)])
+    rect(img, ox + 10, 20, ox + 21, 20, GLOW[1])
+    put_rgb(img, ox + 10, 14, IRON[2]); put_rgb(img, ox + 11, 14, IRON[1])  # a glint on the glass
+    rect(img, ox + 6, 25, ox + 25, 26, IRON[1]); rect(img, ox + 13, 25, ox + 18, 25, IRON[2])  # the warming drawer
+    rect(img, x0, 28, x1, 29, INK_[2])
+    for lx in (ox + 5, ox + 24):  # the feet
+        rect(img, lx, 30, lx + 2, 31, INK_[1])
 
 
 def grain(img, x0, y0, x1, y1, base, seed):
@@ -133,12 +154,17 @@ def table(img, ox):
 
 
 def saucepan(img, ox, oy):
-    rect(img, ox + 1, oy + 2, ox + 1, oy + 15, STEEL_DARK)  # walls, rim and base around a clear inside
-    rect(img, ox + 14, oy + 2, ox + 14, oy + 15, STEEL_DARK)
-    rect(img, ox, oy + 2, ox + 15, oy + 2, STEEL_LIGHT)
-    rect(img, ox + 1, oy + 14, ox + 14, oy + 15, STEEL)
-    rect(img, ox + 1, oy + 15, ox + 14, oy + 15, STEEL_DARK)
-    rect(img, ox + 15, oy + 4, ox + 15, oy + 5, OUTLINE)  # handle stub
+    """A copper saucepan cut away to show what's cooking: walls, a rolled rim, a heavy base and a wooden handle."""
+    COP = ramp("copper")
+    rect(img, ox, oy + 2, ox + 15, oy + 2, INK_[1])
+    rect(img, ox + 1, oy + 2, ox + 14, oy + 2, COP[4])  # the rim
+    rect(img, ox, oy + 3, ox, oy + 15, INK_[1]); rect(img, ox + 1, oy + 3, ox + 1, oy + 14, COP[3])  # walls round a clear inside
+    rect(img, ox + 14, oy + 3, ox + 14, oy + 14, COP[1]); rect(img, ox + 15, oy + 3, ox + 15, oy + 15, INK_[1])
+    rect(img, ox + 1, oy + 14, ox + 14, oy + 14, COP[2]); rect(img, ox + 1, oy + 15, ox + 14, oy + 15, INK_[1])
+    put_rgb(img, ox + 1, oy + 14, COP[3]); put_rgb(img, ox, oy + 15, (0, 0, 0)); put_rgb(img, ox + 15, oy + 15, (0, 0, 0))
+    img.putpixel((ox, oy + 15), (0, 0, 0, 0)); img.putpixel((ox + 15, oy + 15), (0, 0, 0, 0))
+    rect(img, ox + 15, oy + 4, ox + 15, oy + 5, OAK[2])  # the handle stub
+    put_rgb(img, ox + 15, oy + 4, OAK[4])
 
 
 def mold(img, ox, oy):
@@ -335,9 +361,7 @@ def main():
     kettle(img, 96, 32)
     centrifuge(img, 144, 32)
     art = Path(__file__).resolve().parent.parent / "godot" / "art"
-    cooker = img.crop((0, 0, 32, 32))
     img = snap(img)
-    img.paste(cooker, (0, 0))
     img.save(art / "equipment.png")
     trucks = Image.new("RGBA", (192, 128), (0, 0, 0, 0))
     van(trucks, 0, 0)

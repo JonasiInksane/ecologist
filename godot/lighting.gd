@@ -6,7 +6,7 @@ extends Node
 # dusk. main.gd calls update_light every frame and apply() when it changed; the sandbox does not use it.
 
 const NIGHT := Color(0.26, 0.31, 0.5)
-# Rooms are painted in the reference's lamplit colours (the "room" plaster, the props cut from it), so their light is
+# Rooms are painted in the reference's lamplit colours (the "room" plaster, props drawn to match), so their light is
 # near white: full by day, a little dimmer after dark, where the lamps' pools carry them.
 const LAMP := Color(0.84, 0.8, 0.78)
 const ROOM_DAY_WARMTH := 0.0

@@ -118,7 +118,7 @@
       "anchor": "wall"
     },
     {
-      "sprite": "ref_lamp",
+      "sprite": "pendant_lamp",
       "x": 1986,
       "y": 736,
       "anchor": "ceiling",
@@ -164,8 +164,8 @@
       "anchor": "ground"
     },
     {
-      "sprite": "ref_lamp",
-      "x": 2049,
+      "sprite": "pendant_lamp",
+      "x": 2043,
       "y": 736,
       "anchor": "ceiling",
       "light": {
@@ -181,7 +181,7 @@
     },
     {
       "sprite": "jar_shelf",
-      "x": 2062,
+      "x": 2059,
       "y": 750,
       "anchor": "wall"
     },
@@ -218,7 +218,7 @@
       100
     ],
     "chalkboard": [
-      153,
+      154,
       0,
       44,
       30
@@ -242,7 +242,7 @@
       26
     ],
     "sale_sign": [
-      198,
+      199,
       0,
       24,
       30
@@ -266,13 +266,13 @@
       14
     ],
     "chair": [
-      254,
+      255,
       0,
       15,
       28
     ],
     "chair_r": [
-      270,
+      271,
       0,
       15,
       28
@@ -280,35 +280,35 @@
     "fridge": [
       93,
       0,
-      23,
+      24,
       50
     ],
-    "ref_lamp": [
+    "pendant_lamp": [
       246,
       113,
       14,
       16
     ],
     "pan_shelf": [
-      223,
+      224,
       0,
       30,
       29
     ],
     "jar_shelf": [
-      286,
+      287,
       0,
       29,
       28
     ],
     "stove_pipe": [
-      139,
+      140,
       0,
       13,
       33
     ],
     "trailing_plant": [
-      117,
+      118,
       0,
       21,
       37

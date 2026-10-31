@@ -16,13 +16,11 @@ then the building shell, large objects, small contents, the town, the HUD, const
 
 The reference's art pixels are about 2.6 of its pixels: brought down to 640 × 360 it matches the game's grid, with
 people 42 px tall, rooms 80 px high and 16 px tiles. `tools/reference.py` makes that picture
-(`art-reference-native.png`) and cuts objects out of it: a flood fill from the box's edge that stops at the dark
-outlines, hand-placed erase and keep rectangles, then `tidy()`, which drops stray specks and darkens the cut edge to
-ink. Drawing in code alone came out flat (about 800 shades on screen against the reference's 5,700), so the shack's
-props are cut straight from the reference and keep its own shades: the fridge, both pendant lamps, the shelves of
-pans and jars, the stove pipe, the trailing and table plants, the kettle, the shelf of glassware, the botanical
-prints, the fuse box and the cooker on the stove (`CUTS` in `tools/make-decor-sprites.py`,
-`tools/make-equipment-sprites.py`). Cut sprites are not snapped to the palette; everything drawn still is.
+(`art-reference-native.png`) to draw against and to compare screenshots with. Nothing in the game is taken from it:
+cutting props out of it was tried and dropped, because the cut pieces came out soft and smudged next to drawn ones.
+Every sprite is drawn by our scripts, at the reference's level of detail: three or four tones per material, a lit
+edge and a shaded edge, wood with long grain and knots, glass that lets the wall show through, small stories on the
+props (a shopping list on the fridge, chillies drying under the shelf).
 
 Phase 1 (the shack sample) brought the world onto the reference:
 
@@ -33,8 +31,9 @@ Phase 1 (the shack sample) brought the world onto the reference:
   shaded toward the corners. The room light itself is nearly white, so the amber is the wall's own colour, as in the
   reference; the floor, the ceiling beam and the inner posts take the room's light too.
 - Pendant lamps throw a cone of light downward in twelve smooth steps, and glow faintly by day.
-- The kitchen: the cut props above, the cut cooker, a sink cabinet and an oak table drawn with long grain and
-  bevels, and two ladder-back chairs.
+- The kitchen: a cream fridge with a note and a child's drawing, an iron range with the fire behind its oven window, a
+  copper saucepan, a sink cabinet and an oak table with long grain and bevels, ladder-back chairs, enamel pendant
+  lamps, shelves of pans, preserves and glassware, a hanging ivy, botanical prints and the fuse box.
 - The reference's HUD: coin and credits, five hearts and a frameless clock top left and right, dark navy hotbar
   slots with the keys underneath.
 
@@ -66,8 +65,8 @@ Phase 1 (the shack sample) brought the world onto the reference:
 | Sky, sun, moon, stars, clouds | `godot/backdrop.gd` | sky colours by hour: night, dawn, day, dusk; the sun crosses east to west |
 | Town in three layers | `tools/make-backdrop.py` → `art/backdrop/` | forest ridges and the church (far), houses and trees (mid), big trees and hedge (near); parallax 0.12, 0.3, 0.55; window lights as separate sheets |
 | Cells | `godot/liquid.gdshader` (`styled`) | grass band with hanging blades, soil darker with depth with pebbles and roots, cobbled rock, asphalt with a curb, timber posts and plank floors over slate, brick, shingle roofs, steel, framed windows; amber plaster back walls with timber framing (equipment stands in front of them and doesn't frame them); open sky left clear |
-| Props | `tools/make-decor-sprites.py` → `art/decor.png`, placed by `data/decor.json`, drawn by `godot/decor.gd` | cut from the reference: fridge, pendant lamps, pan and jar shelves, stove pipe, plants, kettle, glassware, prints, fuse box; drawn: fence, street lamp, chalkboard, plant, sacks, mailbox, for-sale sign, bush, tree, cat, chairs |
-| Machines, people, the player | `make-equipment-sprites.py`, `make-people-sprites.py`, `make-player-sprites.py` | snapped to the palette, except the cooker cut from the reference |
+| Props | `tools/make-decor-sprites.py` → `art/decor.png`, placed by `data/decor.json`, drawn by `godot/decor.gd` | outside: fence, street lamp, plant, sacks, mailbox, for-sale sign, bush, tree, cat; in the shack: chalkboard, fridge, pendant lamps, pan and jar shelves, stove pipe, hanging ivy, glassware, table plant, kettle, prints, fuse box, chairs |
+| Machines, people, the player | `make-equipment-sprites.py`, `make-people-sprites.py`, `make-player-sprites.py` | snapped to the palette |
 | Light | `godot/lighting.gd`, `lighting.gdshaderinc`, `sprite_light.gdshader` | outdoor and room light, up to 16 lamps in twelve smooth steps, pendant lamps as downward cones; flames give their own light |
 
 Roof tiles (block 82, "Roof" on the hotbar) are laid in courses of four pixels. A roof tile with open air above it
@@ -93,7 +92,9 @@ Following the manifest's phases:
 
 - The mad scientist and the townspeople in the reference's character style (bigger heads, softer three-tone shading).
 - The town behind the plot as dark silhouettes with lit windows, closer to the reference's dusk street.
-- Large objects cut or drawn from the reference: the copper still and steel tanks for the process kit, the delivery
-  van, crates, the blue water tank, mushroom racks.
+- The process kit stays open: vessels are drawn cut away so the simulation paints what's inside them, and the player
+  joins them with pipes and pumps to build their own reaction line. The reference's still and tanks set the style
+  (copper, riveted steel, sight glasses), not closed boxes to copy.
+- Other large objects drawn in the reference's manner: the delivery van, crates, the blue water tank, mushroom racks.
 - Pipes in the reference's copper and blue, wall-mounted, with their joints and valves.
 - The remaining interface panels moved onto the reference's navy and steel.
