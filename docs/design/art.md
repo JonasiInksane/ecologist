@@ -62,8 +62,8 @@ Phase 1 (the shack sample) brought the world onto the reference:
 
 | Layer | Drawn by | Notes |
 |---|---|---|
-| Sky, sun, moon, stars, clouds | `godot/backdrop.gd` | sky colours by hour: night, dawn, day, dusk; the sun crosses east to west |
-| Town in three layers | `tools/make-backdrop.py` → `art/backdrop/` | forest ridges and the church (far), houses and trees (mid), big trees and hedge (near); parallax 0.12, 0.3, 0.55; window lights as separate sheets |
+| Sky, sun, moon, stars, clouds | `godot/backdrop.gd` | seen through the hall's windows; sky colours by hour: night, dawn, day, dusk |
+| Factory hall in three layers | `tools/make-backdrop.py` → `art/backdrop/` | the back wall with tall windows and roof trusses (far), tanks, open vats, catwalks, pipes and caged lamps (mid), columns, chains, crates and drums (near); parallax 0.12, 0.3, 0.55; lamps and glowing fluids as separate sheets; the hall is shaded even by day |
 | Cells | `godot/liquid.gdshader` (`styled`) | grass band with hanging blades, soil darker with depth with pebbles and roots, cobbled rock, asphalt with a curb, timber posts and plank floors over slate, brick, shingle roofs, steel, framed windows; amber plaster back walls with timber framing (equipment stands in front of them and doesn't frame them); open sky left clear |
 | Props | `tools/make-decor-sprites.py` → `art/decor.png`, placed by `data/decor.json`, drawn by `godot/decor.gd` | outside: fence, street lamp, plant, sacks, mailbox, for-sale sign, bush, tree, cat; in the shack: chalkboard, fridge, pendant lamps, pan and jar shelves, stove pipe, hanging ivy, glassware, table plant, kettle, prints, fuse box, chairs |
 | Machines, people, the player | `make-equipment-sprites.py`, `make-people-sprites.py`, `make-player-sprites.py` | snapped to the palette |
@@ -98,6 +98,12 @@ The game is moving from the house in a small town to the inside of a giant facto
 several floors, open vats of glowing fluids joined by copper pipes and pumps, conveyors, and warm caged work lamps
 against cool blue shadow. The PixelLab concepts in `art-source/pixellab/concepts/` set the look; the catwalk
 cross-section is the layout to follow and the deep hall is the backdrop behind it.
+
+First slice: the plot is a flat concrete floor inside the hall. The old shack is now a workshop bay between steel
+posts with brick behind, under a steel deck that runs on as a catwalk, reached by a ladder through a hatch. The
+backdrop is the hall itself, drawn by `tools/make-backdrop.py`, and the outdoor props (trees, fence, mailbox, street
+lamp, for-sale sign) are gone. Still to do: steel-and-concrete styling for the deck and posts, the kitchen kit
+restyled as lab and process kit, and the open vats, pumps and pipes from the concept props.
 
 ## Next
 

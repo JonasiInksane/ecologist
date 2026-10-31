@@ -204,14 +204,10 @@ func run() -> void:
         check(game.workshop.model.cash == saved_cash, "Workshop loads the latest file without changing sandbox state")
         check(game.campaign and game.world == game.campaign_world, "The game starts in campaign mode")
         check(game.build_items.size() >= 10 and game.player_texture != null, "Build palette and player sprite load")
-        # the art pass: the shack has a stepped clay tile roof over plaster walls
-        var roof_ok := true
-        for row in 4:
-            roof_ok = roof_ok and int(game.world.inspect(240 - 3 + row, 88 - row).solid) == 82 \
-                and int(game.world.inspect(271 + 3 - row, 88 - row).solid) == 82 \
-                and game.world.inspect(240 - 4 + row, 88 - row).solid == 0
-        check(roof_ok, "The shack has a stepped tile roof")
-        check(int(game.world.inspect(250, 95).back) & 15 == 3, "The shack's back walls are plaster")
+        # the factory: the workshop bay sits under a steel deck that runs on as a catwalk, reached by a ladder
+        check(int(game.world.inspect(225, 89).solid) == 24 and int(game.world.inspect(285, 89).solid) == 24 \
+            and game.world.inspect(236, 89).solid == 0 and int(game.world.inspect(236, 95).back) & 0x40 != 0, "The bay's deck runs on as a catwalk, with a ladder up through a hatch")
+        check(int(game.world.inspect(250, 95).back) & 15 == 2 and int(game.world.inspect(250, 100).solid) == 24, "The bay has brick behind and a steel floor")
         check(not game._item_for(-82).is_empty() and not game._item_for(1009).is_empty(), "Roof tiles and the plaster wall are on the build bar")
         game._set_mode(false)
         check(game.world == game.sandbox_world and not game.build_bar.visible, "Tab switches to the free sandbox")
@@ -251,31 +247,33 @@ func run() -> void:
         var morning: float = game.shop.model.minute
         game._follow_sun()
         var day_light: Vector3 = game.liquid_material.get_shader_parameter("ambient_light")
-        check(game.liquid_material.get_shader_parameter("styled") and game.liquid_material.get_shader_parameter("lit") and day_light.x > 0.99 and game.material == game.sprite_material and game.backdrop.visible and game.backdrop.window_light() == 0.0, "By day the plot is in full light, in front of the town")
+        check(game.liquid_material.get_shader_parameter("styled") and game.liquid_material.get_shader_parameter("lit") and day_light.x > 0.99 and game.material == game.sprite_material and game.backdrop.visible and game.backdrop.window_light() == 0.5, "By day the plot is in full light, in front of the factory hall, its lamps at half")
         game.shop.model.minute = 23.0 * 60.0
         game._refresh_texture()
         game._follow_sun()
         var night_light: Vector3 = game.liquid_material.get_shader_parameter("ambient_light")
         var room_light: Vector3 = game.sprite_material.get_shader_parameter("room_light")
-        check(game.lighting.level == 0.0 and night_light.x < 0.4 and room_light.x > 0.8 and game.backdrop.window_light() == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, the town's windows are lit and the shack is lamp-lit")
-        check(int(game.liquid_material.get_shader_parameter("light_count")) == 3 and game.decor.lamps().size() == 3, "The street lamp and the shack's two pendant lamps are burning")
+        check(game.lighting.level == 0.0 and night_light.x < 0.4 and room_light.x > 0.8 and game.backdrop.window_light() == 1.0 and game.world.stats().has("tick"), "At 23:00 the plot is dark, the hall's lamps are full and the bay is lamp-lit")
+        check(int(game.liquid_material.get_shader_parameter("light_count")) == 4 and game.decor.lamps().size() == 4, "The bay's two pendant lamps and the two under the catwalk are burning")
         check(game.lighting.indoor(0.0).v > game.lighting.ambient(0.0).v * 1.5, "A room at night is much brighter than outdoors")
         game.shop.model.minute = morning
         game._follow_sun()
-        check(int(game.liquid_material.get_shader_parameter("light_count")) == 2 and game.backdrop.window_light() == 0.0, "Morning again: the street lamp is off and only the shack's pendants glow")
-        # Props stand on what holds them up: dig out the ground under a fence panel and it goes.
-        var fence := -1
+        check(int(game.liquid_material.get_shader_parameter("light_count")) >= 2 and game.backdrop.window_light() == 0.5, "Morning again: the pendants still glow and the hall's lamps drop to half")
+        # Props stand on what holds them up: dig out the floor under the cat and it goes.
+        var cat := -1
         for i in game.decor.data.placements.size():
-            if game.decor.data.placements[i].sprite == "fence":
-                fence = i
+            if game.decor.data.placements[i].sprite == "cat":
+                cat = i
                 break
-        check(fence >= 0 and game.decor.shown[fence], "The fence stands on the plot")
-        game.world.build(215, 100, game.REMOVE_CODE)
+        check(cat >= 0 and game.decor.shown[cat], "The cat sits on the factory floor")
+        for x in range(228, 238, 2):
+            game.world.build(x, 100, game.REMOVE_CODE)
         game._refresh_texture()
-        check(not game.decor.shown[fence] and game.decor.shown[fence + 1], "Dig out its ground and that panel is gone")
-        game.world.build(215, 100, -1)
+        check(not game.decor.shown[cat], "Dig out the floor under it and the cat is gone")
+        for x in range(228, 238, 2):
+            game.world.build(x, 100, -1)
         game._refresh_texture()
-        check(game.decor.shown[fence], "Fill it in and it stands again")
+        check(game.decor.shown[cat], "Fill it in and it sits there again")
         game.workshop.hide()
         game._toggle_workshop()
         check(game.workshop.visible and game.workshop.tabs.is_tab_hidden(1) and not game.workshop.saves.visible, "The stock window shows only the stock in the campaign")

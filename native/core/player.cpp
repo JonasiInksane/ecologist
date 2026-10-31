@@ -176,33 +176,27 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
         if (x >= 0 && y >= 0 && x < w.width && y < w.height)
             w.solid[y * w.width + x] = std::uint8_t(block);
     };
+    // The factory floor (docs/design/art.md, "Setting"): a flat concrete slab over packed earth and rock, all of it
+    // inside one giant hall whose walls and roof the backdrop draws.
     for (int x = 0; x < w.width; x++) {
-        const int surface = x < 150 ? GROUND + int(std::lround(std::sin((150 - x) * 0.035) * 5)) : GROUND;
-        for (int y = surface; y < w.height; y++) {
-            set(x, y, y < surface + 6 ? B_DIRT : B_STONE);
-            w.under[y * w.width + x] = y > surface;
+        for (int y = GROUND; y < w.height; y++) {
+            set(x, y, y < GROUND + 2 ? B_BASALT : y < GROUND + 6 ? B_DIRT : B_STONE);
+            w.under[y * w.width + x] = y > GROUND;
         }
     }
-    for (int x = 380; x < w.width; x++) // the road, where delivery trucks will park
-        for (int y = GROUND; y < GROUND + 2; y++)
-            set(x, y, B_BASALT);
-    // The shack: 16 tiles wide, a 5-tile room with a wooden floor, walls and ceiling beam, plaster inside, a window
-    // and a door, under a clay tile roof that steps in a cell a row (drawn sloped) with a brick chimney through it.
+    // The workshop bay: 32 cells between steel posts, a steel deck overhead that runs on as a catwalk, brick behind,
+    // a control-room window on the left and a door on the right. A ladder climbs to the catwalk outside the bay; the
+    // catwalk hangs from the hall's roof, so the floor under it stays open to walk.
     constexpr int L = 240, R = 271, ROOF = 88;
-    for (int x = L - 1; x <= R + 1; x++)
-        set(x, ROOF + 1, B_WOOD);
-    for (int row = 0; row < 4; row++)
-        for (int x = L - 3 + row; x <= R + 3 - row; x++)
-            set(x, ROOF - row, B_ROOF);
-    for (int y = ROOF - 7; y <= ROOF; y++)
-        for (int x : {R - 8, R - 7})
-            set(x, y, B_BRICK);
+    for (int x = L - 18; x <= R + 18; x++)
+        if (x != L - 4) // the hatch the ladder climbs through
+            set(x, ROOF + 1, B_METAL);
     for (int y = ROOF + 2; y < GROUND; y++)
         for (int x : {L, L + 1, R - 1, R})
-            set(x, y, B_WOOD);
+            set(x, y, B_METAL);
     for (int x = L; x <= R; x++)
         for (int y = GROUND; y < GROUND + 2; y++)
-            set(x, y, B_WOOD);
+            set(x, y, B_METAL);
     for (int y = ROOF + 4; y < ROOF + 8; y++)
         for (int x : {L, L + 1})
             set(x, y, B_GLASS);
@@ -211,7 +205,9 @@ void start_plot(World &w, Grains &g, Sandbox &s, Player &p, std::uint32_t seed) 
             set(x, y, B_DOOR);
     for (int y = ROOF + 2; y < GROUND; y++)
         for (int x = L + 2; x < R - 1; x++)
-            s.back[y * w.width + x] = WALL_PLASTER;
+            s.back[y * w.width + x] = WALL_BRICK;
+    for (int y = ROOF + 1; y < GROUND; y++)
+        s.back[y * w.width + L - 4] |= BACK_LADDER;
     // The kitchen: a sink with mains water, a table with a candy mold and the laptop the shop runs on, and a stove
     // with a saucepan on it.
     place_equipment(w, g, s, EQ_SINK, L + 4, GROUND - 1);

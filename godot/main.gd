@@ -929,7 +929,7 @@ func _process(delta: float) -> void:
         player = world.player_state()
         if player.get("active", false):
             walk_clock += delta
-            # Framed a little above the player, so the ground sits low and the town fills the sky (art.md).
+            # Framed a little above the player, so the ground sits low and the factory hall fills the view (art.md).
             var target := Vector2(player.x + player.width / 2.0, player.y + player.height / 2.0 - get_viewport_rect().size.y / camera.zoom.y * FRAME_LIFT)
             camera.position = camera.position.lerp(target, 1.0 - exp(-delta * 8.0))
             _clamp_camera()

@@ -1,7 +1,7 @@
 extends Node2D
-# The campaign backdrop (docs/design/art.md): the sky for the hour, the sun or the moon, stars, drifting clouds and
-# three layers of the town (tools/make-backdrop.py) in parallax, standing on the horizon at the plot's ground row.
-# The windows light up through dusk. main.gd adds it behind the world, whose shader leaves the open sky clear, and
+# The campaign backdrop (docs/design/art.md): the inside of the factory hall (tools/make-backdrop.py) in three
+# parallax layers standing on the floor line, with the sky for the hour, the sun or the moon, stars and clouds seen
+# through the hall's tall windows. The lamps, sight glasses and vats glow, brighter after dusk. main.gd adds it behind the world, whose shader leaves the open sky clear, and
 # sets the clock; it is not lit by the world's light, so it shades itself for the hour.
 
 const HORIZON := 800.0
@@ -21,6 +21,7 @@ const SKY_KEYS := [
     [24.0, "0b0c18", "121530", "242c66"],
 ]
 const SKY_HEIGHT := 440.0
+const ROOF_COLOR := Color("1a2040")
 const BANDS := 22
 # Cloud sprites in clouds.png.
 const CLOUDS := [Rect2(0, 0, 120, 44), Rect2(128, 0, 96, 36), Rect2(0, 48, 72, 30), Rect2(128, 48, 128, 40)]
@@ -70,16 +71,18 @@ static func sky_colors(hour: float) -> Array:
             return [Color(a[1]).lerp(Color(b[1]), t), Color(a[2]).lerp(Color(b[2]), t), Color(a[3]).lerp(Color(b[3]), t)]
     return [Color(SKY_KEYS[0][1]), Color(SKY_KEYS[0][2]), Color(SKY_KEYS[0][3])]
 
-# How lit the town's windows are: off by day, all on by night.
+# How bright the hall's lamps and glowing fluids are: half by day, full by night.
 func window_light() -> float:
-    return clampf((0.9 - level) / 0.5, 0.0, 1.0)
+    return 0.5 + 0.5 * clampf((0.9 - level) / 0.5, 0.0, 1.0)
 
 # The layers darken with the light; the far ones stay a little paler, like the haze at night.
 func layer_tint(depth: int) -> Color:
-    # the town goes to dark blue silhouettes ahead of the plot, so the lit windows carry it at dusk
+    # the hall goes to dark blue ahead of the plot at night, so its lamps and fluids carry it
     var light := preload("res://lighting.gd").ambient(pow(level, 1.4))
     var lift := (1.0 - level) * (0.1 - depth * 0.05)
-    return Color(minf(light.r + lift, 1.0), minf(light.g + lift, 1.0), minf(light.b + lift * 1.6, 1.0))
+    # indoors the hall stays in shade even by day, the far wall most, so the plot reads in front of it
+    var shade: float = [0.58, 0.68, 0.8][depth]
+    return Color(minf(light.r * shade + lift, 1.0), minf(light.g * shade + lift, 1.0), minf(light.b * (shade + 0.08) + lift * 1.6, 1.0))
 
 func _view() -> Rect2:
     var size := get_viewport_rect().size / camera.zoom
@@ -106,6 +109,10 @@ func _draw() -> void:
     _draw_clouds(view)
     for i in LAYERS.size():
         _draw_layer(view, LAYERS[i][0], LAYERS[i][1], layer_tint(i))
+    # the hall's roof above the back wall
+    var far: Texture2D = textures.get("far")
+    if far != null and view.position.y < HORIZON - far.get_height():
+        draw_rect(Rect2(view.position.x, view.position.y, view.size.x, HORIZON - far.get_height() - view.position.y + 1.0), ROOF_COLOR * layer_tint(0))
 
 func _draw_stars(view: Rect2) -> void:
     var night := clampf(1.0 - level * 1.6, 0.0, 1.0)

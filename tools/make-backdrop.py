@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Draws the campaign backdrop (godot/art/backdrop/): the town behind the plot, in three parallax layers.
+"""Draws the campaign backdrop (godot/art/backdrop/): the inside of a giant factory hall, in three parallax layers.
 
-far.png   hills, a pine ridge, the church and a huddle of roofs, hazed toward the horizon sky
-mid.png   houses with tiled roofs and plastered walls between round trees, lightly hazed
-near.png  big trees and hedges just behind the plot
-*-lights.png  the windows of far and mid, lit, for dusk and night (backdrop.gd fades them in)
-clouds.png    four clouds; sky.png the sun and the moon
+far.png   the hall's back wall: steel panels over a brick plinth, tall windows whose panes are left clear so the sky
+          (drawn by backdrop.gd for the hour) shows through, I-beam columns and the roof trusses
+mid.png   tanks with sight glasses, open vats, catwalks with railings and stairs, copper pipe runs, caged lamps
+near.png  heavy columns, hanging chains with hooks, crates and drums just behind the plot
+*-lights.png  what glows in far and mid: lamps, sight glasses and vat surfaces (backdrop.gd fades them up at night)
+clouds.png    four clouds; sky.png the sun and the moon, seen through the windows
 
-Every layer tiles horizontally (1024 pixels) and stands on its bottom row, which backdrop.gd puts on the horizon.
-Colours come from tools/palette.py; the haze is a fixed blend toward the day horizon, so the layers stay in the
-palette's family while reading as distant. Usage: python3 tools/make-backdrop.py
+The layout follows the PixelLab concepts in art-source/pixellab/concepts/ (the catwalk cross-section and the deep
+hall); every pixel is drawn here. Every layer tiles horizontally (1024 pixels) and stands on its bottom row, which
+backdrop.gd puts on the floor line. Colours come from tools/palette.py; the haze is a fixed blend toward the hall's
+cool blue air, so distance reads as darker and bluer while warm lamps stay warm (art.md).
+Usage: python3 tools/make-backdrop.py
 """
 import math
 import random
@@ -20,10 +23,12 @@ from palette import ramp, hex_color
 
 OUT = Path(__file__).resolve().parent.parent / "godot" / "art" / "backdrop"
 W = 1024
-INK, WOOD, LEAF, PINE = ramp("ink"), ramp("wood"), ramp("leaf"), ramp("pine")
-TERRA, BRICK, PLASTER, ROCK = ramp("terracotta"), ramp("brick"), ramp("plaster"), ramp("rock")
-SKY, GLOW, WHITE, BLUE, CONCRETE = ramp("sky"), ramp("glow"), ramp("white"), ramp("blue"), ramp("concrete")
-HORIZON = hex_color("#c4dcf0")
+INK, STEEL, BRICK, COPPER = ramp("ink"), ramp("steel"), ramp("brick"), ramp("copper")
+NIGHT, BLUE, CHEM, GLOW, WHITE = ramp("night"), ramp("blue"), ramp("chem"), ramp("glow"), ramp("white")
+WOOD, RED, GOLD, TEAL, SKY = ramp("wood"), ramp("red"), ramp("gold"), ramp("teal"), ramp("sky")
+# The hall's air: distant things fade toward it.
+HAZE = hex_color("#242c48")
+FAR_H, MID_H, NEAR_H = 560, 360, 300
 
 
 def mix(a, b, t):
@@ -39,25 +44,42 @@ class Layer:
         self.h = height
         self.haze = haze
 
-    def put(self, x, y, color, light=False):
+    def put(self, x, y, color, alpha=255):
         if 0 <= y < self.h:
-            if light:
-                self.lx[x % W, y] = color + (255,)
-            else:
-                self.px[x % W, y] = mix(color, HORIZON, self.haze) + (255,)
+            self.px[x % W, y] = mix(color, HAZE, self.haze) + (alpha,)
+
+    def clear(self, x, y):
+        if 0 <= y < self.h:
+            self.px[x % W, y] = (0, 0, 0, 0)
+
+    def glow(self, x, y, color, alpha=255):
+        if 0 <= y < self.h:
+            old = self.lx[x % W, y]
+            if alpha >= old[3]:
+                self.lx[x % W, y] = tuple(color) + (alpha,)
 
     def get(self, x, y):
         return self.px[x % W, y] if 0 <= y < self.h else (0, 0, 0, 0)
 
-    def rect(self, x0, y0, x1, y1, color, light=False):
+    def rect(self, x0, y0, x1, y1, color):
         for y in range(y0, y1 + 1):
             for x in range(x0, x1 + 1):
-                self.put(x, y, color, light)
+                self.put(x, y, color)
+
+    def halo(self, cx, cy, radius, color, strength=200):
+        """A soft round glow on the lights sheet, in a few hard steps (no smoothing: art.md rule 1)."""
+        for y in range(cy - radius, cy + radius + 1):
+            for x in range(cx - radius, cx + radius + 1):
+                d = math.hypot(x - cx, y - cy) / radius
+                if d <= 1.0:
+                    step = math.floor((1.0 - d) * 4) / 4
+                    if step > 0:
+                        self.glow(x, y, color, int(strength * step))
 
     def outline(self, color):
-        """A one-pixel outline around everything drawn so far (the far layer skips it)."""
+        """A one-pixel outline around everything drawn so far."""
         src = self.img.copy().load()
-        c = mix(color, HORIZON, self.haze) + (255,)
+        c = mix(color, HAZE, self.haze) + (255,)
         for y in range(self.h):
             for x in range(W):
                 if src[x, y][3]:
@@ -74,297 +96,335 @@ class Layer:
             self.lights.save(OUT / f"{name}-lights.png")
 
 
-def wrap_noise(x, period, octaves, seed):
-    """Smooth noise that repeats every `period` pixels."""
-    rng = random.Random(seed)
-    total = 0.0
-    for o in range(octaves):
-        k = 2 ** o + 1
-        phase = rng.random() * math.tau
-        total += math.sin(x / period * math.tau * k + phase) / (o + 1.4)
-    return total
+# --- pieces ----------------------------------------------------------------------------------------------------------
 
-
-# ---- shapes -------------------------------------------------------------------------------------------------------
-
-def canopy(layer, cx, base, radius, rng, light_side=-1):
-    """A round tree: clustered blobs lit from the top left, darker inside and underneath, on a short trunk."""
-    trunk_h = int(radius * 0.9)
-    layer.rect(cx - 1, base - trunk_h, cx + 1, base - 1, WOOD[2])
-    layer.put(cx - 1, base - trunk_h + 2, WOOD[3])
-    blobs = [(cx, base - trunk_h - radius * 0.7, radius)]
-    for _ in range(5):
-        a = rng.uniform(-math.pi, 0)
-        d = radius * rng.uniform(0.45, 0.8)
-        blobs.append((cx + math.cos(a) * d * 1.2, base - trunk_h - radius * 0.7 + math.sin(a) * d * 0.9, radius * rng.uniform(0.5, 0.75)))
-    top = int(min(b[1] - b[2] for b in blobs)) - 1
-    bottom = int(max(b[1] + b[2] for b in blobs)) + 1
-    left = int(min(b[0] - b[2] for b in blobs)) - 1
-    right = int(max(b[0] + b[2] for b in blobs)) + 1
-    for y in range(top, bottom + 1):
-        for x in range(left, right + 1):
-            best = None
-            for bx, by, br in blobs:
-                dx, dy = (x + 0.5 - bx) / br, (y + 0.5 - by) / br
-                d = dx * dx + dy * dy
-                if d <= 1.0 and (best is None or by < best[1]):
-                    best = (dx, dy, d)
-            if best is None:
-                continue
-            dx, dy, d = best
-            light = -dx * 0.55 - dy * 0.85 + rng.uniform(-0.25, 0.25)
-            tone = 5 if light > 0.75 else 4 if light > 0.2 else 3 if light > -0.45 else 2
-            if d > 0.82 and light < 0:
-                tone = 2
-            layer.put(x, y, LEAF[tone])
-
-
-def pine(layer, cx, base, height, colors):
-    """A conifer: stacked tiers, the left side lit."""
-    tiers = max(3, height // 7)
-    for t in range(tiers):
-        top = base - height + t * height // (tiers + 1)
-        h = height // tiers + 4
-        for y in range(h):
-            half = int((y + 1) * (2 + t * 0.6) / 3.0)
-            for x in range(-half, half + 1):
-                tone = colors[2] if x < -half // 3 else colors[1] if x < half // 2 else colors[0]
-                layer.put(cx + x, top + y, tone)
-    layer.rect(cx, base - 3, cx, base - 1, WOOD[1])
-
-
-def roof_rows(layer, x0, x1, y0, y1, rng, slope=None):
-    """Clay tiles: rows three pixels high, each row's lower edge scalloped and shaded."""
+def ibeam(layer, x, y0, y1, width, ramp_=STEEL):
+    """A riveted I-beam column: flanges on both sides, the web set back in shade."""
     for y in range(y0, y1 + 1):
-        row = (y - y0) // 3
-        sub = (y - y0) % 3
-        for x in range(x0, x1 + 1):
-            if slope is not None and not slope(x, y):
-                continue
-            if sub == 2:
-                color = TERRA[1] if (x + row * 2) % 4 else TERRA[0]
-            elif sub == 0:
-                color = TERRA[3] if (x + row * 2) % 4 != 3 else TERRA[2]
+        for i in range(width):
+            if i < 2:
+                tone = 3 if i == 0 else 2
+            elif i >= width - 2:
+                tone = 1 if i == width - 1 else 2
             else:
-                color = TERRA[2] if rng.random() > 0.1 else TERRA[3]
-            layer.put(x, y, color)
-
-
-def house(layer, x, base, w, floors, rng, gable=None, wall=None, lit=0.6, floor_h=18, win=(6, 9), frame=None):
-    """A town house: plastered walls, tiled roof, windows with frames and sills, a door and maybe a chimney."""
-    wall_h = floors * floor_h + 3
-    top = base - wall_h
-    wall = wall or rng.choice([PLASTER, PLASTER, PLASTER, [ROCK[2], ROCK[3], ROCK[4], ROCK[5], ROCK[5], ROCK[5]],
-                               [BRICK[1], BRICK[2], BRICK[3], BRICK[4], BRICK[4], BRICK[4]]])
-    frame = frame or rng.choice([WOOD[1], WHITE[3], BLUE[1]])
-    timber = wall is PLASTER and rng.random() < 0.4
-    for yy in range(top, base):
-        for xx in range(x, x + w):
-            tone = 4 if xx == x else 2 if xx >= x + w - 2 else 3
-            if yy >= base - 3:
                 tone = 1
-            if rng.random() < 0.06:
-                tone = max(1, tone - 1)
-            layer.put(xx, yy, wall[tone])
-        if timber and (yy - top) % floor_h == 0:
-            layer.rect(x, yy, x + w - 1, yy + 1, WOOD[1])
-    if timber:
-        for xx in (x, x + w - 2):
-            layer.rect(xx, top, xx + 1, base - 4, WOOD[1])
-    columns = max(2, (w - 6) // (win[0] + 8))
-    door_col = rng.randrange(columns)
-    for f in range(floors):
-        wy = base - (f + 1) * floor_h + (floor_h - win[1]) // 2
-        for c in range(columns):
-            wx = x + (c + 1) * w // (columns + 1) - win[0] // 2
-            if f == 0 and c == door_col:
-                dw, dh = win[0] + 1, min(floor_h - 2, win[1] + 5)
-                layer.rect(wx - 1, base - dh - 1, wx + dw, base - 1, WOOD[0])
-                layer.rect(wx, base - dh, wx + dw - 1, base - 1, WOOD[3])
-                layer.rect(wx, base - dh, wx, base - 1, WOOD[4])
-                layer.put(wx + dw - 2, base - dh // 2, GLOW[2])
-                continue
-            layer.rect(wx - 1, wy - 1, wx + win[0], wy + win[1], frame)
-            layer.rect(wx, wy, wx + win[0] - 1, wy + win[1] - 1, SKY[1])
-            for i in range(min(win[0], win[1]) // 2):
-                layer.put(wx + i, wy + i, SKY[3])
-            layer.rect(wx + win[0] // 2, wy, wx + win[0] // 2, wy + win[1] - 1, frame)
-            if win[1] >= 8:
-                layer.rect(wx, wy + win[1] // 2, wx + win[0] - 1, wy + win[1] // 2, frame)
-            layer.rect(wx - 1, wy + win[1], wx + win[0], wy + win[1], WHITE[3])
-            if win[0] >= 5 and rng.random() < 0.3:
-                shutter = rng.choice([BLUE[2], LEAF[2], TERRA[1]])
-                layer.rect(wx - 3, wy - 1, wx - 2, wy + win[1] - 1, shutter)
-                layer.rect(wx + win[0] + 1, wy - 1, wx + win[0] + 2, wy + win[1] - 1, shutter)
-            if rng.random() < lit:
-                warm = GLOW[3] if rng.random() < 0.5 else GLOW[2]
-                layer.rect(wx, wy, wx + win[0] - 1, wy + win[1] - 1, warm, light=True)
-                layer.rect(wx + win[0] // 2, wy, wx + win[0] // 2, wy + win[1] - 1, GLOW[0], light=True)
-                if win[1] >= 8:
-                    layer.rect(wx, wy + win[1] // 2, wx + win[0] - 1, wy + win[1] // 2, GLOW[0], light=True)
-                layer.put(wx, wy, GLOW[4], light=True)
-    gable = rng.random() < 0.45 if gable is None else gable
-    overhang = 3
-    x0, x1 = x - overhang, x + w - 1 + overhang
-    if gable:
-        peak = (w + 2 * overhang) / 2
-        height = int(peak * 0.8)
-        cx = (x0 + x1 + 1) / 2
-        roof_rows(layer, x0, x1, top - height, top + 1, rng,
-                  slope=lambda xx, yy: abs(xx + 0.5 - cx) <= (yy - (top - height) + 1) * (peak / height))
-        # the gable end: a small round window under the ridge
-        if height > 14:
-            layer.rect(int(cx) - 2, top - height // 2, int(cx) + 1, top - height // 2 + 3, frame)
-            layer.rect(int(cx) - 1, top - height // 2 + 1, int(cx), top - height // 2 + 2, SKY[1])
-    else:
-        height = max(10, floor_h - 2)
-        roof_rows(layer, x0, x1, top - height, top + 1, rng,
-                  slope=lambda xx, yy: x0 + (top + 1 - yy) * 0.7 <= xx <= x1 - (top + 1 - yy) * 0.7)
-        # a dormer
-        if w > 46 and rng.random() < 0.6:
-            dx = x + w // 2 - 5
-            layer.rect(dx, top - height + 3, dx + 9, top - 1, wall[3])
-            layer.rect(dx + 2, top - height + 5, dx + 7, top - 2, frame)
-            layer.rect(dx + 3, top - height + 6, dx + 6, top - 3, SKY[1])
-            if rng.random() < lit:
-                layer.rect(dx + 3, top - height + 6, dx + 6, top - 3, GLOW[2], light=True)
-            roof_rows(layer, dx - 2, dx + 11, top - height - 2, top - height + 2, rng)
-    for xx in range(x0, x1 + 1):
-        layer.put(xx, top + 1, TERRA[0])
-    if rng.random() < 0.75:
-        cx = x + rng.randrange(4, max(5, w - 8))
-        cw = 4 if floor_h > 12 else 2
-        ch = height // 2 + 6
-        layer.rect(cx, top - height // 2 - ch, cx + cw, top - 2, BRICK[2])
-        layer.rect(cx, top - height // 2 - ch, cx, top - 2, BRICK[3])
-        layer.rect(cx - 1, top - height // 2 - ch - 1, cx + cw + 1, top - height // 2 - ch, BRICK[0])
+            layer.put(x + i, y, ramp_[tone])
+        if (y - y0) % 10 == 4:
+            layer.put(x + 1, y, ramp_[4])
+            layer.put(x + width - 2, y, ramp_[3])
+    # base plate
+    layer.rect(x - 2, y1 - 2, x + width + 1, y1, ramp_[2])
+    layer.rect(x - 2, y1 - 2, x + width + 1, y1 - 2, ramp_[3])
 
 
-def church(layer, x, base, rng, scale=1):
-    """The church at the end of town: a nave and a tower with a clock and a spire."""
-    house(layer, x + 14 * scale, base, 34 * scale, 2, rng, gable=False, wall=PLASTER, lit=0.3, floor_h=13 * scale, win=(4 * scale, 7 * scale))
-    tw, th = 14 * scale, 64 * scale
-    tx = x
-    for yy in range(base - th, base):
-        for xx in range(tx, tx + tw):
-            tone = 4 if xx == tx else 2 if xx >= tx + tw - 2 else 3
-            layer.put(xx, yy, PLASTER[tone] if (yy // (5 * scale)) % 6 else PLASTER[2])
-    # belfry openings and the clock
-    layer.rect(tx + 4 * scale, base - th + 6 * scale, tx + tw - 5 * scale, base - th + 14 * scale, INK[2])
-    cy = base - th + 24 * scale
-    for yy in range(-3 * scale, 3 * scale + 1):
-        for xx in range(-3 * scale, 3 * scale + 1):
-            if xx * xx + yy * yy <= (3 * scale) ** 2:
-                layer.put(tx + tw // 2 + xx, cy + yy, WHITE[4] if xx * xx + yy * yy < (2 * scale) ** 2 else INK[2])
-    layer.put(tx + tw // 2, cy - 1, INK[1])
-    layer.put(tx + tw // 2 + 1, cy, INK[1])
-    layer.rect(tx + 5 * scale, base - 30 * scale, tx + tw - 6 * scale, base - 22 * scale, SKY[1])
-    layer.rect(tx + 5 * scale, base - 30 * scale, tx + tw - 6 * scale, base - 22 * scale, GLOW[2], light=True)
-    # the spire
-    sh = 30 * scale
-    for yy in range(sh):
-        half = (yy + 1) * (tw // 2 + 1) // sh
-        for xx in range(-half, half + 1):
-            layer.put(tx + tw // 2 + xx, base - th - sh + yy, PINE[1] if xx < 0 else PINE[0])
-    layer.rect(tx + tw // 2, base - th - sh - 5, tx + tw // 2, base - th - sh - 1, INK[2])
-    layer.rect(tx + tw // 2 - 1, base - th - sh - 3, tx + tw // 2 + 1, base - th - sh - 3, INK[2])
+def truss(layer, x0, x1, y_top, depth, ramp_=STEEL):
+    """A horizontal lattice girder: two chords with diagonals between them."""
+    for x in range(x0, x1 + 1):
+        layer.put(x, y_top, ramp_[3]); layer.put(x, y_top + 1, ramp_[2])
+        layer.put(x, y_top + depth - 1, ramp_[2]); layer.put(x, y_top + depth, ramp_[1])
+    bay = depth
+    for bx in range(x0, x1, bay):
+        for i in range(depth):
+            layer.put(bx + i, y_top + i, ramp_[1])
+            layer.put(bx + bay - i, y_top + i, ramp_[1])
+        layer.rect(bx, y_top, bx + 1, y_top + depth, ramp_[2])
 
 
-def hedge(layer, x0, x1, base, height, rng):
-    for x in range(x0, x1):
-        top = base - height + int(abs(math.sin(x * 0.45 + rng.random() * 0.3)) * 2)
-        for y in range(top, base):
-            t = (y - top) / max(1, height)
-            tone = 5 if y == top else 4 if t < 0.35 else 3 if t < 0.75 else 2
-            if rng.random() < 0.12:
-                tone -= 1
-            layer.put(x, y, LEAF[max(1, tone)])
+def pipe_h(layer, x0, x1, y, size=4, ramp_=COPPER, flange=48):
+    for x in range(x0, x1 + 1):
+        for i in range(size):
+            tone = 4 if i == 0 else 3 if i == 1 else 2 if i < size - 1 else 1
+            layer.put(x, y + i, ramp_[tone])
+        if (x - x0) % flange == 0:
+            for i in range(-1, size + 1):
+                layer.put(x, y + i, ramp_[3]); layer.put(x + 1, y + i, ramp_[1])
 
 
-# ---- layers -------------------------------------------------------------------------------------------------------
+def pipe_v(layer, x, y0, y1, size=4, ramp_=COPPER, flange=40):
+    for y in range(y0, y1 + 1):
+        for i in range(size):
+            tone = 4 if i == 0 else 3 if i == 1 else 2 if i < size - 1 else 1
+            layer.put(x + i, y, ramp_[tone])
+        if (y - y0) % flange == 0:
+            for i in range(-1, size + 1):
+                layer.put(x + i, y, ramp_[3]); layer.put(x + i, y + 1, ramp_[1])
+
+
+def railing(layer, x0, x1, y_deck, ramp_=STEEL):
+    """A catwalk deck of tread plate with a two-bar railing."""
+    for x in range(x0, x1 + 1):
+        layer.put(x, y_deck, ramp_[3])
+        layer.put(x, y_deck + 1, ramp_[2] if x % 3 else ramp_[3])
+        layer.put(x, y_deck + 2, ramp_[1])
+        layer.put(x, y_deck - 10, ramp_[3])
+        layer.put(x, y_deck - 5, ramp_[2])
+    for x in range(x0, x1 + 1, 12):
+        for y in range(y_deck - 10, y_deck):
+            layer.put(x, y, ramp_[2])
+    # brackets under the deck
+    for x in range(x0 + 6, x1, 24):
+        for i in range(6):
+            layer.put(x + i, y_deck + 3 + i, ramp_[1])
+            layer.put(x - i, y_deck + 3 + i, ramp_[1])
+
+
+def stairs(layer, x0, y_bottom, steps, ramp_=STEEL):
+    """A steel stair rising to the right, four pixels a step, with a handrail."""
+    for s in range(steps):
+        x, y = x0 + s * 4, y_bottom - s * 4
+        layer.rect(x, y, x + 5, y, ramp_[3])
+        layer.rect(x, y + 1, x + 5, y + 1, ramp_[1])
+        layer.put(x + 2, y - 10, ramp_[3]); layer.put(x + 3, y - 10, ramp_[3])
+        layer.put(x + 4, y - 11, ramp_[3]); layer.put(x + 5, y - 11, ramp_[3])
+        if s % 3 == 0:
+            for yy in range(y - 10, y):
+                layer.put(x + 2, yy, ramp_[2])
+    for s in range(steps * 4):
+        layer.put(x0 + s, y_bottom + 2 - s, ramp_[1])
+        layer.put(x0 + s + 1, y_bottom + 2 - s, ramp_[2])
+
+
+def caged_lamp(layer, cx, top, drop, light=True):
+    """A caged work lamp on a chain, its warm halo on the lights sheet."""
+    for y in range(top, top + drop):
+        layer.put(cx, y, STEEL[2] if (y // 2) % 2 else STEEL[1])
+    y = top + drop
+    layer.rect(cx - 3, y, cx + 3, y + 1, STEEL[2])
+    layer.rect(cx - 2, y - 1, cx + 2, y - 1, STEEL[3])
+    for yy in range(y + 2, y + 8):
+        for xx in range(cx - 3, cx + 4):
+            cage = xx in (cx - 3, cx, cx + 3) or yy == y + 5
+            layer.put(xx, yy, STEEL[1] if cage else GLOW[3 if xx < cx else 2])
+    layer.rect(cx - 2, y + 8, cx + 2, y + 8, STEEL[1])
+    if light:
+        layer.halo(cx, y + 5, 26, GLOW[2], 110)
+        layer.halo(cx, y + 5, 10, GLOW[3], 200)
+        for yy in range(y + 2, y + 8):
+            for xx in range(cx - 2, cx + 3):
+                if xx != cx and yy != y + 5:
+                    layer.glow(xx, yy, GLOW[4], 255)
+
+
+def tank(layer, x, base, w, h, liquid, rng, sight=True):
+    """A riveted steel tank on legs with a domed top, banded, a sight glass showing the liquid inside."""
+    legs = 10
+    body_top = base - legs - h
+    for xx in (x + 4, x + w - 7):
+        layer.rect(xx, base - legs, xx + 2, base, STEEL[1])
+        layer.rect(xx - 1, base, xx + 3, base, STEEL[2])
+    for yy in range(body_top, base - legs):
+        for i in range(w):
+            t = i / (w - 1)
+            tone = 1 if t > 0.82 else 2 if t > 0.6 else 3 if t > 0.12 else 2
+            if t < 0.05 or t > 0.95:
+                tone = 1
+            layer.put(x + i, yy, STEEL[tone])
+    for band in range(body_top + 8, base - legs, 22):
+        for i in range(w):
+            layer.put(x + i, band, STEEL[1])
+            if i % 6 == 2:
+                layer.put(x + i, band - 1, STEEL[4])
+    # dome
+    r = w // 2
+    for i in range(w):
+        dx = (i - r + 0.5) / r
+        dome = int(math.sqrt(max(0.0, 1 - dx * dx)) * w * 0.22)
+        for yy in range(body_top - dome, body_top):
+            layer.put(x + i, yy, STEEL[3 if dx < -0.2 else 2 if dx < 0.5 else 1])
+    pipe_v(layer, x + r - 2, body_top - int(w * 0.22) - 30, body_top - int(w * 0.22) + 1, 4)
+    if sight:
+        sx0, sx1 = x + w // 2 - 7, x + w // 2 + 7
+        sy0, sy1 = body_top + 14, base - legs - 14
+        level = sy0 + int((sy1 - sy0) * rng.uniform(0.25, 0.5))
+        for yy in range(sy0 - 2, sy1 + 3):
+            for xx in range(sx0 - 2, sx1 + 3):
+                layer.put(xx, yy, COPPER[2] if xx in (sx0 - 2, sx1 + 2) or yy in (sy0 - 2, sy1 + 2) else COPPER[1])
+        for yy in range(sy0, sy1 + 1):
+            for xx in range(sx0, sx1 + 1):
+                if yy < level:
+                    layer.put(xx, yy, NIGHT[2])
+                else:
+                    tone = 4 if yy == level else 3 if xx < sx0 + 4 else 2
+                    layer.put(xx, yy, liquid[tone])
+                    layer.glow(xx, yy, liquid[4 if yy == level else 3], 170)
+                    if rng.random() < 0.06:
+                        layer.put(xx, yy, liquid[5 if len(liquid) > 5 else 4])
+        layer.halo((sx0 + sx1) // 2, (level + sy1) // 2, 20, liquid[3], 70)
+    # a gauge
+    gx, gy = x + w - 10, body_top + 12
+    for yy in range(gy - 3, gy + 4):
+        for xx in range(gx - 3, gx + 4):
+            if math.hypot(xx - gx, yy - gy) <= 3.2:
+                layer.put(xx, yy, WHITE[3] if math.hypot(xx - gx, yy - gy) < 2.2 else INK[2])
+    layer.put(gx + 1, gy - 1, RED[3])
+
+
+def vat(layer, x, base, w, h, liquid):
+    """An open riveted vat: the glowing surface shows over the rim."""
+    for yy in range(base - h, base + 1):
+        for i in range(w):
+            t = i / (w - 1)
+            tone = 1 if t > 0.85 else 2 if t > 0.55 else 3 if t > 0.1 else 2
+            layer.put(x + i, yy, COPPER[tone] if yy < base - h + 3 else STEEL[tone])
+        if (yy - base) % 12 == 0:
+            for i in range(1, w - 1, 5):
+                layer.put(x + i, yy, STEEL[4])
+    for i in range(2, w - 2):
+        layer.put(x + i, base - h - 1, liquid[4])
+        layer.put(x + i, base - h - 2, liquid[3] if i % 7 else liquid[4])
+        layer.glow(x + i, base - h - 1, liquid[4], 255)
+        layer.glow(x + i, base - h - 2, liquid[4], 220)
+    layer.halo(x + w // 2, base - h - 6, w // 2 + 6, liquid[3], 90)
+    # rising bubbles
+    for k in range(4):
+        bx = x + 6 + k * (w - 12) // 3
+        by = base - h - 6 - (k * 5) % 11
+        layer.put(bx, by, liquid[4]); layer.glow(bx, by, liquid[4], 220)
+
+
+def crate(layer, x, base, size):
+    for yy in range(base - size, base + 1):
+        for xx in range(x, x + size):
+            edge = xx in (x, x + size - 1) or yy in (base - size, base)
+            diag = (xx - x) == (base - yy) or (xx - x) == (yy - base + size)
+            layer.put(xx, yy, WOOD[2] if edge else WOOD[3] if diag else WOOD[4] if (yy - base) % 5 else WOOD[3])
+
+
+def drum(layer, x, base, color):
+    w, h = 12, 18
+    for yy in range(base - h, base + 1):
+        for i in range(w):
+            tone = 1 if i > 9 else 2 if i > 6 else 3 if i > 1 else 2
+            layer.put(x + i, yy, color[tone])
+        if (base - yy) in (5, 12):
+            for i in range(w):
+                layer.put(x + i, yy, color[1])
+    for i in range(w):
+        layer.put(x + i, base - h, color[4])
+
+
+def chain(layer, x, y0, y1, hook=True):
+    for y in range(y0, y1):
+        if (y // 3) % 2:
+            layer.put(x, y, STEEL[2]); layer.put(x + 1, y, STEEL[1])
+        else:
+            layer.put(x - 1, y, STEEL[2]); layer.put(x + 2, y, STEEL[1]); layer.put(x, y, STEEL[3])
+    if hook:
+        for i, (dx, dy) in enumerate(((0, 0), (0, 1), (0, 2), (0, 3), (1, 4), (2, 4), (3, 3), (3, 2), (-1, 4))):
+            layer.put(x + dx, y1 + dy, STEEL[3] if i < 4 else STEEL[2])
+        layer.rect(x - 2, y1 - 3, x + 3, y1 - 1, GOLD[2])
+
+
+# --- layers ----------------------------------------------------------------------------------------------------------
 
 def far_layer():
+    """The back wall of the hall, 42 % hazed, with windows cut clear for the sky."""
     rng = random.Random(11)
-    layer = Layer(210, 0.42)
-    base = layer.h
-    # two wooded ridges: the back one paler, their crests made of tree crowns
-    for ridge, (height, amp, tones, seed) in enumerate([(132, 24, (PINE[1], PINE[2], PINE[3]), 3), (86, 14, (PINE[2], PINE[3], LEAF[3]), 5)]):
-        crest = [base - height - int(wrap_noise(x, W, 4, seed) * amp) for x in range(W)]
+    L = Layer(FAR_H, 0.42)
+    h = FAR_H
+    roof_line = 60
+    for y in range(h):
         for x in range(W):
-            for y in range(crest[x], base):
-                layer.put(x, y, tones[0] if (y - crest[x]) > 10 else tones[1])
-        # crowns along the crest, then darker ones down the slope, so the ridge reads as forest
-        crowns = [(cx, crest[cx] + rng.uniform(0, 6), True) for cx in (rng.randrange(W) for _ in range(260 if ridge == 0 else 200))]
-        crowns += [(cx, rng.uniform(crest[cx] + 8, base), False) for cx in (rng.randrange(W) for _ in range(700 if ridge == 0 else 500))]
-        crowns.sort(key=lambda c: c[1])
-        for cx, cy, top in crowns:
-            r = rng.uniform(3, 6.5)
-            for y in range(int(cy - r) - 1, int(cy + r) + 1):
-                for x in range(int(cx - r * 1.2) - 1, int(cx + r * 1.2) + 1):
-                    dx, dy = (x + 0.5 - cx) / (r * 1.2), (y + 0.5 - cy) / r
-                    if dx * dx + dy * dy <= 1:
-                        light = -dx * 0.6 - dy * 0.8 - (0 if top else 0.5)
-                        layer.put(x, y, tones[2] if light > 0.45 else tones[1] if light > -0.3 else tones[0])
-        for _ in range(26 if ridge == 0 else 14):
-            x = rng.randrange(W)
-            pine(layer, x, crest[x] + 4, rng.randrange(10, 18), [tones[0], tones[1], tones[2]])
-    # the old town on the lower slope: roofs, the church and a stone bridge over the river
-    town = Layer(210, 0.3)
-    church(town, 760, base - 10, rng)
-    for x in list(range(560, 740, 40)) + list(range(830, 990, 38)) + list(range(40, 230, 42)):
-        house(town, x + rng.randrange(-5, 5), base - rng.randrange(4, 14), rng.randrange(26, 34), rng.choice([1, 2, 2]), rng,
-              lit=0.5, floor_h=11, win=(3, 5))
-    for x in range(W):
-        for y in range(base):
-            if town.px[x, y][3]:
-                layer.px[x, y] = town.px[x, y]
-                if town.lx[x, y][3]:
-                    layer.lx[x, y] = town.lx[x, y]
-    for x in range(270, 530):
-        y = base - 22 - int(math.sin((x - 270) / 260 * math.pi) * 5)
-        layer.rect(x, y, x, y + 2, ROCK[4] if x % 9 else ROCK[3])
-        for yy in range(y + 3, base - 8):
-            ax = (x - 270) % 37
-            d = ((ax - 18) / 15) ** 2 + ((yy - (base - 8)) / 12) ** 2
-            if d > 1:
-                layer.put(x, yy, ROCK[3] if (yy + (x // 4)) % 4 else ROCK[2])
-    for x in range(W):
-        for y in range(base - 8, base):
-            layer.put(x, y, SKY[2] if (x // 3 + y) % 7 else SKY[4])
-    layer.save("far")
+            if y < roof_line:
+                L.put(x, y, NIGHT[1] if y % 9 else NIGHT[2])
+            elif y > h - 90:
+                # the brick plinth
+                course = (y - (h - 90)) // 4
+                joint = (y - (h - 90)) % 4 == 3 or (x + (course % 2) * 6) % 12 == 0
+                L.put(x, y, BRICK[1] if joint else BRICK[2] if (x * 7 + course * 13) % 23 else BRICK[3])
+            else:
+                # steel cladding panels, 32 wide, with seams and rivets
+                seam = x % 32 == 0
+                tone = 1 if seam else 2 if x % 32 > 26 else 2 if (x // 32 + y // 64) % 3 == 0 else 2
+                L.put(x, y, STEEL[tone] if not seam else STEEL[0])
+                if x % 32 == 1 and y % 16 == 8:
+                    L.put(x, y, STEEL[3])
+    # tall windows with arched tops and glazing bars, panes left clear
+    for wx in range(40, W, 128):
+        wx0, wx1, wy0, wy1 = wx, wx + 56, roof_line + 70, h - 130
+        arch = 28
+        for y in range(wy0 - arch, wy1 + 1):
+            for x in range(wx0, wx1 + 1):
+                dy = wy0 - y
+                if dy > 0 and math.hypot(x - (wx0 + wx1) / 2, dy) > arch:
+                    continue
+                frame = x in (wx0, wx0 + 1, wx1 - 1, wx1) or y == wy1 or y == wy1 - 1
+                bar = (x - wx0) % 14 == 0 or ((y - wy0) % 18 == 0 and y >= wy0)
+                if dy > 0 and math.hypot(x - (wx0 + wx1) / 2, dy) > arch - 2:
+                    frame = True
+                if frame:
+                    L.put(x, y, STEEL[3] if x < wx0 + 2 else STEEL[1])
+                elif bar:
+                    L.put(x, y, STEEL[1])
+                else:
+                    L.clear(x, y)
+        # the sill
+        L.rect(wx0 - 3, wy1 + 1, wx1 + 3, wy1 + 2, STEEL[3])
+        L.rect(wx0 - 3, wy1 + 3, wx1 + 3, wy1 + 3, STEEL[0])
+    # columns and the roof trusses
+    for cx in range(0, W, 256):
+        ibeam(L, cx - 8, roof_line, h, 16)
+    truss(L, 0, W, roof_line, 24)
+    for x in range(0, W, 64):
+        chain(L, x + 30, roof_line + 25, roof_line + 60 + (x * 37) % 40, hook=False)
+    L.save("far", lights=True)
 
 
 def mid_layer():
+    """Tanks, vats, catwalks and pipes, 18 % hazed."""
     rng = random.Random(23)
-    layer = Layer(180, 0.18)
-    base = layer.h
-    x = 0
-    while x < W - 70:
-        if rng.random() < 0.7:
-            w = rng.randrange(44, 72)
-            house(layer, x, base - 2, w, rng.choice([2, 2, 3]), rng, lit=0.6)
-            x += w + rng.randrange(10, 22)
-        else:
-            canopy(layer, x + 18, base - 1, rng.randrange(14, 20), rng)
-            x += rng.randrange(36, 48)
-    for _ in range(5):
-        pine(layer, rng.randrange(W), base - 1, rng.randrange(30, 44), [LEAF[1], LEAF[2], LEAF[3]])
-    hedge(layer, 0, W, base, 6, rng)
-    layer.outline(INK[2])
-    layer.save("mid")
+    L = Layer(MID_H, 0.18)
+    h = MID_H
+    deck = h - 150
+    upper = h - 270
+    # pipe runs high up first, so the tanks stand in front of them
+    pipe_h(L, 0, W, upper - 22, 5)
+    pipe_h(L, 0, W, deck - 64, 4, ramp_=BLUE)
+    # catwalks, the lower one with stairs up to it
+    railing(L, 120, 470, deck)
+    railing(L, 600, 960, deck)
+    railing(L, 300, 760, upper)
+    stairs(L, 60, h - 2, 37)
+    stairs(L, 520, deck - 2, 30)
+    for px in (130, 300, 460, 610, 790, 950):
+        ibeam(L, px, deck + 3, h, 8)
+    for px in (310, 520, 750):
+        ibeam(L, px, upper + 3, deck - 1, 6)
+    # tanks on the floor and on the catwalk
+    tank(L, 180, h, 78, 150, CHEM, rng)
+    tank(L, 660, h, 92, 170, BLUE + [SKY[4]], rng)
+    tank(L, 360, deck, 64, 90, TEAL, rng)
+    tank(L, 820, deck, 60, 80, CHEM, rng)
+    vat(L, 300, h, 110, 34, ramp("dusk"))
+    vat(L, 880, h, 96, 30, CHEM)
+    vat(L, 640, upper, 70, 22, CHEM)
+    pipe_v(L, 255, upper - 22, h - 50, 4)
+    pipe_v(L, 905, deck - 64, deck - 4, 4, ramp_=BLUE)
+    for lx in (90, 250, 420, 560, 730, 900):
+        caged_lamp(L, lx, 0, 22 + (lx * 13) % 30)
+    for lx in (200, 470, 690, 960):
+        caged_lamp(L, lx, deck + 3, 10)
+    L.outline(INK[1])
+    L.save("mid")
 
 
 def near_layer():
+    """Heavy columns, chains with hooks, crates and drums just behind the plot, 6 % hazed."""
     rng = random.Random(37)
-    layer = Layer(150, 0.06)
-    base = layer.h
-    for x in (60, 330, 610, 880):
-        canopy(layer, x + rng.randrange(-20, 20), base - 6, rng.randrange(26, 34), rng)
-    for x in (200, 760):
-        pine(layer, x + rng.randrange(-15, 15), base - 3, rng.randrange(54, 70), [LEAF[1], LEAF[2], LEAF[3]])
-    hedge(layer, 0, W, base, 12, rng)
-    layer.outline(LEAF[0])
-    layer.save("near", lights=False)
+    L = Layer(NEAR_H, 0.06)
+    h = NEAR_H
+    for cx in (60, 572):
+        ibeam(L, cx, 0, h, 26)
+    pipe_h(L, 0, W, 6, 6)
+    for x in (230, 380, 820):
+        chain(L, x, 12, 60 + (x * 7) % 60)
+    for x, s in ((110, 22), (134, 16), (118, 14), (640, 20), (900, 24), (926, 18)):
+        base = h if (x, s) != (118, 14) else h - 22
+        crate(L, x, base, s)
+    for x, c in ((700, BLUE), (714, RED), (728, BLUE), (980, CHEM)):
+        drum(L, x, h, c)
+    L.outline(INK[1])
+    L.save("near", lights=False)
 
 
 def cloud(img, ox, oy, w, h, rng):

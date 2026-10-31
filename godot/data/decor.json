@@ -1,97 +1,11 @@
 {
-  "_comment": "Props on the campaign plot (docs/design/art.md). x is the left edge and y the bottom edge in world pixels (8 per cell; the ground is at y 800). anchor says what holds a prop up: ground (a solid cell under its middle), wall (a background wall behind its middle), ceiling (a solid cell over its middle) or none; a prop whose anchor is gone is not drawn. A light is a lamp: its offset from the prop's top left, its radius in pixels, strength and colour, and glow is the radius of the halo drawn round it after dusk. sprites holds the regions of art/decor.png and is written by tools/make-decor-sprites.py.",
+  "_comment": "Props on the campaign plot, the workshop bay inside the factory hall (docs/design/art.md). x is the left edge and y the bottom edge in world pixels (8 per cell; the ground is at y 800). anchor says what holds a prop up: ground (a solid cell under its middle), wall (a background wall behind its middle), ceiling (a solid cell over its middle) or none; a prop whose anchor is gone is not drawn. A light is a lamp: its offset from the prop's top left, its radius in pixels, strength and colour, and glow is the radius of the halo drawn round it after dusk. sprites holds the regions of art/decor.png and is written by tools/make-decor-sprites.py.",
   "placements": [
     {
-      "sprite": "tree",
-      "x": 1556,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "sale_sign",
-      "x": 1648,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "bush",
-      "x": 1676,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "fence",
-      "x": 1708,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "fence",
-      "x": 1740,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "fence",
-      "x": 1772,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "fence",
-      "x": 1804,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "fence",
-      "x": 1836,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "fence",
-      "x": 1868,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
       "sprite": "cat",
-      "x": 1790,
-      "y": 781,
-      "anchor": "none"
-    },
-    {
-      "sprite": "plant",
-      "x": 1937,
+      "x": 1850,
       "y": 800,
       "anchor": "ground"
-    },
-    {
-      "sprite": "bush",
-      "x": 2940,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "mailbox",
-      "x": 3006,
-      "y": 800,
-      "anchor": "ground"
-    },
-    {
-      "sprite": "street_lamp",
-      "x": 3050,
-      "y": 800,
-      "anchor": "ground",
-      "light": {
-        "dx": 7,
-        "dy": 10,
-        "radius": 84,
-        "strength": 0.8,
-        "color": "ffcc5c"
-      },
-      "glow": 9
     },
     {
       "sprite": "fridge",
@@ -202,6 +116,38 @@
       "x": 2099,
       "y": 744,
       "anchor": "wall"
+    },
+    {
+      "sprite": "pendant_lamp",
+      "x": 1800,
+      "y": 736,
+      "anchor": "ceiling",
+      "light": {
+        "dx": 7,
+        "dy": 14,
+        "radius": 70,
+        "strength": 0.75,
+        "color": "ffcc5c",
+        "pool": true,
+        "indoor_day": 0.3
+      },
+      "glow": 6
+    },
+    {
+      "sprite": "pendant_lamp",
+      "x": 2236,
+      "y": 736,
+      "anchor": "ceiling",
+      "light": {
+        "dx": 7,
+        "dy": 14,
+        "radius": 70,
+        "strength": 0.75,
+        "color": "ffcc5c",
+        "pool": true,
+        "indoor_day": 0.3
+      },
+      "glow": 6
     }
   ],
   "sprites": {
