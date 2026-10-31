@@ -68,6 +68,13 @@ var last_build := Vector2i(-1, -1)
 var notice_until := 0.0
 var camera := Camera2D.new()
 var surface := Sprite2D.new()
+# The world shader's colour depends only on the world pixel, so when a world pixel covers a screen pixel or more it
+# is shaded once per world pixel into world_view (the visible part of the world) and world_image scales that up,
+# instead of once per screen pixel: a fullscreen Retina window has many screen pixels per world pixel.
+var world_view := SubViewport.new()
+var world_shade := Sprite2D.new()
+var world_image := Sprite2D.new()
+var uploaded := {} # texture -> the data last sent to it
 var texture: ImageTexture
 var grain_texture: ImageTexture
 var solution_texture: ImageTexture
@@ -137,6 +144,25 @@ func _ready() -> void:
         liquid_material.set_shader_parameter("wall_atlas", walls)
         liquid_material.set_shader_parameter("has_wall_atlas", true)
     add_child(surface)
+    world_shade.centered = false
+    world_shade.scale = surface.scale
+    world_shade.material = liquid_material
+    world_view.transparent_bg = true
+    world_view.disable_3d = true
+    world_view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+    world_view.add_child(world_shade)
+    add_child(world_view)
+    world_image.centered = false
+    world_image.show_behind_parent = true
+    world_image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    world_image.texture = world_view.get_texture()
+    # world_view holds the shaded colours times their alpha (blended over its clear background)
+    var premultiplied := CanvasItemMaterial.new()
+    premultiplied.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
+    world_image.material = premultiplied
+    world_image.visible = false
+    add_child(world_image)
+    RenderingServer.frame_pre_draw.connect(_frame_world)
     furniture = preload("res://furniture.gd").new()
     furniture.show_behind_parent = true
     furniture.setup(rooms)
@@ -1115,55 +1141,82 @@ func _process(delta: float) -> void:
                 inspector_label.text = "%s · %.1f °C%s · sugar %.2f · salt %.2f · stored water %.1f · %s" % [label, sample.temperature, " · burning" if sample.burning else "", sample.sugar, sample.salt, sample.stored_water, stats.message]
 
 func _refresh_texture() -> void:
-    if furniture != null:
-        furniture.queue_redraw()
     var pixels: PackedByteArray = world.render_data()
-    var image := Image.create_from_data(WIDTH, HEIGHT * 2, false, Image.FORMAT_RGBA8, pixels)
+    if furniture != null and world == furniture.world:
+        furniture.refresh_frames(pixels)
     if texture == null:
-        texture = ImageTexture.create_from_image(image)
+        texture = ImageTexture.create_from_image(Image.create_from_data(WIDTH, HEIGHT * 2, false, Image.FORMAT_RGBA8, pixels))
         surface.texture = texture
+        world_shade.texture = texture
         liquid_material.set_shader_parameter("world_data", texture)
     else:
-        texture.update(image)
-    var solution_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_RGBA8, world.solution_data())
+        _upload(texture, pixels, WIDTH, HEIGHT * 2, Image.FORMAT_RGBA8)
+    var solutions: PackedByteArray = world.solution_data()
     if solution_texture == null:
-        solution_texture = ImageTexture.create_from_image(solution_image)
+        solution_texture = ImageTexture.create_from_image(Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_RGBA8, solutions))
         liquid_material.set_shader_parameter("solution_data", solution_texture)
         liquid_material.set_shader_parameter("has_solutions", true)
     else:
-        solution_texture.update(solution_image)
-    var fire_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, world.fire_data())
+        _upload(solution_texture, solutions, WIDTH, HEIGHT, Image.FORMAT_RGBA8)
+    var fire: PackedByteArray = world.fire_data()
     if fire_texture == null:
-        fire_texture = ImageTexture.create_from_image(fire_image)
+        fire_texture = ImageTexture.create_from_image(Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, fire))
         liquid_material.set_shader_parameter("fire_data", fire_texture)
         liquid_material.set_shader_parameter("has_fire", true)
     else:
-        fire_texture.update(fire_image)
+        _upload(fire_texture, fire, WIDTH, HEIGHT, Image.FORMAT_R8)
     var back := world.back_data()
-    var back_image := Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, back)
     if back_texture == null:
-        back_texture = ImageTexture.create_from_image(back_image)
+        back_texture = ImageTexture.create_from_image(Image.create_from_data(WIDTH, HEIGHT, false, Image.FORMAT_R8, back))
         liquid_material.set_shader_parameter("back_data", back_texture)
         liquid_material.set_shader_parameter("has_back", true)
         sprite_material.set_shader_parameter("room_data", back_texture)
     if campaign and decor.refresh(pixels, back, WIDTH, HEIGHT):
         lighting.set_lamps(decor.lamps())
     else:
-        back_texture.update(back_image)
+        _upload(back_texture, back, WIDTH, HEIGHT, Image.FORMAT_R8)
     var grains: PackedByteArray = world.grain_pixels()
     liquid_material.set_shader_parameter("has_grains", not grains.is_empty())
     if not grains.is_empty():
-        var grain_image := Image.create_from_data(WIDTH * 8, HEIGHT * 8, false, Image.FORMAT_R8, grains)
         if grain_texture == null:
-            grain_texture = ImageTexture.create_from_image(grain_image)
+            grain_texture = ImageTexture.create_from_image(Image.create_from_data(WIDTH * 8, HEIGHT * 8, false, Image.FORMAT_R8, grains))
             liquid_material.set_shader_parameter("grain_data", grain_texture)
         else:
-            grain_texture.update(grain_image)
+            _upload(grain_texture, grains, WIDTH * 8, HEIGHT * 8, Image.FORMAT_R8)
     dirty = false
     machine_view = world.device_data()
     equipment_view = world.equipment_list() if campaign else []
     pending_wire = world.stats().pending_wire
     queue_redraw()
+
+# Sends data to a texture unless it already holds exactly that (settled grains, an unchanged building layer): the
+# 4 MB grain plane alone takes about 2 ms to send.
+func _upload(target: ImageTexture, data: PackedByteArray, width: int, height: int, format: Image.Format) -> void:
+    if uploaded.get(target) == data:
+        return
+    uploaded[target] = data
+    target.update(Image.create_from_data(width, height, false, format, data))
+
+# Before each frame is drawn: frames world_view on the visible part of the world, or shades the world straight to the
+# screen when zoomed out so far that a world pixel is smaller than a screen pixel.
+func _frame_world() -> void:
+    if not is_inside_tree():
+        return
+    var viewport := get_viewport()
+    var density := (viewport.get_final_transform() * viewport.canvas_transform).get_scale().x
+    var view := viewport.canvas_transform.affine_inverse() * viewport.get_visible_rect()
+    # the size follows the zoom only, so moving the camera never reallocates world_view
+    var area := Rect2i(Vector2i(view.position.floor()) - Vector2i.ONE, Vector2i(view.size.ceil()) + Vector2i(3, 3))
+    var offscreen := density >= 1.0 and area.intersects(Rect2i(0, 0, int(WIDTH * CELL), int(HEIGHT * CELL)))
+    if world_image.visible != offscreen:
+        world_image.visible = offscreen
+        surface.visible = not offscreen
+        world_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if offscreen else SubViewport.UPDATE_DISABLED
+    if offscreen:
+        if world_view.size != area.size:
+            world_view.size = area.size
+        world_view.canvas_transform = Transform2D(0.0, -Vector2(area.position))
+        world_image.position = Vector2(area.position)
 
 func _draw() -> void:
     draw_rect(Rect2(0, 0, WIDTH * CELL, HEIGHT * CELL), Color("42616a"), false, 1.0)
